@@ -94,9 +94,18 @@ class TestBuildAlternativesMap:
         nearby = _poi("B", lat=37.502, lng=127.0, category="14")
         finder = AlternativesFinder(poi_pool=[nearby, failed_poi])
         fails = [_hardfail("A")]
-        result = finder.build_alternatives_map(fails, [failed_poi])
+        # allow_substitution=True required (Minimal Interference: substitution is opt-in)
+        result = finder.build_alternatives_map(fails, [failed_poi], allow_substitution=True)
         assert "A" in result
         assert result["A"][0].name == "B"
+
+    def test_default_no_substitution(self):
+        failed_poi = _poi("A", lat=37.5, lng=127.0, category="14")
+        nearby = _poi("B", lat=37.502, lng=127.0, category="14")
+        finder = AlternativesFinder(poi_pool=[nearby, failed_poi])
+        fails = [_hardfail("A")]
+        result = finder.build_alternatives_map(fails, [failed_poi])
+        assert result == {}
 
     def test_skips_none_poi_name(self):
         finder = AlternativesFinder(poi_pool=[])
@@ -108,7 +117,7 @@ class TestBuildAlternativesMap:
         failed_poi = _poi("A")
         finder = AlternativesFinder(poi_pool=[])
         fails = [_hardfail("A"), _hardfail("A")]
-        result = finder.build_alternatives_map(fails, [failed_poi])
+        result = finder.build_alternatives_map(fails, [failed_poi], allow_substitution=True)
         assert list(result.keys()).count("A") == 1
 
     def test_excludes_plan_pois_from_alternatives(self):

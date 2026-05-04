@@ -8,7 +8,7 @@ import httpx
 
 from src.data.models import POI, Settings
 
-_BASE_URL = "https://apis.data.go.kr/B551011/KorService1"
+_BASE_URL = "https://apis.data.go.kr/B551011/KorService2"
 _FALLBACK_OPEN = "00:00"
 _FALLBACK_CLOSE = "23:59"
 
@@ -80,7 +80,6 @@ class TourAPIClient:
             "pageNo":     1,
             "MobileOS":   "ETC",
             "MobileApp":  self._mobile_app,
-            "listYN":     "Y",
             "arrange":    "A",
             "keyword":    keyword,
             "_type":      "json",
@@ -90,7 +89,7 @@ class TourAPIClient:
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
-                r = await client.get(f"{_BASE_URL}/searchKeyword1", params=params)
+                r = await client.get(f"{_BASE_URL}/searchKeyword2", params=params)
             if r.status_code != 200:
                 return []
             items = _extract_items(r.json())
@@ -142,7 +141,7 @@ class TourAPIClient:
         result = (_FALLBACK_OPEN, _FALLBACK_CLOSE)
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
-                r = await client.get(f"{_BASE_URL}/detailIntro1", params=params)
+                r = await client.get(f"{_BASE_URL}/detailIntro2", params=params)
             if r.status_code == 200:
                 items = _extract_items(r.json())
                 if items:

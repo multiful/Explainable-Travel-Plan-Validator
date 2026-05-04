@@ -1,9 +1,8 @@
 """Hard Fail 탐지기 (운영시간 충돌·이동 불가·일정 시간 초과)."""
 from __future__ import annotations
 
-import math
-
 from src.data.models import HardFail, ItineraryPlan, POI
+from src.utils.geo import build_dist_cache, get_travel_min
 
 DEFAULT_START_MINUTES: int = 9 * 60  # 09:00
 
@@ -13,39 +12,13 @@ HARD_FAIL_TYPES = {
     "SCHEDULE_INFEASIBLE":      "전체 일정이 시간 내 수행 불가능",
 }
 
-_EARTH_R = 6_371_000.0  # meters
-
-
-def _haversine_sec(
-    lat1: float, lng1: float, lat2: float, lng2: float,
-    speed_mps: float = 22_000 / 3600,
-) -> float:
-    """Haversine 직선거리 기반 이동 시간(초) — 중거리 기본 속도."""
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlam = math.radians(lng2 - lng1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
-    dist_m = 2 * _EARTH_R * math.asin(math.sqrt(a))
-    return dist_m / speed_mps
-
-
-def _get_travel_min(
-    matrix: dict, i: int, j: int,
-    origin: POI, destination: POI,
-) -> float:
-    """matrix[i][j]["travel_min"] 조회, 없으면 Haversine 폴백 (분)."""
-    entry = (matrix.get(i) or {}).get(j)
-    if entry and "travel_min" in entry:
-        return float(entry["travel_min"])
-    return _haversine_sec(origin.lat, origin.lng, destination.lat, destination.lng) / 60.0
-
 
 class HardFailDetector:
     """여행 일정의 Hard Fail 조건을 탐지한다.
 
     External I/O 없음. matrix: dict[int, dict[int, dict]] 인덱스 기반.
     matrix[i][j] = {"travel_min": float, "distance_km": float, ...}
+    origin_poi: 전날 숙소처럼 POI 목록 이전에 위치한 출발점. 첫 번째 이동 거리 계산에 사용된다.
     """
 
     def detect(
@@ -54,12 +27,18 @@ class HardFailDetector:
         pois: list[POI],
         matrix: dict,
         start_minutes: int = DEFAULT_START_MINUTES,
+        origin_poi: POI | None = None,
     ) -> list[HardFail]:
         """Hard Fail 목록 반환. 없으면 빈 리스트."""
+        # origin_poi 가 있으면 pois 앞에 가상 출발 인덱스(-1)로 붙여 처리
+        effective_pois = pois if origin_poi is None else [origin_poi] + list(pois)
+        offset = 0 if origin_poi is None else 1  # 실제 POI 인덱스 오프셋
+
+        dist_cache = build_dist_cache(effective_pois)
         fails: list[HardFail] = []
-        fails.extend(self._check_operating_hours(pois, matrix, start_minutes))
-        fails.extend(self._check_travel_impossible(pois, matrix, start_minutes))
-        fails.extend(self._check_schedule_infeasible(pois, matrix))
+        fails.extend(self._check_operating_hours(effective_pois, matrix, start_minutes, offset, dist_cache))
+        fails.extend(self._check_travel_impossible(effective_pois, matrix, start_minutes, offset, dist_cache))
+        fails.extend(self._check_schedule_infeasible(effective_pois, matrix, offset, dist_cache))
         return fails
 
     def _check_operating_hours(
@@ -67,20 +46,27 @@ class HardFailDetector:
         pois: list[POI],
         matrix: dict,
         start_minutes: int,
+        offset: int,
+        dist_cache: dict,
     ) -> list[HardFail]:
         """각 POI 도착 예상 시간이 운영시간 밖이면 Hard Fail."""
         fails: list[HardFail] = []
         current_time = float(start_minutes)
 
         for i, poi in enumerate(pois):
+            if i < offset:
+                # origin_poi: 출발점만 기록, 검사 생략
+                current_time += poi.duration_min
+                continue
+
             open_min = self._time_to_min(poi.open_start)
             close_min = self._time_to_min(poi.open_end)
             is_fallback = poi.open_start == "00:00" and poi.open_end == "23:59"
 
             arrive = (
                 current_time
-                if i == 0
-                else current_time + _get_travel_min(matrix, i - 1, i, pois[i - 1], poi)
+                if i == offset  # 첫 실제 POI (origin_poi 없으면 i==0)
+                else current_time + get_travel_min(matrix, i - 1, i, pois[i - 1], poi, dist_cache)
             )
 
             if not is_fallback:
@@ -91,9 +77,7 @@ class HardFailDetector:
                             f"'{poi.name}' 도착 예정 {self._min_to_time(arrive)}, "
                             f"운영 시작 {poi.open_start} — 아직 문을 열지 않았습니다."
                         ),
-                        evidence=(
-                            f"도착 {self._min_to_time(arrive)} < 운영시작 {poi.open_start}"
-                        ),
+                        evidence=f"도착 {self._min_to_time(arrive)} < 운영시작 {poi.open_start}",
                         confidence="Medium",
                         poi_name=poi.name,
                     ))
@@ -104,9 +88,7 @@ class HardFailDetector:
                             f"'{poi.name}' 도착 예정 {self._min_to_time(arrive)}, "
                             f"운영 종료 {poi.open_end} — 이미 문을 닫았습니다."
                         ),
-                        evidence=(
-                            f"도착 {self._min_to_time(arrive)} > 운영종료 {poi.open_end}"
-                        ),
+                        evidence=f"도착 {self._min_to_time(arrive)} > 운영종료 {poi.open_end}",
                         confidence="Medium",
                         poi_name=poi.name,
                     ))
@@ -121,6 +103,8 @@ class HardFailDetector:
         pois: list[POI],
         matrix: dict,
         start_minutes: int,
+        offset: int,
+        dist_cache: dict,
     ) -> list[HardFail]:
         """이동시간이 이용 가능한 시간 창을 초과하면 Hard Fail."""
         fails: list[HardFail] = []
@@ -129,13 +113,13 @@ class HardFailDetector:
         for i, poi in enumerate(pois):
             open_min = self._time_to_min(poi.open_start)
 
-            if i == 0:
+            if i <= offset:
                 effective_arrive = max(current_time, open_min)
                 current_time = effective_arrive + poi.duration_min
                 continue
 
             prev = pois[i - 1]
-            travel_min = _get_travel_min(matrix, i - 1, i, prev, poi)
+            travel_min = get_travel_min(matrix, i - 1, i, prev, poi, dist_cache)
             close_min = self._time_to_min(poi.open_end)
             is_fallback = poi.open_start == "00:00" and poi.open_end == "23:59"
             available_window = close_min - current_time
@@ -149,8 +133,7 @@ class HardFailDetector:
                     ),
                     evidence=(
                         f"이동 {travel_min:.0f}분 > 가용 창 {available_window:.0f}분 "
-                        f"(출발 {self._min_to_time(current_time)}, "
-                        f"'{poi.name}' 종료 {poi.open_end})"
+                        f"(출발 {self._min_to_time(current_time)}, '{poi.name}' 종료 {poi.open_end})"
                     ),
                     confidence="High",
                     poi_name=poi.name,
@@ -166,12 +149,15 @@ class HardFailDetector:
         self,
         pois: list[POI],
         matrix: dict,
+        offset: int,
+        dist_cache: dict,
     ) -> list[HardFail]:
-        """총 체류+이동 시간이 24시간 초과 시 Hard Fail."""
-        total_dwell = sum(p.duration_min for p in pois)
+        """실제 POI 들의 총 체류+이동 시간이 24시간 초과 시 Hard Fail."""
+        real_pois = pois[offset:]
+        total_dwell = sum(p.duration_min for p in real_pois)
         total_travel_min = 0.0
-        for i in range(1, len(pois)):
-            total_travel_min += _get_travel_min(matrix, i - 1, i, pois[i - 1], pois[i])
+        for i in range(offset + 1, len(pois)):
+            total_travel_min += get_travel_min(matrix, i - 1, i, pois[i - 1], pois[i], dist_cache)
 
         total_min = total_dwell + total_travel_min
         if total_min > 24 * 60:

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>여행 계획 검증기</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f2f5;color:#1f2937;min-height:100vh}
+/* ── Header ── */
+header{background:#1d4ed8;color:#fff;padding:.85rem 1.5rem;display:flex;align-items:center;gap:.6rem}
+header h1{font-size:1.15rem;font-weight:700}
+/* ── Layout ── */
+.layout{display:grid;grid-template-columns:280px 1fr;gap:1rem;max-width:1200px;margin:1rem auto;padding:0 1rem}
+@media(max-width:800px){.layout{grid-template-columns:1fr}}
+/* ── Card ── */
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:1rem}
+.card-title{font-size:.9rem;font-weight:700;color:#1d4ed8;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem}
+/* ── Place DB panel ── */
+.place-db{position:sticky;top:1rem;max-height:calc(100vh - 5rem);display:flex;flex-direction:column;gap:.6rem}
+.search-box{width:100%;border:1px solid #d1d5db;border-radius:7px;padding:.45rem .7rem;font-size:.85rem;background:#fafafa}
+.search-box:focus{outline:2px solid #3b82f6;border-color:transparent;background:#fff}
+.region-tabs{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.2rem}
+.tab{font-size:.72rem;padding:.2rem .55rem;border:1px solid #d1d5db;border-radius:999px;cursor:pointer;background:#fff;color:#374151}
+.tab.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+.place-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:.3rem;max-height:480px}
+.place-entry{display:flex;align-items:center;justify-content:space-between;padding:.45rem .6rem;border-radius:7px;border:1px solid #e5e7eb;cursor:pointer;transition:background .1s}
+.place-entry:hover{background:#eff6ff;border-color:#93c5fd}
+.place-info{display:flex;flex-direction:column;gap:.1rem}
+.place-name{font-size:.85rem;font-weight:500}
+.place-meta{font-size:.72rem;color:#6b7280}
+.cat-badge{font-size:.68rem;padding:.1rem .4rem;border-radius:4px;font-weight:600}
+.cat-14{background:#dbeafe;color:#1e40af}
+.cat-12{background:#d1fae5;color:#065f46}
+.cat-15{background:#fce7f3;color:#9d174d}
+.cat-38{background:#fef3c7;color:#92400e}
+.cat-39{background:#fee2e2;color:#991b1b}
+.btn-add-quick{font-size:.75rem;padding:.25rem .5rem;border:1px solid #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:5px;cursor:pointer;white-space:nowrap}
+.btn-add-quick:hover{background:#dbeafe}
+/* ── Right panel ── */
+.right-panel{display:flex;flex-direction:column;gap:1rem}
+/* ── Settings ── */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem}
+label{font-size:.78rem;color:#6b7280;display:block;margin-bottom:.25rem}
+select,input[type=text],input[type=date]{width:100%;border:1px solid #d1d5db;border-radius:6px;padding:.4rem .6rem;font-size:.85rem;background:#fafafa}
+select:focus,input:focus{outline:2px solid #3b82f6;border-color:transparent;background:#fff}
+/* ── Day builder ── */
+.day-block{border:1px solid #e5e7eb;border-radius:8px;padding:.8rem;background:#fafafa;position:relative}
+.day-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.day-label{font-size:.9rem;font-weight:600;color:#374151}
+.day-count{font-size:.75rem;color:#9ca3af}
+.place-row{display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem}
+.place-row input{flex:1;font-size:.85rem}
+.btn-rm{border:none;background:none;cursor:pointer;color:#9ca3af;font-size:1rem;padding:.2rem .3rem;border-radius:4px;line-height:1}
+.btn-rm:hover{background:#fee2e2;color:#ef4444}
+.btn-add-place{width:100%;margin-top:.25rem;font-size:.78rem;color:#1d4ed8;background:none;border:1px dashed #93c5fd;border-radius:6px;padding:.3rem;cursor:pointer}
+.btn-add-place:hover{background:#eff6ff}
+.days-actions{display:flex;gap:.5rem;margin-top:.5rem}
+.btn{border:none;border-radius:7px;padding:.45rem 1rem;cursor:pointer;font-size:.85rem;font-weight:500}
+.btn-sm{background:#f3f4f6;color:#374151}
+.btn-sm:hover{background:#e5e7eb}
+.btn-validate{background:#059669;color:#fff;padding:.7rem;font-size:.95rem;font-weight:600;width:100%;border-radius:8px;cursor:pointer;border:none}
+.btn-validate:hover{background:#047857}
+.btn-validate:disabled{background:#9ca3af;cursor:not-allowed}
+/* ── Active day indicator ── */
+.day-block.selected{border-color:#3b82f6;background:#f0f9ff}
+.day-block.selected .day-label{color:#1d4ed8}
+/* ── Result ── */
+#result{display:none}
+.score-hero{text-align:center;padding:1rem 0}
+.score-num{font-size:3.5rem;font-weight:800;line-height:1}
+.score-sub{font-size:.85rem;color:#6b7280;margin-top:.3rem}
+.verdict{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .8rem;border-radius:999px;font-size:.85rem;font-weight:700;margin-top:.5rem}
+.verdict-pass{background:#d1fae5;color:#065f46}
+.verdict-fail{background:#fee2e2;color:#991b1b}
+.section-title{font-size:.85rem;font-weight:700;color:#374151;margin:1rem 0 .5rem;padding-bottom:.3rem;border-bottom:2px solid #f3f4f6}
+.scores-row{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem}
+@media(max-width:600px){.scores-row{grid-template-columns:repeat(3,1fr)}}
+.score-card{text-align:center;background:#f9fafb;border-radius:8px;padding:.6rem .3rem}
+.score-card .v{font-size:1.35rem;font-weight:700;color:#1d4ed8}
+.score-card .k{font-size:.68rem;color:#6b7280;margin-top:.15rem}
+.bar-wrap{background:#e5e7eb;border-radius:999px;height:6px;margin-top:.4rem;overflow:hidden}
+.bar{height:100%;border-radius:999px;background:#3b82f6;transition:width .5s}
+.issue-item{border-radius:6px;padding:.6rem .8rem;margin-bottom:.4rem;font-size:.83rem;line-height:1.5}
+.issue-hard{background:#fff5f5;border-left:3px solid #ef4444}
+.issue-warn{background:#fffbeb;border-left:3px solid #f59e0b}
+.reward-item{background:#eff6ff;border-left:3px solid #3b82f6;border-radius:6px;padding:.5rem .7rem;margin-bottom:.35rem;font-size:.83rem}
+.adj-row{display:flex;justify-content:space-between;font-size:.82rem;padding:.3rem 0;border-bottom:1px solid #f3f4f6}
+.adj-row:last-child{border:none}
+.pen{color:#ef4444;font-weight:600}.bon{color:#059669;font-weight:600}
+.poi-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.poi-table th{background:#f3f4f6;padding:.4rem .6rem;text-align:left;font-weight:600}
+.poi-table td{padding:.35rem .6rem;border-bottom:1px solid #f3f4f6}
+.poi-table tr:last-child td{border:none}
+.tag-ok{background:#d1fae5;color:#065f46;padding:.1rem .4rem;border-radius:4px;font-size:.72rem}
+.tag-est{background:#fef3c7;color:#92400e;padding:.1rem .4rem;border-radius:4px;font-size:.72rem}
+.tag-no-coord{background:#fee2e2;color:#991b1b;padding:.1rem .4rem;border-radius:4px;font-size:.68rem}
+.place-entry.no-coord{opacity:.7}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid #e5e7eb;border-top-color:#1d4ed8;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-box{text-align:center;padding:2rem;color:#6b7280}
+.err-box{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:1rem;color:#991b1b;font-size:.85rem}
+</style>
+</head>
+<body>
+<header>
+  <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+  </svg>
+  <h1>여행 계획 검증기</h1>
+</header>
+
+<div class="layout">
+  <!-- ── 장소 DB 패널 ── -->
+  <aside>
+    <div class="card place-db">
+      <div class="card-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        장소 DB
+      </div>
+      <input class="search-box" id="place-search" placeholder="장소 검색..." oninput="filterPlaces()" />
+      <div class="region-tabs" id="region-tabs"></div>
+      <label style="font-size:.75rem;color:#6b7280;display:flex;align-items:center;gap:.35rem;cursor:pointer">
+        <input type="checkbox" id="coords-only" onchange="filterPlaces()"/>
+        좌표 확인된 장소만 보기
+      </label>
+      <div class="place-list" id="place-list">
+        <div class="loading-box"><div class="spinner"></div></div>
+      </div>
+      <div style="font-size:.72rem;color:#9ca3af;margin-top:.2rem;display:flex;justify-content:space-between" id="place-count-row">
+        <span id="place-count"></span>
+        <button id="load-more-btn" onclick="loadMorePlaces()" style="display:none;font-size:.72rem;color:#1d4ed8;background:none;border:none;cursor:pointer">더 보기</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── 오른쪽 패널 ── -->
+  <div class="right-panel">
+    <!-- 기본 설정 -->
+    <div class="card">
+      <div class="card-title">여행 기본 설정</div>
+      <div class="settings-grid">
+        <div>
+          <label>시작일</label>
+          <input type="date" id="date" value="2026-05-10"/>
+        </div>
+        <div>
+          <label>인원</label>
+          <select id="party_size">
+            <option value="1">1명</option>
+            <option value="2" selected>2명</option>
+            <option value="3">3명</option>
+            <option value="4">4명</option>
+            <option value="5">5명+</option>
+          </select>
+        </div>
+        <div>
+          <label>여행 유형</label>
+          <select id="party_type">
+            <option>혼자</option>
+            <option selected>친구</option>
+            <option>연인</option>
+            <option>가족</option>
+            <option>아기동반</option>
+            <option>어르신동반</option>
+          </select>
+        </div>
+        <div>
+          <label>테마</label>
+          <select id="travel_type">
+            <option value="">없음</option>
+            <option value="cultural">문화</option>
+            <option value="nature">자연</option>
+            <option value="shopping">쇼핑</option>
+            <option value="food">음식</option>
+            <option value="adventure">액티비티</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 일정 -->
+    <div class="card">
+      <div class="card-title">일자별 일정</div>
+      <div id="days-container"></div>
+      <div class="days-actions">
+        <button class="btn btn-sm" onclick="addDay()">+ 날짜 추가</button>
+        <button class="btn btn-sm" onclick="removeDay()">날짜 제거</button>
+      </div>
+    </div>
+
+    <button class="btn-validate" id="validate-btn" onclick="runValidate()">✓ 여행 계획 검증</button>
+
+    <!-- 결과 -->
+    <div class="card" id="result">
+      <div id="result-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 상태 ──────────────────────────────────────────────────────────────────
+let days = [["경복궁","북촌한옥마을","인사동"],["남산타워","명동"]];
+let selectedDay = 0;
+let allPlaces = [];
+let activeRegion = "전체";
+
+// ── 장소 DB 로드 ────────────────────────────────────────────────────────
+const PAGE_SIZE = 80;
+let visibleCount = PAGE_SIZE;
+let filteredCache = [];
+
+async function loadPlaces() {
+  try {
+    const res = await fetch("/api/places");
+    const data = await res.json();
+    allPlaces = data.places;  // annual_max 내림차순 정렬됨
+    const withCoords = allPlaces.filter(p => p.has_coords).length;
+    document.getElementById("place-count").textContent =
+      `총 ${data.total}개 (좌표확인 ${withCoords}개)`;
+    buildRegionTabs();
+    filterPlaces();
+  } catch(e) {
+    document.getElementById("place-list").innerHTML =
+      `<div style="color:#ef4444;font-size:.8rem">장소 목록 로드 실패</div>`;
+  }
+}
+
+function buildRegionTabs() {
+  const regions = ["전체", ...new Set(allPlaces.map(p => p.region).filter(Boolean))].sort((a,b)=>a==="전체"?-1:b==="전체"?1:a.localeCompare(b,"ko"));
+  document.getElementById("region-tabs").innerHTML = regions.map(r =>
+    `<button class="tab${r===activeRegion?" active":""}" onclick="setRegion('${r}')">${r}</button>`
+  ).join("");
+}
+
+function setRegion(r) {
+  activeRegion = r;
+  buildRegionTabs();
+  filterPlaces();
+}
+
+function filterPlaces() {
+  const q = document.getElementById("place-search").value.trim().toLowerCase();
+  const coordsOnly = document.getElementById("coords-only").checked;
+  let filtered = allPlaces;
+  if (activeRegion !== "전체") filtered = filtered.filter(p => p.region === activeRegion);
+  if (q) filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
+  if (coordsOnly) filtered = filtered.filter(p => p.has_coords);
+  filteredCache = filtered;
+  visibleCount = PAGE_SIZE;
+  renderPlaceList();
+}
+
+function loadMorePlaces() {
+  visibleCount += PAGE_SIZE;
+  renderPlaceList();
+}
+
+function renderPlaceList() {
+  const list = document.getElementById("place-list");
+  const visible = filteredCache.slice(0, visibleCount);
+  const hasMore = filteredCache.length > visibleCount;
+
+  document.getElementById("load-more-btn").style.display = hasMore ? "inline" : "none";
+  if (hasMore) {
+    document.getElementById("load-more-btn").textContent =
+      `더 보기 (${filteredCache.length - visibleCount}개 남음)`;
+  }
+
+  if (!visible.length) {
+    list.innerHTML = `<div style="font-size:.8rem;color:#9ca3af;text-align:center;padding:1rem">검색 결과 없음</div>`;
+    return;
+  }
+
+  list.innerHTML = visible.map(p => {
+    const coordTag = p.has_coords
+      ? `<span style="font-size:.65rem;color:#059669">●</span>`
+      : `<span class="tag-no-coord">좌표없음</span>`;
+    return `
+    <div class="place-entry${p.has_coords?'':' no-coord'}" onclick="addPlaceFromDB('${esc(p.name)}',${p.has_coords})">
+      <div class="place-info">
+        <span class="place-name">${esc(p.name)} ${coordTag}</span>
+        <span class="place-meta">${esc(p.region||'기타')} · <span class="cat-badge cat-${p.category_code}">${esc(p.category_name)}</span></span>
+      </div>
+      <button class="btn-add-quick" onclick="event.stopPropagation();addPlaceFromDB('${esc(p.name)}',${p.has_coords})">+ 추가</button>
+    </div>`;
+  }).join("");
+}
+
+function addPlaceFromDB(name, hasCoords) {
+  if (!hasCoords) {
+    const ok = confirm(`'${name}'은(는) 좌표 데이터가 없습니다.\n이동시간·동선 검증 정확도가 낮아질 수 있습니다.\n그래도 추가하시겠습니까?`);
+    if (!ok) return;
+  }
+  days[selectedDay].push(name);
+  renderDays();
+  setSelectedDay(selectedDay);
+}
+
+// ── 일정 렌더링 ─────────────────────────────────────────────────────────
+function setSelectedDay(di) {
+  selectedDay = di;
+  document.querySelectorAll(".day-block").forEach((el, i) => {
+    el.classList.toggle("selected", i === di);
+  });
+}
+
+function renderDays() {
+  const container = document.getElementById("days-container");
+  container.innerHTML = "";
+  days.forEach((places, di) => {
+    const block = document.createElement("div");
+    block.className = `day-block${di===selectedDay?" selected":""}`;
+    block.style.marginBottom = ".65rem";
+    block.innerHTML = `
+      <div class="day-header" onclick="setSelectedDay(${di})">
+        <span class="day-label">Day ${di+1}</span>
+        <span class="day-count">${places.filter(p=>p.trim()).length}개 장소</span>
+      </div>
+      <div id="plist-${di}"></div>
+      <button class="btn-add-place" onclick="addPlace(${di})">+ 장소 직접 입력</button>
+    `;
+    container.appendChild(block);
+    const pList = block.querySelector(`#plist-${di}`);
+    places.forEach((name, pi) => {
+      const row = document.createElement("div");
+      row.className = "place-row";
+      row.innerHTML = `
+        <input type="text" value="${esc(name)}" placeholder="장소 이름"
+          oninput="days[${di}][${pi}]=this.value"
+          onfocus="setSelectedDay(${di})"/>
+        <button class="btn-rm" onclick="removePlace(${di},${pi})" title="삭제">×</button>
+      `;
+      pList.appendChild(row);
+    });
+  });
+}
+
+function addDay() { days.push([""]); selectedDay = days.length-1; renderDays(); }
+function removeDay() { if(days.length>1){ days.pop(); selectedDay=Math.min(selectedDay,days.length-1); renderDays(); } }
+function addPlace(di) { days[di].push(""); renderDays(); setSelectedDay(di); }
+function removePlace(di,pi) { if(days[di].length>1){ days[di].splice(pi,1); renderDays(); } }
+
+// ── 검증 ────────────────────────────────────────────────────────────────
+async function runValidate() {
+  // 입력값 동기화
+  document.querySelectorAll(".place-row input").forEach(inp => {
+    const m = inp.getAttribute("oninput").match(/days\[(\d+)\]\[(\d+)\]/);
+    if(m) days[parseInt(m[1])][parseInt(m[2])] = inp.value;
+  });
+
+  const filteredDays = days.map(d => d.filter(p => p.trim()));
+  if (filteredDays.every(d => !d.length)) { alert("장소를 하나 이상 입력해주세요."); return; }
+
+  const payload = {
+    days: filteredDays.map(places => ({places: places.map(name => ({name}))})),
+    party_size: +document.getElementById("party_size").value,
+    party_type: document.getElementById("party_type").value,
+    date: document.getElementById("date").value,
+    travel_type: document.getElementById("travel_type").value || null,
+  };
+
+  const btn = document.getElementById("validate-btn");
+  const resultEl = document.getElementById("result");
+  const contentEl = document.getElementById("result-content");
+
+  btn.disabled = true;
+  btn.textContent = "검증 중...";
+  resultEl.style.display = "block";
+  contentEl.innerHTML = `<div class="loading-box"><div class="spinner"></div><p style="margin-top:.7rem">분석 중입니다...</p></div>`;
+  resultEl.scrollIntoView({behavior:"smooth",block:"start"});
+
+  try {
+    const res = await fetch("/api/validate", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    renderResult(await res.json());
+  } catch(e) {
+    contentEl.innerHTML = `<div class="err-box">오류: ${esc(String(e.message))}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "✓ 여행 계획 검증";
+  }
+}
+
+// ── 결과 렌더링 ──────────────────────────────────────────────────────────
+const SCORE_LABELS = {efficiency:"효율성",feasibility:"실현가능",purpose_fit:"목적적합",flow:"동선흐름",area_intensity:"다양성"};
+const SCORE_DESC = {
+  efficiency:"이동 거리 대비 방문지 밀도",
+  feasibility:"운영시간·이동시간 실현 가능성",
+  purpose_fit:"여행 목적과 장소 일치도",
+  flow:"방문 순서의 동선 효율",
+  area_intensity:"장소 유형의 다양성"
+};
+
+function renderResult(d) {
+  const color = d.final_score>=80?"#059669":d.final_score>=60?"#d97706":"#ef4444";
+  const verdict = d.passed
+    ? `<span class="verdict verdict-pass">✓ 통과</span>`
+    : `<span class="verdict verdict-fail">✗ 미통과 (60점 미만 또는 중대 문제 존재)</span>`;
+
+  let html = `
+    <div class="score-hero">
+      <div class="score-num" style="color:${color}">${d.final_score}<span style="font-size:1.5rem;color:#9ca3af">/100</span></div>
+      <div class="score-sub">종합 검증 점수</div>
+      ${verdict}
+    </div>
+  `;
+
+  // 세부 점수
+  if (d.scores) {
+    html += `<div class="section-title">세부 점수</div><div class="scores-row">`;
+    for (const [k,v] of Object.entries(d.scores)) {
+      const pct = Math.round(v*100);
+      const barColor = pct>=70?"#3b82f6":pct>=40?"#f59e0b":"#ef4444";
+      html += `<div class="score-card" title="${SCORE_DESC[k]||k}">
+        <div class="v">${pct}<span style="font-size:.85rem">%</span></div>
+        <div class="k">${SCORE_LABELS[k]||k}</div>
+        <div class="bar-wrap"><div class="bar" style="width:${pct}%;background:${barColor}"></div></div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // 점수 조정
+  const hasPen = Object.keys(d.penalty_breakdown||{}).length;
+  const hasBon = Object.keys(d.bonus_breakdown||{}).length;
+  if (hasPen || hasBon) {
+    html += `<div class="section-title">점수 조정</div>`;
+    for (const [k,v] of Object.entries(d.penalty_breakdown||{}))
+      html += `<div class="adj-row"><span>${k}</span><span class="pen">−${v}점</span></div>`;
+    for (const [k,v] of Object.entries(d.bonus_breakdown||{}))
+      html += `<div class="adj-row"><span>${k}</span><span class="bon">+${v}점</span></div>`;
+  }
+
+  // Hard Fail
+  if (d.hard_fails?.length) {
+    html += `<div class="section-title" style="color:#ef4444">⚠ 중대 문제 (${d.hard_fails.length}건)</div>`;
+    d.hard_fails.forEach(f => html += `
+      <div class="issue-item issue-hard">
+        <strong>[${esc(f.fail_type)}]</strong> ${esc(f.message)}<br>
+        <small style="color:#6b7280">근거: ${esc(f.evidence)}</small>
+      </div>`);
+  }
+
+  // Warning
+  if (d.warnings?.length) {
+    html += `<div class="section-title" style="color:#d97706">주의사항 (${d.warnings.length}건)</div>`;
+    d.warnings.forEach(w => html += `
+      <div class="issue-item issue-warn">
+        <strong>[${esc(w.warning_type)}]</strong> ${esc(w.message)}
+      </div>`);
+  }
+
+  // Rewards
+  if (d.rewards?.length) {
+    html += `<div class="section-title">강점</div>`;
+    d.rewards.forEach(r => html += `<div class="reward-item">✦ ${esc(r)}</div>`);
+  }
+
+  // POI 정보
+  if (d.poi_info?.length) {
+    html += `<div class="section-title">장소별 정보</div>
+    <table class="poi-table"><thead><tr>
+      <th>장소명</th><th>운영시간</th><th>체류(분)</th><th>데이터</th>
+    </tr></thead><tbody>`;
+    d.poi_info.forEach(p => {
+      const tag = p.found
+        ? `<span class="tag-ok">DB 확인</span>`
+        : `<span class="tag-est">추정값</span>`;
+      html += `<tr>
+        <td>${esc(p.name)}</td>
+        <td>${esc(p.open_start)}~${esc(p.open_end)}</td>
+        <td>${p.duration_min}</td><td>${tag}</td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+
+  document.getElementById("result-content").innerHTML = html;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── 초기화 ──────────────────────────────────────────────────────────────
+renderDays();
+loadPlaces();
+</script>
+</body>
+</html>

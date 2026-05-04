@@ -16,10 +16,10 @@
 """
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 
 from src.data.models import DeepDiveItem, VRPTWDay, VRPTWPlace
+from src.utils.geo import haversine_km as _haversine_km
 
 try:
     import numpy as np
@@ -28,7 +28,7 @@ try:
 except ImportError:
     _SKLEARN_AVAILABLE = False
 
-EARTH_R = 6371.0
+_EARTH_R_KM = 6371.0
 
 # ── M1: 시군구 전환 임계값 ────────────────────────────────────────────
 SWITCH_WARN: int = 3
@@ -59,14 +59,6 @@ DBSCAN_EPS_KM: float = 2.0   # 도보 25분 ≈ 2km
 
 # ── 합산 캡 ──────────────────────────────────────────────────────────
 COMBINED_PENALTY_CAP: int = 20
-
-
-def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlam = math.radians(lng2 - lng1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
-    return 2 * EARTH_R * math.asin(math.sqrt(a))
 
 
 def count_area_backtracks(sigungu_codes: list[str]) -> int:
@@ -111,7 +103,7 @@ def count_geo_cluster_backtracks(
     if not _SKLEARN_AVAILABLE or len(places) < 2:
         return 0
     coords = np.radians([[p.lat, p.lng] for p in places])
-    eps_rad = eps_km / EARTH_R
+    eps_rad = eps_km / _EARTH_R_KM
     labels: list[int] = _DBSCAN(
         eps=eps_rad, min_samples=1, metric="haversine"
     ).fit_predict(coords).tolist()

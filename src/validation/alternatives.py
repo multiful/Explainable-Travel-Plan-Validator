@@ -1,11 +1,21 @@
-"""Hard Fail 발생 장소에 대한 대안 POI 추천 엔진 (Plan B).
+"""Hard Fail 발생 장소에 대한 대체 후보 탐색기 (Repair 보조 도구).
 
-Hard Fail이 발생한 장소를 근처의 유사 카테고리 POI로 교체하는 대안을 제시.
+이 모듈은 '검증'이 아닌 '수리 제안'의 보조 도구이다.
+표준 Repair 순서는 재배치 → 시간 조정 → 삭제이며, 장소 대체(substitution)는
+최후 수단(opt-in)에 해당한다. build_alternatives_map()의 allow_substitution=True를
+명시적으로 전달할 때만 결과를 반환한다.
+
 외부 I/O 없음 — 입력으로 전달된 poi_pool에서만 탐색.
 
 사용 예:
     finder = AlternativesFinder(poi_pool=nearby_pois, max_alternatives=3)
+    # 표준: 재배치/삭제 우선, 대체 불가
     alternatives_map = finder.build_alternatives_map(hard_fails, plan_pois)
+    # → {}
+    # opt-in: 대체 허용
+    alternatives_map = finder.build_alternatives_map(
+        hard_fails, plan_pois, allow_substitution=True
+    )
     # → {"경복궁": [AlternativePOI(name="창덕궁", ...), ...]}
 """
 from __future__ import annotations
@@ -83,12 +93,17 @@ class AlternativesFinder:
         self,
         hard_fails: Sequence[HardFail],
         plan_pois: Sequence[POI],
+        allow_substitution: bool = False,
     ) -> dict[str, list[AlternativePOI]]:
-        """Hard Fail 목록 기반으로 POI 이름 → 대안 리스트 딕셔너리 반환.
+        """Hard Fail 목록 기반으로 POI 이름 → 대체 후보 딕셔너리 반환.
 
-        poi_name이 None인 Hard Fail(SCHEDULE_INFEASIBLE 등)은 건너뜀.
-        plan_pois의 이름들을 exclude 목록으로 넘겨 현재 일정 중복 방지.
+        Minimal Interference 원칙(재배치 → 시간조정 → 삭제)에 따라
+        allow_substitution=False(기본값)이면 빈 dict를 반환한다.
+        장소 대체는 호출자가 명시적으로 allow_substitution=True를 전달할 때만 수행된다.
         """
+        if not allow_substitution:
+            return {}
+
         plan_names = {p.name for p in plan_pois}
         poi_by_name: dict[str, POI] = {p.name: p for p in plan_pois}
         result: dict[str, list[AlternativePOI]] = {}

@@ -143,7 +143,7 @@
   ======================================================================
   2026 04 26
 
-  <!-- updated: 2026-04-26 | hash: 75f20015 | summary: TourAPI 벌크 수집 도입에 따른 프로젝트 고도화 기획 — 데이터 레이크화·임계값 재calibration·검증 엔진 강화 -->
+  <!-- updated: 2026-05-03 | hash: 75f20015 | summary: TourAPI 벌크 수집 도입에 따른 프로젝트 고도화 기획 — 데이터 레이크화·임계값 재calibration·검증 엔진 강화·웰니스/무장애 가산점 엔진 추가 -->
 # 프로젝트 고도화 기획서 (Enhancement Plan)
 
 > 한국관광공사 국문 관광정보 서비스(TourAPI v2 / data.go.kr 15101578) 전국 약 26만 건 POI 메타를 **벌크 수집**해 CSV 데이터셋으로 보유하게 됨에 따라, 기존 *온디맨드 호출 + 단발성 분석* 구조에서 *데이터 레이크 기반 검증 엔진* 으로 전환하는 고도화 계획.
@@ -398,3 +398,95 @@ TourAPI는 **공공누리 4유형**(출처 표시 + 비상업적). 검증 엔진
 - [ ] cat1/cat2/cat3 NULL 비율 < 5% 확인
 - [ ] 본 문서의 phase -1 step별 작업 정의 (`phases/-1-data-lake/step{0..3}.md`) 작성
 - [ ] phase 4 임계값 재산출 후 README "실증 분석 결과" 섹션 갱신
+
+---
+
+======================================================================
+2026 05 03
+
+## 웰니스·무장애 가산점 엔진 구현 완료
+
+### 배경
+
+영유아 동반(아기동반)·고령자 동반(어르신동반) 여행자에 대한 접근성 검증 필요성이 확인됨.
+한국관광공사가 별도 API(웰니스, 무장애)를 운영 중이므로, 이를 데이터셋으로 선수집해 런타임에 활용하는 구조를 채택.
+
+### 구현 내용
+
+| 파일 | 역할 |
+|---|---|
+| `src/data/wellness_api.py` | 웰니스 관광 정보 API (B551011/WellnessTourismService) 비동기 클라이언트 |
+| `src/data/barrier_free_api.py` | 무장애 여행 정보 API (B551011/KorWithService2) 비동기 클라이언트. `areaBasedList2` 목록 + `detailWithTour2` 접근성 상세 파싱 |
+| `src/scoring/bonus_engine.py` | 두 데이터셋 좌표(Haversine 0.3km 반경) 매칭 → 가산점 계산 |
+| `scripts/build_poi_dataset.py` | 두 API를 호출해 data/*.json 사전 빌드 (배포 전 1회 실행) |
+| `src/explain/pipeline.py` | ValidatorPipeline Step 7에 BonusEngine 통합 |
+
+### 가산점 정책
+
+| 구분 | 점수 | 적용 대상 |
+|---|---|---|
+| 웰니스 장소 방문 | +3점/장소 | 모든 party_type |
+| 무장애 장소 방문 | +5점/장소 | 아기동반·어르신동반·가족만 |
+| 총 가산점 상한 (BONUS_CAP) | +20점 | — |
+
+### 최종 점수 공식
+
+```
+adjusted = base_score − (cluster_penalty + travel_ratio_penalty + theme_penalty) + bonus
+adjusted = clamp(adjusted, 0, 100)
+if hard_fails: adjusted = min(adjusted, 59)
+```
+
+`bonus_breakdown`(웰니스/무장애 세부 항목)은 `ValidationResult`에 포함되어 API 응답으로 반환됨.
+
+### 환경변수 추가
+
+`.env`에 아래 키 추가. 미설정 시 `TOUR_API_KEY`로 자동 대체(`Settings.fill_gov_api_keys`).
+**주의: 공공데이터포털 발급 키는 URL 디코딩 없이(`==` 형태로) 저장할 것 — `%3D%3D` 형태로 저장 시 httpx가 이중인코딩하여 401 발생.**
+```
+WELLNESS_API_KEY=<decoded key, == 로 끝나는 형태>
+BARRIER_FREE_API_KEY=<decoded key, == 로 끝나는 형태>
+```
+
+### API 실측 검증 결과 (2026-05-03)
+
+| API | 엔드포인트 | 결과 | 건수 |
+|---|---|---|---|
+| 무장애 (`KorWithService2/areaBasedList2`) | ✅ 정상 | 10,010건 수신 |
+| 무장애 (`KorWithService2/detailWithTour2`) | ✅ 정상 | 접근성 세부 텍스트 반환 확인 |
+| 웰니스 (`WellnessTourismService`) | ❌ 500 | **공공데이터포털 별도 신청 필요** |
+
+#### 웰니스 API 미등록 문제 및 대응
+
+현재 API 키(`TOUR_API_KEY`와 동일)는 `KorWithService2`(무장애) 서비스에만 등록돼 있음.  
+`B551011/WellnessTourismService` 서비스는 data.go.kr에서 **별도 활용 신청** 후 인증키가 발급돼야 함.
+
+**단기 대응 방안 (웰니스 API 등록 전까지)**:
+- `build_poi_dataset.py` 실행 시 웰니스 수집은 자동 스킵 (graceful fallback: 빈 리스트 반환)
+- `BonusEngine.from_dataset()` 는 `wellness_places.json` 없으면 웰니스 가산점 0점으로 동작 — 서비스 중단 없음
+- 무장애 가산점(+5점, 아기동반·어르신동반·가족)은 즉시 사용 가능
+
+**웰니스 API 등록 절차**:
+1. https://data.go.kr → "웰니스관광정보서비스" 검색
+2. 활용신청 → 승인 (자동, 약 10분)
+3. 발급된 인증키(디코딩 형태)를 `.env`의 `WELLNESS_API_KEY`에 저장
+4. `python scripts/build_poi_dataset.py` 재실행
+
+#### `barrier_free_api.py` 버그 수정 (2026-05-03)
+
+매뉴얼(v4.3) 기반으로 아래 두 가지 버그를 수정함:
+1. `_LIST_OP = "getList"` → `"areaBasedList2"` (존재하지 않는 오퍼레이션명 수정)
+2. `handicapYn`, `babyCarriageYn`, `elevatorYn`, `guideDogYn` 제거 — `areaBasedList2` 응답에 없는 필드 (접근성 상세는 `detailWithTour2` 전용)
+
+실제 `detailWithTour2` 응답 필드 구조:
+- 지체장애: `parking`, `publictransport`, `route`, `wheelchair`, `exit`, `elevator`, `restroom`
+- 시각장애: `braileblock`, `helpdog`, `guidehuman`, `audioguide`
+- 청각장애: `signguide`, `videoguide`
+- 영유아가족: `stroller`, `lactationroom`, `babysparechair`
+→ 모두 **텍스트** 반환 (Y/N boolean 아님, 예: "대여가능(수동휠체어 2대)")
+
+### 데이터셋 갱신 주기
+
+- 무장애 데이터: 분기 1회 재수집 권장 (`python scripts/build_poi_dataset.py`)
+- 웰니스 데이터: API 등록 후 동일하게 분기 1회
+- 결과 파일(`data/wellness_places.json`, `data/barrier_free_places.json`)은 `.gitignore`에 추가 필요 (용량·라이선스 고려)

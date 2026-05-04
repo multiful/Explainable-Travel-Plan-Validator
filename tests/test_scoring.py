@@ -168,18 +168,18 @@ class TestEfficiency:
 # ---------------------------------------------------------------------------
 
 class TestFeasibility:
-    def test_no_hard_fails_hard_is_one(self, calc, sample_pois, sample_matrix):
-        feasibility = calc._calc_feasibility(sample_pois, sample_matrix, [])
+    def test_no_hard_fails_hard_is_one(self, calc, sample_pois, sample_matrix, sample_plan):
+        feasibility = calc._calc_feasibility(sample_plan, sample_pois, sample_matrix, [])
         # hard × 0.5 = 0.5, plus temporal + human → total >= 0.5
         assert feasibility >= 0.5
 
-    def test_hard_fail_reduces_feasibility(self, calc, sample_pois, sample_matrix):
-        with_fail = calc._calc_feasibility(sample_pois, sample_matrix, [make_hard_fail()])
-        no_fail = calc._calc_feasibility(sample_pois, sample_matrix, [])
+    def test_hard_fail_reduces_feasibility(self, calc, sample_pois, sample_matrix, sample_plan):
+        with_fail = calc._calc_feasibility(sample_plan, sample_pois, sample_matrix, [make_hard_fail()])
+        no_fail = calc._calc_feasibility(sample_plan, sample_pois, sample_matrix, [])
         assert with_fail < no_fail
 
-    def test_feasibility_in_range(self, calc, sample_pois, sample_matrix):
-        f = calc._calc_feasibility(sample_pois, sample_matrix, [])
+    def test_feasibility_in_range(self, calc, sample_pois, sample_matrix, sample_plan):
+        f = calc._calc_feasibility(sample_plan, sample_pois, sample_matrix, [])
         assert 0.0 <= f <= 1.0
 
 

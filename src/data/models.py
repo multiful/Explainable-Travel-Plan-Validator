@@ -5,7 +5,7 @@ import hashlib
 import re
 from typing import Literal
 
-from pydantic import BaseModel, computed_field, field_validator, model_validator
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -33,6 +33,7 @@ class Warning(BaseModel):
         "PHYSICAL_STRAIN",
         "PURPOSE_MISMATCH",
         "AREA_REVISIT",
+        "CUMULATIVE_FATIGUE",
     ]
     message: str
     confidence: str
@@ -187,6 +188,9 @@ class ValidationResult(BaseModel):
     explanations: list[str] = []
     rewards: list[str] = []
     alternatives: dict[str, list[AlternativePOI]] = {}
+    penalty_breakdown: dict[str, int] = Field(default_factory=dict)
+    bonus_breakdown: dict[str, int] = Field(default_factory=dict)
+    repair: dict = Field(default_factory=dict)
 
     @field_validator("final_score")
     @classmethod
@@ -209,8 +213,19 @@ class Settings(BaseSettings):
     kakao_rest_api_key: str = ""
     kakao_mobility_key: str = ""
     seoul_data_api_key: str = ""
+    wellness_api_key: str = ""
+    barrier_free_api_key: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
+
+    @model_validator(mode="after")
+    def fill_gov_api_keys(self) -> "Settings":
+        """wellness_api_key / barrier_free_api_key 미설정 시 tour_api_key로 대체."""
+        if not self.wellness_api_key:
+            self.wellness_api_key = self.tour_api_key
+        if not self.barrier_free_api_key:
+            self.barrier_free_api_key = self.tour_api_key
+        return self
 
 
 # ---------------------------------------------------------------------------

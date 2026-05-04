@@ -1,10 +1,9 @@
 """Warning 탐지기 (동선 비효율·일정 과밀·체력 부담·목적 부적합·구역 재방문)."""
 from __future__ import annotations
 
-import math
-
 from src.data.models import ItineraryPlan, POI, Warning
 from src.data.party_config import get_party_profile
+from src.utils.geo import build_dist_cache, get_travel_min, haversine_km, nn_heuristic_km
 
 DEFAULT_START_MINUTES: int = 9 * 60  # 09:00
 
@@ -14,6 +13,7 @@ WARNING_TYPES = {
     "PHYSICAL_STRAIN":   ("체력 부담",     "Medium"),
     "PURPOSE_MISMATCH":  ("목적 부적합",   "Medium-Low"),
     "AREA_REVISIT":      ("구역 재방문",   "Medium"),
+    "CUMULATIVE_FATIGUE": ("누적 피로도",  "Medium"),
 }
 
 INTENT_VECTORS: dict[str, dict[str, float]] = {
@@ -24,19 +24,9 @@ INTENT_VECTORS: dict[str, dict[str, float]] = {
     "adventure": {"15": 0.6, "12": 0.2, "14": 0.1, "other": 0.1},
 }
 
-_EARTH_R = 6371.0  # km
-
-
-def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlam = math.radians(lng2 - lng1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
-    return 2 * _EARTH_R * math.asin(math.sqrt(a))
-
 
 def _cosine_distance(v1: dict[str, float], v2: dict[str, float]) -> float:
+    import math
     keys = set(v1) | set(v2)
     dot = sum(v1.get(k, 0.0) * v2.get(k, 0.0) for k in keys)
     norm1 = math.sqrt(sum(x ** 2 for x in v1.values()))
@@ -44,55 +34,6 @@ def _cosine_distance(v1: dict[str, float], v2: dict[str, float]) -> float:
     if norm1 == 0 or norm2 == 0:
         return 1.0
     return 1.0 - dot / (norm1 * norm2)
-
-
-def _get_travel_min(matrix: dict, i: int, j: int, origin: POI, dest: POI) -> float:
-    entry = (matrix.get(i) or {}).get(j)
-    if entry and "travel_min" in entry:
-        return float(entry["travel_min"])
-    dist_km = _haversine_km(origin.lat, origin.lng, dest.lat, dest.lng)
-    return dist_km / (22.0 / 60.0)  # 22 km/h 유효 속도
-
-
-def _total_time_min(pois: list[POI], matrix: dict) -> float:
-    dwell = sum(p.duration_min for p in pois)
-    travel = sum(
-        _get_travel_min(matrix, i - 1, i, pois[i - 1], pois[i])
-        for i in range(1, len(pois))
-    )
-    return dwell + travel
-
-
-def _total_km(pois: list[POI]) -> float:
-    return sum(
-        _haversine_km(pois[i].lat, pois[i].lng, pois[i + 1].lat, pois[i + 1].lng)
-        for i in range(len(pois) - 1)
-    )
-
-
-def _nn_heuristic_km(pois: list[POI]) -> float:
-    if len(pois) <= 1:
-        return 0.0
-    visited = {0}
-    current = 0
-    total = 0.0
-    while len(visited) < len(pois):
-        best_d = float("inf")
-        best_j = -1
-        for j in range(len(pois)):
-            if j not in visited:
-                d = _haversine_km(
-                    pois[current].lat, pois[current].lng,
-                    pois[j].lat, pois[j].lng,
-                )
-                if d < best_d:
-                    best_d, best_j = d, j
-        if best_j == -1:
-            break
-        total += best_d
-        visited.add(best_j)
-        current = best_j
-    return total
 
 
 class WarningDetector:
@@ -105,7 +46,7 @@ class WarningDetector:
     STRAIN_THRESHOLD_KM: float = 30.0  # 기준 그룹(혼자/친구) 체력 부담 임계
     BACKTRACK_THRESHOLD: float = 0.3   # 30% 초과 이동거리 비효율
     PURPOSE_FIT_THRESHOLD: float = 0.5
-    CONSECUTIVE_REVISIT: int = 2       # 같은 카테고리 연속 ≥ 2회
+    CONSECUTIVE_REVISIT: int = 3       # 같은 카테고리 연속 ≥ 3회 (2회는 문화투어 등에서 false positive)
 
     def detect(
         self,
@@ -114,20 +55,30 @@ class WarningDetector:
         matrix: dict,
     ) -> list[Warning]:
         """Warning 목록 반환. 없으면 빈 리스트."""
+        dist_cache = build_dist_cache(pois)
         warns: list[Warning] = []
-        warns.extend(self._check_dense_schedule(plan, pois, matrix))
-        warns.extend(self._check_inefficient_route(pois))
-        warns.extend(self._check_physical_strain(plan, pois))
+        warns.extend(self._check_dense_schedule(plan, pois, matrix, dist_cache))
+        warns.extend(self._check_inefficient_route(pois, dist_cache))
+        warns.extend(self._check_physical_strain(plan, pois, dist_cache))
         warns.extend(self._check_purpose_mismatch(plan, pois))
         warns.extend(self._check_area_revisit(pois))
         return warns
 
     def _check_dense_schedule(
-        self, plan: ItineraryPlan, pois: list[POI], matrix: dict
+        self,
+        plan: ItineraryPlan,
+        pois: list[POI],
+        matrix: dict,
+        dist_cache: dict,
     ) -> list[Warning]:
         profile = get_party_profile(plan.party_type)
         threshold_min = profile.fatigue_hours * 60
-        total_min = _total_time_min(pois, matrix)
+        dwell = sum(p.duration_min for p in pois)
+        travel = sum(
+            get_travel_min(matrix, i - 1, i, pois[i - 1], pois[i], dist_cache)
+            for i in range(1, len(pois))
+        )
+        total_min = dwell + travel
         if total_min <= threshold_min:
             return []
         _, confidence = WARNING_TYPES["DENSE_SCHEDULE"]
@@ -140,13 +91,17 @@ class WarningDetector:
             confidence=confidence,
         )]
 
-    def _check_inefficient_route(self, pois: list[POI]) -> list[Warning]:
+    def _check_inefficient_route(
+        self,
+        pois: list[POI],
+        dist_cache: dict,
+    ) -> list[Warning]:
         if len(pois) <= 2:
             return []
-        actual_km = _total_km(pois)
+        actual_km = sum(dist_cache.get((i, i + 1), 0.0) for i in range(len(pois) - 1))
         if actual_km == 0:
             return []
-        nn_km = _nn_heuristic_km(pois)
+        nn_km = nn_heuristic_km(pois, dist_cache)
         ratio = (actual_km - nn_km) / actual_km
         if ratio <= self.BACKTRACK_THRESHOLD:
             return []
@@ -160,11 +115,15 @@ class WarningDetector:
             confidence=confidence,
         )]
 
-    def _check_physical_strain(self, plan: ItineraryPlan, pois: list[POI]) -> list[Warning]:
+    def _check_physical_strain(
+        self,
+        plan: ItineraryPlan,
+        pois: list[POI],
+        dist_cache: dict,
+    ) -> list[Warning]:
         profile = get_party_profile(plan.party_type)
-        # speed_factor < 1.0 → 취약 그룹일수록 더 낮은 거리에서 경고
         threshold_km = self.STRAIN_THRESHOLD_KM * profile.speed_factor
-        total_km = _total_km(pois)
+        total_km = sum(dist_cache.get((i, i + 1), 0.0) for i in range(len(pois) - 1))
         if total_km <= threshold_km:
             return []
         _, confidence = WARNING_TYPES["PHYSICAL_STRAIN"]
@@ -183,7 +142,6 @@ class WarningDetector:
         intent = INTENT_VECTORS.get(plan.travel_type)
         if not intent:
             return []
-
         total = len(pois)
         if total == 0:
             return []
@@ -199,7 +157,6 @@ class WarningDetector:
         purpose_fit = 1.0 - _cosine_distance(intent, activity)
         if purpose_fit >= self.PURPOSE_FIT_THRESHOLD:
             return []
-
         _, confidence = WARNING_TYPES["PURPOSE_MISMATCH"]
         return [Warning(
             warning_type="PURPOSE_MISMATCH",
@@ -210,13 +167,78 @@ class WarningDetector:
             confidence=confidence,
         )]
 
+    def check_cumulative_fatigue(
+        self,
+        plan: ItineraryPlan,
+        per_day_pois: list[list[POI]],
+        matrix: dict,
+    ) -> list[Warning]:
+        """Multi-day 누적 피로도 분석 — 단일 detect() 호출로는 포착할 수 없는 cross-day 패턴."""
+        if len(per_day_pois) < 2:
+            return []
+
+        profile = get_party_profile(plan.party_type)
+        daily_limit = float(profile.fatigue_hours * 60)
+
+        intensities: list[float] = []
+        for day_pois in per_day_pois:
+            if not day_pois:
+                intensities.append(0.0)
+                continue
+            dist_cache = build_dist_cache(day_pois)
+            dwell = sum(p.duration_min for p in day_pois)
+            travel = sum(
+                get_travel_min(matrix, i - 1, i, day_pois[i - 1], day_pois[i], dist_cache)
+                for i in range(1, len(day_pois))
+            )
+            intensities.append((dwell + travel) / daily_limit)
+
+        # 3일 이상 연속 고강도(>75%) → 학대 일정
+        HIGH = 0.75
+        ABUSE_RUN = 3
+        run = max_run = 0
+        for v in intensities:
+            run = run + 1 if v > HIGH else 0
+            max_run = max(max_run, run)
+
+        if max_run >= ABUSE_RUN:
+            return [Warning(
+                warning_type="CUMULATIVE_FATIGUE",
+                message=(
+                    f"{max_run}일 연속으로 일일 피로도 한계의 {int(HIGH*100)}% 이상인 일정이 감지되었습니다. "
+                    f"'{plan.party_type}' 그룹에게 심각한 누적 피로가 예상됩니다. "
+                    "중간에 여유 있는 반나절 일정을 넣어보세요."
+                ),
+                confidence="Medium",
+            )]
+
+        # 전날 매우 강도 높음(>85%) + 다음날도 상당(>60%) → carry-over 경고
+        VERY_HIGH = 0.85
+        MODERATE = 0.60
+        for i in range(1, len(intensities)):
+            if intensities[i - 1] > VERY_HIGH and intensities[i] > MODERATE:
+                return [Warning(
+                    warning_type="CUMULATIVE_FATIGUE",
+                    message=(
+                        f"{i}일차 일정이 피로도 한계의 {intensities[i-1]:.0%}로 매우 고강도였고, "
+                        f"{i+1}일차도 {intensities[i]:.0%} 강도로 계획되어 있습니다. "
+                        "전날 피로가 이월되어 컨디션이 저하될 수 있습니다."
+                    ),
+                    confidence="Medium",
+                )]
+
+        return []
+
     def _check_area_revisit(self, pois: list[POI]) -> list[Warning]:
         if len(pois) < self.CONSECUTIVE_REVISIT:
             return []
         max_run = 1
         cur_run = 1
         for i in range(1, len(pois)):
-            if pois[i].category and pois[i].category == pois[i - 1].category:
+            cat_cur = pois[i].category
+            cat_prev = pois[i - 1].category
+            # 빈 카테고리("" 또는 미분류)는 비교 대상에서 제외
+            if cat_cur and cat_cur == cat_prev:
                 cur_run += 1
                 max_run = max(max_run, cur_run)
             else:

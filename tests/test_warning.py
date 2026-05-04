@@ -196,8 +196,21 @@ class TestAreaRevisit:
         types = [w.warning_type for w in warns]
         assert "AREA_REVISIT" not in types
 
-    def test_two_consecutive_triggers(self, detector):
-        # 2 consecutive same category → AREA_REVISIT
+    def test_three_consecutive_triggers(self, detector):
+        # 3 consecutive same category → AREA_REVISIT (threshold raised from 2 to 3)
+        pois = [
+            make_poi(poi_id="1", name="A", category="14"),
+            make_poi(poi_id="2", name="B", category="14"),
+            make_poi(poi_id="3", name="C", category="14"),
+            make_poi(poi_id="4", name="D", category="39"),
+        ]
+        plan = make_plan(["A", "B", "C", "D"])
+        warns = detector.detect(plan, pois, {})
+        types = [w.warning_type for w in warns]
+        assert "AREA_REVISIT" in types
+
+    def test_two_consecutive_no_trigger(self, detector):
+        # 2 consecutive: no longer triggers (문화투어 false positive 방지)
         pois = [
             make_poi(poi_id="1", name="A", category="14"),
             make_poi(poi_id="2", name="B", category="14"),
@@ -207,7 +220,7 @@ class TestAreaRevisit:
         plan = make_plan(["A", "B", "C", "D"])
         warns = detector.detect(plan, pois, {})
         types = [w.warning_type for w in warns]
-        assert "AREA_REVISIT" in types
+        assert "AREA_REVISIT" not in types
 
 
 # ---------------------------------------------------------------------------
