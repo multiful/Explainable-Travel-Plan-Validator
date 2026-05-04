@@ -1,4 +1,4 @@
-<!-- updated: 2026-05-04 | hash: 9d2db853 | summary: ExplainEngine(Claude API 4단계 설명) + 데이터 신뢰도 점수 구현 완료, 웰니스 API 수정 완료(수집 준비) -->
+<!-- updated: 2026-05-04 | hash: 3ca222a1 | summary: 웰니스 175건·무장애 1,799건 수집 완료, ExplainEngine LRU캐시 교체, PASS 피드백 고도화 -->
 
 0. 실증 분석 근거 — "왜 이 시스템이 필요한가"
 
