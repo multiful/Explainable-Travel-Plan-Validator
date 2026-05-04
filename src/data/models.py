@@ -185,7 +185,7 @@ class ValidationResult(BaseModel):
     hard_fails: list[HardFail]
     warnings: list[Warning]
     scores: Scores | None = None
-    explanations: list[str] = []
+    explanations: list[ExplanationItem] = []
     rewards: list[str] = []
     alternatives: dict[str, list[AlternativePOI]] = {}
     penalty_breakdown: dict[str, int] = Field(default_factory=dict)
@@ -307,6 +307,16 @@ class VRPTWRequest(BaseModel):
 
 
 class DeepDiveItem(BaseModel):
+    fact: str
+    rule: str
+    risk: Literal["OK", "WARNING", "CRITICAL"]
+    suggestion: str
+
+
+class ExplanationItem(BaseModel):
+    """ExplainEngine이 생성하는 4단계 설명 항목."""
+    item_type: Literal["hard_fail", "warning", "penalty", "bonus", "overall"]
+    item_key: str
     fact: str
     rule: str
     risk: Literal["OK", "WARNING", "CRITICAL"]

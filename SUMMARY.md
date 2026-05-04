@@ -1,4 +1,4 @@
-<!-- updated: 2026-05-04 | hash: 053976e0 | summary: 자차 이동 가정 명문화, 구현현황 전면 갱신(RepairEngine·CUMULATIVE_FATIGUE·per-day 경고), 데이터 자산 현황 재정리 -->
+<!-- updated: 2026-05-04 | hash: 9d2db853 | summary: ExplainEngine(Claude API 4단계 설명) + 데이터 신뢰도 점수 구현 완료, 웰니스 API 수정 완료(수집 준비) -->
 
 0. 실증 분석 근거 — "왜 이 시스템이 필요한가"
 
@@ -261,6 +261,11 @@
   │    │  (재배치 → 체류조정 → 이상치삭제 3단계) │                             │       │
   │ ⑬  │ 누적 피로도 경고 (CUMULATIVE_FATIGUE)   │ validation/warning.py       │ ✅ 완료│
   │    │  per-day Warning 탐지 + cross-day 분석  │ explain/pipeline.py         │       │
+  │ ⑭  │ ExplainEngine (4단계 자연어 보고서)     │ explain/explain_engine.py   │ ✅ 완료│
+  │    │  [Fact→Rule→Risk→Suggestion] + cache   │ explain/pipeline.py step 11 │       │
+  │    │  Graceful fallback (API 키 없을 때)     │                             │       │
+  │ ⑮  │ 데이터 신뢰도 점수 (data_reliability)   │ api/router.py               │ ✅ 완료│
+  │    │  POI별 High/Medium/Low → 0~100 집계    │ api/schemas.py              │       │
   └────┴─────────────────────────────────────────┴─────────────────────────────┴────────┘
 
 7. 성공 지표
@@ -286,7 +291,9 @@
   │ data/pois.csv              │ TourAPI 수집 20,168 POI (좌표·카테고리·주소) ← 1차  │
   │ data/congestion_stats.csv  │ 4,174 장소 혼잡도 통계 (월별 방문객·congestion_score)│
   │ data/naver/                │ 1,000 POI Naver 메타 (웨이팅·예약·주차·블로그 요약) │
-  │ data/wellness_places.json  │ 무장애 10,010건 수집 완료 / 웰니스 미수집           │
+  │ data/wellness_places.json  │ 웰니스 175건 수집 완료 (areaBasedList·langDivCd:KOR)│
+  │ data/barrier_free_places.  │ 무장애 1,799건 수집 완료 (areaBasedList2)           │
+  │   json                     │ ※ 이전 기록 10,010건은 구 API 기준, 현행 API 실수치 │
   └────────────────────────────┴─────────────────────────────────────────────────────┘
 
   [좌표 커버리지 — congestion_stats 4,174개 기준]

@@ -9,7 +9,7 @@ import httpx
 from src.data.models import Settings
 
 _BASE_URL = "https://apis.data.go.kr/B551011/WellnessTursmService"
-_LIST_OP = "getWellnessTursmList"
+_LIST_OP = "areaBasedList"  # getWellnessTursmList -> areaBasedList
 
 
 @dataclass(frozen=True)
@@ -17,8 +17,8 @@ class WellnessPlace:
     content_id: str
     title: str
     addr: str
-    lat: float   # mapy
-    lng: float   # mapx
+    lat: float   # mapY
+    lng: float   # mapX
     cat1: str = ""
     cat2: str = ""
     cat3: str = ""
@@ -26,6 +26,7 @@ class WellnessPlace:
 
 def _extract_items(data: dict) -> list[dict]:
     try:
+        # WellnessTursmService 응답 구조: response.body.items.item
         items = data["response"]["body"]["items"]["item"]
         if isinstance(items, dict):
             return [items]
@@ -75,6 +76,7 @@ class WellnessAPIClient:
             "pageNo": page_no,
             "MobileOS": "ETC",
             "MobileApp": "TravelQA",
+            "langDivCd": "KOR",  # 필수 파라미터 추가
             "_type": "json",
         }
         if area_code:
@@ -90,13 +92,16 @@ class WellnessAPIClient:
 
         places: list[WellnessPlace] = []
         for item in _extract_items(data):
-            content_id = str(item.get("contentid", "") or item.get("contentId", ""))
-            title = str(item.get("title", ""))
-            addr = str(item.get("addr1", "") or item.get("addr", ""))
-            lat = _safe_float(item.get("mapy") or item.get("lat"))
-            lng = _safe_float(item.get("mapx") or item.get("lng"))
+            # 필드명 매핑 수정: mapX, mapY, baseAddr/detailAddr
+            content_id = str(item.get("contentId") or item.get("contentid") or "")
+            title = str(item.get("title") or "")
+            addr = str(item.get("baseAddr") or item.get("addr1") or item.get("addr") or "")
+            lat = _safe_float(item.get("mapY") or item.get("mapy") or item.get("lat"))
+            lng = _safe_float(item.get("mapX") or item.get("mapx") or item.get("lng"))
+            
             if not content_id or lat == 0.0 or lng == 0.0:
                 continue
+                
             places.append(WellnessPlace(
                 content_id=content_id,
                 title=title,

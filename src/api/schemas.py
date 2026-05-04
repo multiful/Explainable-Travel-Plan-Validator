@@ -24,8 +24,9 @@ class ValidateRequest(BaseModel):
 
 class POIInfo(BaseModel):
     name: str
-    found: bool        # hardcoded 목록에서 발견 여부
-    source: str        # "hardcoded" | "fallback"
+    found: bool
+    source: str        # "catalog" | "pois" | "fallback"
+    confidence: Literal["High", "Medium", "Low"] = "Medium"
     lat: float
     lng: float
     open_start: str
@@ -51,9 +52,11 @@ class ValidateResponse(BaseModel):
     plan_id: str
     final_score: int
     passed: bool
+    data_reliability_score: int = 0
     hard_fails: list[dict]
     warnings: list[dict]
     scores: dict | None
+    explanations: list[dict] = []
     penalty_breakdown: dict[str, int]
     bonus_breakdown: dict[str, int]
     rewards: list[str]

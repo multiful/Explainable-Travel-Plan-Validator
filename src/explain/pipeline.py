@@ -1,15 +1,17 @@
 """ValidatorPipeline — 전체 QA 파이프라인 오케스트레이터.
 
 흐름:
-  1. per-day HardFail 탐지
-  2. Warning 탐지 (전체 POI 합산)
-  3. ScoreCalculator → base_score
-  4. ClusterDispersion 패널티
-  5. TravelRatio 패널티
-  6. ThemeAlignment 패널티 (선택적 — UserPreferences 제공 시)
-  7. BonusEngine 가산점
-  8. generate_rewards
-  9. ValidationResult 조립
+   1. per-day HardFail 탐지
+   2. Warning 탐지 (전체 POI 합산)
+   3. ScoreCalculator → base_score
+   4. ClusterDispersion 패널티
+   5. TravelRatio 패널티
+   6. ThemeAlignment 패널티 (선택적 — UserPreferences 제공 시)
+   7. BonusEngine 가산점
+   8. 최종 점수 조립
+   9. generate_rewards
+  10. RepairEngine (Hard Fail 발생 시만)
+  11. ExplainEngine → 4단계 자연어 설명 생성
 
 최종 점수:
   adjusted = base_score - cluster_penalty - travel_ratio_penalty - theme_penalty + bonus
@@ -29,12 +31,13 @@ from src.data.models import (
     VRPTWPlace,
 )
 from src.data.theme_taxonomy import UserPreferences
+from src.explain.explain_engine import ExplainEngine
+from src.explain.repair import RepairEngine
 from src.scoring.bonus_engine import BonusEngine
 from src.scoring.cluster_dispersion import evaluate_cluster_dispersion
 from src.scoring.reward_engine import generate_rewards
 from src.scoring.theme_alignment import POIWithCategory, ThemeAlignmentJudge
 from src.scoring.travel_ratio import evaluate_travel_ratio
-from src.explain.repair import RepairEngine
 from src.validation.hard_fail import HardFailDetector
 from src.validation.scoring import ScoreCalculator
 from src.validation.warning import WarningDetector
@@ -73,12 +76,13 @@ def _to_poi_with_category(pois: list[POI], order_offset: int = 0) -> list[POIWit
 
 
 class ValidatorPipeline:
-    """전체 검증 파이프라인. External I/O 없음 (데이터셋·행렬은 주입)."""
+    """전체 검증 파이프라인. External I/O = Claude API (ExplainEngine·ThemeAlignmentJudge)."""
 
     def __init__(
         self,
         bonus_engine: BonusEngine | None = None,
         theme_judge: ThemeAlignmentJudge | None = None,
+        explain_engine: ExplainEngine | None = None,
     ) -> None:
         self._hard_fail = HardFailDetector()
         self._warning = WarningDetector()
@@ -88,6 +92,7 @@ class ValidatorPipeline:
             _DEFAULT_WELLNESS_PATH, _DEFAULT_BARRIER_FREE_PATH
         )
         self._theme_judge = theme_judge or ThemeAlignmentJudge()
+        self._explain = explain_engine or ExplainEngine()
 
     def run(
         self,
@@ -228,12 +233,24 @@ class ValidatorPipeline:
             if not repair_result.is_empty:
                 repair_data = repair_result.to_dict()
 
+        # ── 11. ExplainEngine → 4단계 자연어 설명 생성 ─────────────────
+        explanations = self._explain.generate(
+            hard_fails=hard_fails,
+            warnings=warnings,
+            penalty_breakdown=penalty_breakdown,
+            bonus_breakdown=bonus_breakdown,
+            scores=scores,
+            plan=plan,
+            final_score=adjusted,
+        )
+
         return ValidationResult(
             plan_id=plan.plan_id,
             final_score=adjusted,
             hard_fails=hard_fails,
             warnings=warnings,
             scores=scores,
+            explanations=explanations,
             rewards=rewards,
             penalty_breakdown=penalty_breakdown,
             bonus_breakdown=bonus_breakdown,

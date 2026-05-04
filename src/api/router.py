@@ -279,6 +279,8 @@ _COORD_INDEX: dict[str, dict] = _build_coord_index()
 _PLACE_LIST: list[dict] = _build_place_list(_COORD_INDEX)
 # 이름 정규화 → place dict 역방향 인덱스
 _PLACE_NORM_INDEX: dict[str, dict] = {_normalize(p["name"]): p for p in _PLACE_LIST}
+# _COORD_CATALOG 수동 큐레이션 목록 정규화 키 집합 (신뢰도 High 판정용)
+_COORD_CATALOG_NORM: frozenset[str] = frozenset(_normalize(k) for k in _COORD_CATALOG)
 
 
 def _lookup_place(name: str) -> dict | None:
@@ -296,15 +298,28 @@ def _lookup_place(name: str) -> dict | None:
 def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
     place = _lookup_place(name)
     has_coords = place is not None and place.get("has_coords", False)
+    norm = _normalize(name)
 
-    if has_coords:
+    # 신뢰도 3단계:
+    #   High   — 수동 큐레이션 카탈로그(_COORD_CATALOG) 매칭 (86건 검증된 좌표)
+    #   Medium — pois.csv / naver_metadata 매칭 (TourAPI 수집 좌표)
+    #   Low    — 서울 시청 폴백 (좌표 신뢰 불가)
+    if norm in _COORD_CATALOG_NORM:
+        confidence: str = "High"
+        source = "catalog"
+        lat = _COORD_CATALOG[next(k for k in _COORD_CATALOG if _normalize(k) == norm)]["lat"]
+        lng = _COORD_CATALOG[next(k for k in _COORD_CATALOG if _normalize(k) == norm)]["lng"]
+        category = _COORD_CATALOG[next(k for k in _COORD_CATALOG if _normalize(k) == norm)]["cat"]
+    elif has_coords:
+        confidence = "Medium"
+        source = "pois"
         lat, lng = place["lat"], place["lng"]
         category = place["cat"]
-        source = "hardcoded"
     else:
+        confidence = "Low"
+        source = "fallback"
         lat, lng = _DEFAULT_CENTER
         category = "12"
-        source = "fallback"
 
     hours = resolve_hours(name)
     dwell = _guess_dwell(name)
@@ -316,12 +331,23 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
         duration_min=dwell, category=category,
     )
     info = POIInfo(
-        name=name, found=has_coords, source=source,
+        name=name, found=(confidence != "Low"), source=source,
+        confidence=confidence,
         lat=lat, lng=lng,
         open_start=hours.open_, open_end=hours.close_,
         duration_min=dwell,
     )
     return poi, info
+
+
+_RELIABILITY_WEIGHTS: dict[str, int] = {"High": 100, "Medium": 70, "Low": 40}
+
+
+def _calc_reliability_score(poi_info_list: list[POIInfo]) -> int:
+    if not poi_info_list:
+        return 100
+    total = sum(_RELIABILITY_WEIGHTS.get(info.confidence, 70) for info in poi_info_list)
+    return round(total / len(poi_info_list))
 
 
 _pipeline: ValidatorPipeline | None = None
@@ -393,13 +419,17 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
         matrix={},
     )
 
+    data_reliability_score = _calc_reliability_score(poi_info_list)
+
     return ValidateResponse(
         plan_id=result.plan_id,
         final_score=result.final_score,
         passed=(result.final_score >= 60 and not result.hard_fails),
+        data_reliability_score=data_reliability_score,
         hard_fails=[hf.model_dump() for hf in result.hard_fails],
         warnings=[w.model_dump() for w in result.warnings],
         scores=result.scores.model_dump() if result.scores else None,
+        explanations=[e.model_dump() for e in result.explanations],
         penalty_breakdown=result.penalty_breakdown,
         bonus_breakdown=result.bonus_breakdown,
         rewards=result.rewards,

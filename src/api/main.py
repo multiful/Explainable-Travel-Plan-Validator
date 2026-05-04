@@ -1,6 +1,7 @@
 """FastAPI 앱 진입점."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,6 +10,15 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.router import router
+
+# .env → os.environ 로드 (uvicorn 직접 실행 시 환경변수 자동 주입)
+_dotenv_path = Path(__file__).parent.parent.parent / ".env"
+if _dotenv_path.exists() and not os.environ.get("ANTHROPIC_API_KEY"):
+    for line in _dotenv_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, val = line.partition("=")
+            os.environ.setdefault(key.strip(), val.strip())
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
