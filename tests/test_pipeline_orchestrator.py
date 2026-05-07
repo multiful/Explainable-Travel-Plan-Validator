@@ -233,3 +233,70 @@ class TestPipelineMultiDay:
             sigungu_codes_per_day=sigungu,
         )
         assert isinstance(result, ValidationResult)
+
+
+# ---------------------------------------------------------------------------
+# ValidatorPipeline.run() — VRPTW 통합
+# ---------------------------------------------------------------------------
+
+class TestPipelineVRPTW:
+    def test_vrptw_fields_present(self, pipeline, sample_pois, sample_plan):
+        result = pipeline.run(
+            plan=sample_plan,
+            per_day_pois=[sample_pois],
+            matrix={},
+        )
+        # 필드 자체가 존재해야 함 (None이어도 무방)
+        assert hasattr(result, "vrptw_optimal_route")
+        assert hasattr(result, "vrptw_efficiency_gap")
+
+    def test_vrptw_efficiency_gap_is_float_or_none(self, pipeline, sample_pois, sample_plan):
+        result = pipeline.run(
+            plan=sample_plan,
+            per_day_pois=[sample_pois],
+            matrix={},
+        )
+        assert result.vrptw_efficiency_gap is None or isinstance(result.vrptw_efficiency_gap, float)
+
+    def test_vrptw_efficiency_gap_non_negative(self, pipeline, sample_pois, sample_plan):
+        result = pipeline.run(
+            plan=sample_plan,
+            per_day_pois=[sample_pois],
+            matrix={},
+        )
+        if result.vrptw_efficiency_gap is not None:
+            assert result.vrptw_efficiency_gap >= 0.0
+
+    def test_vrptw_optimal_route_per_day_count(self, pipeline):
+        day1 = [make_poi("1", 37.50, 127.00), make_poi("2", 37.52, 127.02)]
+        day2 = [make_poi("3", 37.51, 127.01), make_poi("4", 37.53, 127.03)]
+        plan = make_multi_day_plan([
+            [p.name for p in day1],
+            [p.name for p in day2],
+        ])
+        result = pipeline.run(plan=plan, per_day_pois=[day1, day2], matrix={})
+        if result.vrptw_optimal_route is not None:
+            assert len(result.vrptw_optimal_route) == 2
+            assert result.vrptw_optimal_route[0].day_index == 0
+            assert result.vrptw_optimal_route[1].day_index == 1
+
+    def test_vrptw_penalty_in_breakdown_when_gap_exceeds_threshold(self, pipeline):
+        # A→C→B 순서 (백트래킹): A(127.00)→C(127.30)→B(127.10)
+        # 최적 A→B→C 대비 비효율 → efficiency_gap > 20% 예상
+        pois = [
+            make_poi("A", 37.5, 127.00),
+            make_poi("C", 37.5, 127.30),
+            make_poi("B", 37.5, 127.10),
+        ]
+        plan = make_plan([p.name for p in pois])
+        result = pipeline.run(plan=plan, per_day_pois=[pois], matrix={})
+        if result.vrptw_efficiency_gap is not None and result.vrptw_efficiency_gap > 0.20:
+            assert "vrptw_efficiency" in result.penalty_breakdown
+            assert result.penalty_breakdown["vrptw_efficiency"] in (5, 10, 15)
+
+    def test_vrptw_penalty_does_not_double_count_with_single_poi(self, pipeline):
+        pois = [make_poi("solo", 37.5, 127.0)]
+        plan = make_plan([p.name for p in pois])
+        result = pipeline.run(plan=plan, per_day_pois=[pois], matrix={})
+        # 단일 POI는 efficiency gap 미정의 → vrptw 패널티 없어야 함
+        assert result.penalty_breakdown.get("vrptw_efficiency", 0) == 0

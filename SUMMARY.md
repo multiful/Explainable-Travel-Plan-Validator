@@ -1,4 +1,4 @@
-<!-- updated: 2026-05-04 | hash: 3ca222a1 | summary: 웰니스 175건·무장애 1,799건 수집 완료, ExplainEngine LRU캐시 교체, PASS 피드백 고도화 -->
+<!-- updated: 2026-05-07 | hash: 4c6e87f5 | summary: VRPTWEngine 파이프라인 통합 완료 — ⑯ 항목 추가, 구현 현황 16개 전체 완료 -->
 
 0. 실증 분석 근거 — "왜 이 시스템이 필요한가"
 
@@ -242,31 +242,36 @@
 
 6. 구현 현황
 
-  ┌────┬─────────────────────────────────────────┬─────────────────────────────┬────────┐
-  │ #  │ 요구사항                                │ 모듈                        │ 상태   │
-  ├────┼─────────────────────────────────────────┼─────────────────────────────┼────────┤
-  │ ①  │ 영업시간 준수 (Time Window)              │ validation/hard_fail.py     │ ✅ 완료│
-  │ ②  │ 이동 시간 계산 (자차 Haversine × 22km/h)│ utils/geo.py                │ ✅ 완료│
-  │    │  Kakao Mobility는 고도화 예정            │                             │       │
-  │ ③  │ 체류시간 추정 (dwell_db)                 │ data/dwell_db.py            │ ✅ 완료│
-  │ ④  │ 이동 vs 관광 시간 비율 (travel_ratio)   │ scoring/travel_ratio.py     │ ✅ 완료│
-  │ ⑤  │ 경로 밀집도 + 백트래킹 (M1-M4)          │ scoring/cluster_dispersion  │ ✅ 완료│
-  │ ⑥  │ 테마 일치성 (LLM)                       │ scoring/theme_alignment.py  │ ✅ 완료│
-  │ ⑦  │ 혼잡도 — 서울 실시간                    │ data/seoul_citydata_client  │ ✅ 완료│
-  │ ⑧  │ 혼잡도 — 전국 계절성                    │ scoring/congestion_engine   │ ✅ 완료│
-  │ ⑨  │ 웰니스·무장애 가산점                    │ scoring/bonus_engine.py     │ ✅ 완료│
-  │ ⑩  │ FastAPI /validate + /places 엔드포인트  │ api/main.py · router.py     │ ✅ 완료│
-  │ ⑪  │ 브라우저 검증 UI (장소 DB + 결과 시각화)│ api/static/index.html       │ ✅ 완료│
-  │ ⑫  │ Minimal Interference RepairEngine       │ explain/repair.py           │ ✅ 완료│
-  │    │  (재배치 → 체류조정 → 이상치삭제 3단계) │                             │       │
-  │ ⑬  │ 누적 피로도 경고 (CUMULATIVE_FATIGUE)   │ validation/warning.py       │ ✅ 완료│
-  │    │  per-day Warning 탐지 + cross-day 분석  │ explain/pipeline.py         │       │
-  │ ⑭  │ ExplainEngine (4단계 자연어 보고서)     │ explain/explain_engine.py   │ ✅ 완료│
-  │    │  [Fact→Rule→Risk→Suggestion] + cache   │ explain/pipeline.py step 11 │       │
-  │    │  Graceful fallback (API 키 없을 때)     │                             │       │
-  │ ⑮  │ 데이터 신뢰도 점수 (data_reliability)   │ api/router.py               │ ✅ 완료│
-  │    │  POI별 High/Medium/Low → 0~100 집계    │ api/schemas.py              │       │
-  └────┴─────────────────────────────────────────┴─────────────────────────────┴────────┘
+  ┌────┬──────────────────────────────────────────────┬──────────────────────────────┬────────┐
+  │ #  │ 요구사항                                     │ 모듈                         │ 상태   │
+  ├────┼──────────────────────────────────────────────┼──────────────────────────────┼────────┤
+  │ ①  │ 영업시간 준수 (Time Window)                  │ validation/hard_fail.py      │ ✅ 완료│
+  │ ②  │ 이동 시간 계산 (자차 Haversine × 22km/h)    │ utils/geo.py                 │ ✅ 완료│
+  │    │  거리 대역별 속도 보정 (도심12/중거리22/고속80) │ validation/vrptw_engine.py  │       │
+  │ ③  │ 체류시간 추정 (dwell_db)                     │ data/dwell_db.py             │ ✅ 완료│
+  │ ④  │ 이동 vs 관광 시간 비율 (travel_ratio)        │ scoring/travel_ratio.py      │ ✅ 완료│
+  │ ⑤  │ 경로 밀집도 + 백트래킹 (M1-M4)              │ scoring/cluster_dispersion   │ ✅ 완료│
+  │ ⑥  │ 테마 일치성 (LLM)                           │ scoring/theme_alignment.py   │ ✅ 완료│
+  │ ⑦  │ 혼잡도 — 서울 실시간                        │ data/seoul_citydata_client   │ ✅ 완료│
+  │ ⑧  │ 혼잡도 — 전국 계절성                        │ scoring/congestion_engine    │ ✅ 완료│
+  │ ⑨  │ 웰니스·무장애 가산점                        │ scoring/bonus_engine.py      │ ✅ 완료│
+  │ ⑩  │ FastAPI /validate + /places 엔드포인트      │ api/main.py · router.py      │ ✅ 완료│
+  │ ⑪  │ 브라우저 검증 UI (장소 DB + 결과 시각화)    │ api/static/index.html        │ ✅ 완료│
+  │ ⑫  │ Minimal Interference RepairEngine           │ explain/repair.py            │ ✅ 완료│
+  │    │  (재배치 → 체류조정 → 이상치삭제 3단계)      │                              │       │
+  │ ⑬  │ 누적 피로도 경고 (CUMULATIVE_FATIGUE)       │ validation/warning.py        │ ✅ 완료│
+  │    │  per-day Warning 탐지 + cross-day 분석      │ explain/pipeline.py          │       │
+  │ ⑭  │ ExplainEngine (4단계 자연어 보고서)         │ explain/explain_engine.py    │ ✅ 완료│
+  │    │  [Fact→Rule→Risk→Suggestion] + cache       │ explain/pipeline.py step 11  │       │
+  │    │  Graceful fallback (API 키 없을 때)         │                              │       │
+  │ ⑮  │ 데이터 신뢰도 점수 (data_reliability)       │ api/router.py                │ ✅ 완료│
+  │    │  POI별 High/Medium/Low → 0~100 집계        │ api/schemas.py               │       │
+  │ ⑯  │ VRPTWEngine 파이프라인 통합                 │ validation/vrptw_engine.py   │ ✅ 완료│
+  │    │  OR-Tools 최적 경로 탐색 + Efficiency Gap   │ explain/pipeline.py step 3b  │       │
+  │    │  패널티 (−5/−10/−15) + optimal_route API   │ api/schemas.py               │       │
+  │    │  응답 공개. OR-Tools 미설치 시 graceful     │                              │       │
+  │    │  degradation (optimal_route=null)           │                              │       │
+  └────┴──────────────────────────────────────────────┴──────────────────────────────┴────────┘
 
 7. 성공 지표
 
@@ -312,6 +317,17 @@
   │ 합성 평가 수단 부재            │ 26만 POI → 비효율 일정 의도 생성 → 탐지율 측정 │
   └──────────────────────────────┴──────────────────────────────────────────────────┘
 
+  [70개 일정 Risk Score 검증 결과 — 현재 시스템 기준]
+  ┌────────────┬────────┬──────────────────────────────────────────┐
+  │ 등급        │ 비율   │ 비고                                     │
+  ├────────────┼────────┼──────────────────────────────────────────┤
+  │ PASS ≥60   │ 67.1%  │ 47개 — Hard Fail 없음                   │
+  │ REVIEW40~59│ 25.7%  │ 18개 — 주로 Hard Fail 포함 일정         │
+  │ FAIL <40   │  7.1%  │  5개 — 대규모 Hard Fail + 복합 패널티   │
+  └────────────┴────────┴──────────────────────────────────────────┘
+  패널티 유형별 빈도: Travel Ratio 21회 > Cluster M3 13회 > Congestion 11회
+                     > Cluster M4 9회 > Theme 7회
+
   [마일스톤]
   ✅ W0: 프로토타입 Web UI + API 서버 (FastAPI /validate, /places) + RepairEngine
   🟡 W1: TourAPI 벌크 수집 → pois.csv (20,168 완료 / 목표 26만)
@@ -320,3 +336,55 @@
   ⬜ W4: 합성 일정 생성기 + Travel Ratio 임계값 자차 기준 재calibration
   ⬜ W5: synthetic_eval — 탐지율(precision/recall) 측정
   ⬜ W6: LLM 프롬프트 v2 (cat1/cat2/cat3 한글명 통합)
+  ⬜ W7: RAG 아키텍처 — BGE-m3 임베딩 + BM25 Hybrid + bge-reranker-v2 + Qdrant
+         (POI 규칙 KB + 일정 후보 풀 벡터 인덱싱 → Layer 3 LLM 근거 검색 연동)
+
+9. 활용 API 목록
+
+  ① 한국관광공사 OpenAPI (공공데이터포털 — apis.data.go.kr/B551011)
+
+   ┌──────────────────────────────────────────┬─────────────────────────────────────────────────────┐
+   │ 서비스명 (공식)                           │ 활용 내용                                           │
+   ├──────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+   │ 한국관광공사_국문 관광정보 서비스          │ 전국 관광지·숙박·음식점·문화시설 POI               │
+   │ (KorService2)                            │ 좌표·카테고리·운영시간 수집                         │
+   │                                          │ → data/pois.csv (20,168건) — 좌표 조회 1차 소스    │
+   │                                          │ 오퍼레이션: areaBasedList1, detailIntro2,           │
+   │                                          │             detailCommon2, searchKeyword2           │
+   ├──────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+   │ 한국관광공사_무장애 여행 정보 서비스       │ 장애인·노약자·임산부 친화 관광지 정보               │
+   │ (KorWithService2)                        │ → data/barrier_free_places.json (1,799건)          │
+   │                                          │ 아기동반·어르신동반 party_type 가산점 소스 (+5점/장소)│
+   │                                          │ 오퍼레이션: areaBasedList2, detailWithTour2         │
+   ├──────────────────────────────────────────┼─────────────────────────────────────────────────────┤
+   │ 한국관광공사_웰니스 관광 정보 서비스       │ 치유·힐링 테마 관광지 정보                          │
+   │ (WellnessTursmService)                   │ → data/wellness_places.json (175건)                │
+   │                                          │ 전 party_type 웰니스 가산점 소스 (+3점/장소)        │
+   │                                          │ 오퍼레이션: areaBasedList (getWellnessTursmList)    │
+   └──────────────────────────────────────────┴─────────────────────────────────────────────────────┘
+
+  ② Kakao REST API
+
+   ┌─────────────────────────────┬──────────────────────────────────────────────────────────────────┐
+   │ API                         │ 활용 내용                                                        │
+   ├─────────────────────────────┼──────────────────────────────────────────────────────────────────┤
+   │ Kakao Local API             │ POI 이름 → 위경도 좌표 변환 (지오코딩)                           │
+   │                             │ phases/0-setup 데이터셋 분석 시 활용 (cache_geo.json)            │
+   ├─────────────────────────────┼──────────────────────────────────────────────────────────────────┤
+   │ Kakao Mobility API          │ 실도로 이동 소요시간 산출 (현재 Haversine × 22km/h 추정 사용)    │
+   │                             │ W3 이후 실도로 기반 정밀 계산으로 교체 예정                      │
+   └─────────────────────────────┴──────────────────────────────────────────────────────────────────┘
+
+  ③ 서울 열린데이터광장 — 서울 도시데이터 API
+
+   - 서울 115개 주요 지역 실시간 인구 혼잡도 제공
+   - 엔드포인트: http://openapi.seoul.go.kr:8088/{KEY}/json/citydata/1/1/{AREA_NM}
+   - 활용: 서울 소재 POI의 congestion_score 실시간 보정
+     (서울 외 지역 및 미등록 장소는 data/congestion_stats.csv 통계 기반 폴백)
+
+  ④ Anthropic Claude API (claude-sonnet-4-6)
+
+   - ExplainEngine: 검증 결과 구조화 JSON → 4단계 자연어 보고서 생성
+     [Fact → Rule → Risk → Suggestion] 모든 패널티·경고 항목에 적용
+   - ThemeAlignmentJudge: 여행 테마 ↔ POI 구성 의미적 일치도 판정
+     (규칙으로 정량화 불가한 유일한 LLM 직접 판정 항목, 점수 패널티 −0~−20 연동)

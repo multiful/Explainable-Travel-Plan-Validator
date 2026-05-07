@@ -29,7 +29,9 @@ from src.data.models import (
     ValidationResult,
     VRPTWDay,
     VRPTWPlace,
+    VRPTWRequest,
 )
+from src.validation.vrptw_engine import VRPTWEngine
 from src.data.theme_taxonomy import UserPreferences
 from src.explain.explain_engine import ExplainEngine
 from src.explain.repair import RepairEngine
@@ -160,25 +162,40 @@ class ValidatorPipeline:
             )
             base_score = 0
 
+        # ── 3b. VRPTWEngine 실행 — 최적 경로 + Efficiency Gap ────────────
+        # vrptw_days를 한 번만 생성해 step 4·5에서 재사용
+        vrptw_days = [_to_vrptw_day(day) for day in per_day_pois if day]
+        vrptw_optimal_route = None
+        vrptw_efficiency_gap = None
+        vrptw_penalty = 0
+
+        if vrptw_days:
+            _vrptw_result = VRPTWEngine().validate(VRPTWRequest(days=vrptw_days))
+            vrptw_optimal_route = _vrptw_result.optimal_route
+            vrptw_efficiency_gap = _vrptw_result.efficiency_gap
+            if vrptw_efficiency_gap is not None:
+                if vrptw_efficiency_gap > 0.60:
+                    vrptw_penalty = 15
+                elif vrptw_efficiency_gap > 0.40:
+                    vrptw_penalty = 10
+                elif vrptw_efficiency_gap > 0.20:
+                    vrptw_penalty = 5
+
         # ── 4. ClusterDispersion 패널티 ─────────────────────────────────
         cluster_penalty = 0
-        if per_day_pois:
-            vrptw_days = [_to_vrptw_day(day) for day in per_day_pois if day]
-            if vrptw_days:
-                cd_report = evaluate_cluster_dispersion(
-                    vrptw_days, sigungu_codes_per_day
-                )
-                cluster_penalty = cd_report.total_penalty
+        if vrptw_days:
+            cd_report = evaluate_cluster_dispersion(
+                vrptw_days, sigungu_codes_per_day
+            )
+            cluster_penalty = cd_report.total_penalty
 
         # ── 5. TravelRatio 패널티 ───────────────────────────────────────
         travel_ratio_penalty = 0
         overall_travel_ratio = 0.0
-        if per_day_pois:
-            vrptw_days_for_ratio = [_to_vrptw_day(day) for day in per_day_pois if day]
-            if vrptw_days_for_ratio:
-                tr_report = evaluate_travel_ratio(vrptw_days_for_ratio)
-                travel_ratio_penalty = tr_report.total_penalty
-                overall_travel_ratio = tr_report.overall_ratio
+        if vrptw_days:
+            tr_report = evaluate_travel_ratio(vrptw_days)
+            travel_ratio_penalty = tr_report.total_penalty
+            overall_travel_ratio = tr_report.overall_ratio
 
         # ── 6. ThemeAlignment 패널티 (선택) ────────────────────────────
         theme_penalty = 0
@@ -192,7 +209,7 @@ class ValidatorPipeline:
         total_bonus = bonus_result.total_bonus
 
         # ── 8. 최종 점수 조립 ───────────────────────────────────────────
-        penalty_total = cluster_penalty + travel_ratio_penalty + theme_penalty
+        penalty_total = cluster_penalty + travel_ratio_penalty + theme_penalty + vrptw_penalty
         adjusted = base_score - penalty_total + total_bonus
         adjusted = max(0, min(100, adjusted))
         if hard_fails:
@@ -214,6 +231,8 @@ class ValidatorPipeline:
             penalty_breakdown["travel_ratio"] = travel_ratio_penalty
         if theme_penalty:
             penalty_breakdown["theme_alignment"] = theme_penalty
+        if vrptw_penalty:
+            penalty_breakdown["vrptw_efficiency"] = vrptw_penalty
 
         bonus_breakdown: dict[str, int] = {}
         if bonus_result.wellness_bonus:
@@ -255,4 +274,6 @@ class ValidatorPipeline:
             penalty_breakdown=penalty_breakdown,
             bonus_breakdown=bonus_breakdown,
             repair=repair_data,
+            vrptw_optimal_route=vrptw_optimal_route,
+            vrptw_efficiency_gap=vrptw_efficiency_gap,
         )

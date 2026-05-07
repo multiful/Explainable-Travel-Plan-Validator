@@ -62,3 +62,5 @@ class ValidateResponse(BaseModel):
     rewards: list[str]
     poi_info: list[POIInfo]
     repair_suggestions: dict | None = None
+    optimal_route: list[dict] | None = None
+    vrptw_efficiency_gap: float | None = None

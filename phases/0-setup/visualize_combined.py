@@ -134,7 +134,7 @@ for e in tri_entries:
 dur_labels = ["당일치기", "1박 2일", "2박 3일", "3박 이상"]
 box_data = [dur_map.get(d, [0]) for d in dur_labels]
 bp = ax.boxplot([d for d in box_data if d],
-                labels=[l for l, d in zip(dur_labels, box_data) if d],
+                tick_labels=[l for l, d in zip(dur_labels, box_data) if d],
                 patch_artist=True,
                 medianprops=dict(color="black", linewidth=2),
                 flierprops=dict(marker="o", markersize=4, alpha=0.5))
@@ -216,7 +216,7 @@ dist_clip = 200
 gg_dist_c  = [min(d, dist_clip) for d in gg_dist]
 tri_dist_c = [min(d, dist_clip) for d in tri_dist]
 bp = ax.boxplot([gg_dist_c, tri_dist_c],
-                labels=["구석구석", "트리플"],
+                tick_labels=["구석구석", "트리플"],
                 patch_artist=True,
                 medianprops=dict(color="black", linewidth=2),
                 flierprops=dict(marker="o", markersize=4, alpha=0.5))

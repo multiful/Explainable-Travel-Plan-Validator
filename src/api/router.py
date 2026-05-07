@@ -435,4 +435,9 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
         rewards=result.rewards,
         poi_info=poi_info_list,
         repair_suggestions=result.repair or None,
+        optimal_route=(
+            [r.model_dump() for r in result.vrptw_optimal_route]
+            if result.vrptw_optimal_route else None
+        ),
+        vrptw_efficiency_gap=result.vrptw_efficiency_gap,
     )

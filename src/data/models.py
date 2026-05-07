@@ -1,4 +1,9 @@
-"""Pydantic models for travel plan validator (main app + VRPTW engine)."""
+"""Pydantic models for travel plan validator (main app + VRPTW engine).
+
+NOTE: from __future__ import annotations makes all annotations strings so
+Pydantic v2 can resolve forward references (e.g. ExplanationItem,
+DayRouteComparison) that are defined later in this file.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -191,6 +196,8 @@ class ValidationResult(BaseModel):
     penalty_breakdown: dict[str, int] = Field(default_factory=dict)
     bonus_breakdown: dict[str, int] = Field(default_factory=dict)
     repair: dict = Field(default_factory=dict)
+    vrptw_optimal_route: list[DayRouteComparison] | None = None
+    vrptw_efficiency_gap: float | None = None
 
     @field_validator("final_score")
     @classmethod
