@@ -48,6 +48,7 @@ _TYPEID_LABEL: dict[str, str] = {
     "12": "관광지", "14": "문화시설", "15": "축제/행사",
     "25": "여행코스", "28": "레저스포츠", "32": "숙박",
     "38": "쇼핑", "39": "음식점",
+    "wellness": "웰니스", "bf": "무장애여행",
 }
 
 # ── 하드코딩 좌표 DB (고품질 기준값) ──────────────────────────────────────
@@ -138,6 +139,28 @@ _COORD_CATALOG: dict[str, dict] = {
     "설악산":         {"lat": 38.1190, "lng": 128.4654, "cat": "12", "region": "강원", "cat_name": "자연관광"},
     "오대산":         {"lat": 37.7947, "lng": 128.5369, "cat": "12", "region": "강원", "cat_name": "자연관광"},
     "정동진":         {"lat": 37.6844, "lng": 129.0559, "cat": "12", "region": "강원", "cat_name": "자연관광"},
+    # 대구
+    "팔공산":         {"lat": 35.9991, "lng": 128.6966, "cat": "12", "region": "대구", "cat_name": "자연관광"},
+    "동성로":         {"lat": 35.8664, "lng": 128.5955, "cat": "38", "region": "대구", "cat_name": "쇼핑"},
+    "근대골목":       {"lat": 35.8692, "lng": 128.5967, "cat": "12", "region": "대구", "cat_name": "관광지"},
+    "서문시장":       {"lat": 35.8688, "lng": 128.5808, "cat": "38", "region": "대구", "cat_name": "쇼핑"},
+    "대구수목원":     {"lat": 35.8322, "lng": 128.5307, "cat": "12", "region": "대구", "cat_name": "자연관광"},
+    "김광석다시그리기길": {"lat": 35.8682, "lng": 128.6020, "cat": "12", "region": "대구", "cat_name": "관광지"},
+    # 광주
+    "무등산":         {"lat": 35.1298, "lng": 126.9883, "cat": "12", "region": "광주", "cat_name": "자연관광"},
+    "양림동":         {"lat": 35.1410, "lng": 126.8951, "cat": "12", "region": "광주", "cat_name": "관광지"},
+    "국립아시아문화전당": {"lat": 35.1456, "lng": 126.9160, "cat": "14", "region": "광주", "cat_name": "문화시설"},
+    "충장로":         {"lat": 35.1489, "lng": 126.9147, "cat": "38", "region": "광주", "cat_name": "쇼핑"},
+    # 대전
+    "대전엑스포과학공원": {"lat": 36.3736, "lng": 127.3865, "cat": "12", "region": "대전", "cat_name": "관광지"},
+    "유성온천":       {"lat": 36.3625, "lng": 127.3367, "cat": "12", "region": "대전", "cat_name": "관광지"},
+    "계룡산":         {"lat": 36.3462, "lng": 127.2113, "cat": "12", "region": "충남", "cat_name": "자연관광"},
+    "한밭수목원":     {"lat": 36.3621, "lng": 127.3847, "cat": "12", "region": "대전", "cat_name": "자연관광"},
+    "대전오월드":     {"lat": 36.3090, "lng": 127.3620, "cat": "15", "region": "대전", "cat_name": "테마파크"},
+    # 충북
+    "단양팔경":       {"lat": 36.9848, "lng": 128.3673, "cat": "12", "region": "충북", "cat_name": "자연관광"},
+    "소백산":         {"lat": 36.9641, "lng": 128.4743, "cat": "12", "region": "충북", "cat_name": "자연관광"},
+    "청남대":         {"lat": 36.4853, "lng": 127.5039, "cat": "12", "region": "충북", "cat_name": "관광지"},
 }
 
 
@@ -243,6 +266,16 @@ def _build_place_list(coord_index: dict[str, dict]) -> list[dict]:
             except (ValueError, TypeError):
                 pass
 
+    # pois.csv에서 firstimage 인덱스 빌드
+    image_index: dict[str, str] = {}
+    pois_path = _DATA_DIR / "pois.csv"
+    if pois_path.exists():
+        with open(pois_path, encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                img = row.get("firstimage", "").strip()
+                if img:
+                    image_index[_normalize(row["title"])] = img
+
     result: list[dict] = []
     for name, annual_max in place_max.items():
         norm_key = _normalize(name)
@@ -268,15 +301,140 @@ def _build_place_list(coord_index: dict[str, dict]) -> list[dict]:
             "cat_name": entry.get("cat_name", "관광지") if entry else "관광지",
             "annual_max": annual_max,
             "has_coords": entry is not None,
+            "firstimage": image_index.get(norm_key, ""),
         })
 
     result.sort(key=lambda x: -x["annual_max"])
     return result
 
 
+def _build_full_place_list(coord_index: dict[str, dict]) -> list[dict]:
+    """pois.csv(20,168) + wellness(175) + barrier_free(1,799) 통합 장소 목록."""
+    result: list[dict] = []
+    seen: set[str] = set()
+
+    # 1) pois.csv
+    pois_path = _DATA_DIR / "pois.csv"
+    if pois_path.exists():
+        with open(pois_path, encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                name = row["title"].strip()
+                norm = _normalize(name)
+                if norm in seen or not name:
+                    continue
+                seen.add(norm)
+                try:
+                    lat = float(row["mapy"])
+                    lng = float(row["mapx"])
+                    has_c = True
+                except (ValueError, TypeError):
+                    lat, lng = None, None
+                    has_c = False
+                region = _addr_to_region(row.get("addr1", ""))
+                cat = row.get("contenttypeid", "12")
+                result.append({
+                    "name": name,
+                    "lat": lat,
+                    "lng": lng,
+                    "region": region,
+                    "cat": cat,
+                    "cat_name": _TYPEID_LABEL.get(cat, "관광지"),
+                    "annual_max": 0.0,
+                    "has_coords": has_c,
+                    "firstimage": row.get("firstimage", "").strip(),
+                    "addr": row.get("addr1", "").strip(),
+                    "tags": [],
+                })
+
+    # 2) wellness_places.json
+    wl_path = _DATA_DIR / "wellness_places.json"
+    if wl_path.exists():
+        with open(wl_path, encoding="utf-8") as f:
+            wellness_list = json.load(f)
+        for item in wellness_list:
+            name = item.get("title", "").strip()
+            norm = _normalize(name)
+            if not name or norm in seen:
+                continue
+            seen.add(norm)
+            try:
+                lat = float(item["lat"]); lng = float(item["lng"]); has_c = True
+            except (ValueError, TypeError):
+                lat, lng = None, None; has_c = False
+            result.append({
+                "name": name,
+                "lat": lat, "lng": lng,
+                "region": _addr_to_region(item.get("addr", "")),
+                "cat": "wellness",
+                "cat_name": "웰니스",
+                "annual_max": 0.0,
+                "has_coords": has_c,
+                "firstimage": "",
+                "addr": item.get("addr", "").strip(),
+                "tags": ["웰니스", "힐링"],
+            })
+
+    # 3) barrier_free_places.json
+    bf_path = _DATA_DIR / "barrier_free_places.json"
+    if bf_path.exists():
+        with open(bf_path, encoding="utf-8") as f:
+            bf_list = json.load(f)
+        for item in bf_list:
+            name = item.get("title", "").strip()
+            norm = _normalize(name)
+            if not name or norm in seen:
+                continue
+            seen.add(norm)
+            try:
+                lat = float(item["lat"]); lng = float(item["lng"]); has_c = True
+            except (ValueError, TypeError):
+                lat, lng = None, None; has_c = False
+            bf_tags = ["무장애"]
+            if item.get("wheelchair"): bf_tags.append("휠체어")
+            if item.get("elevator"): bf_tags.append("엘리베이터")
+            if item.get("stroller"): bf_tags.append("유모차")
+            if item.get("parking"): bf_tags.append("주차가능")
+            result.append({
+                "name": name,
+                "lat": lat, "lng": lng,
+                "region": _addr_to_region(item.get("addr", "")),
+                "cat": "bf",
+                "cat_name": "무장애여행",
+                "annual_max": 0.0,
+                "has_coords": has_c,
+                "firstimage": "",
+                "addr": item.get("addr", "").strip(),
+                "tags": bf_tags,
+            })
+
+    return result
+
+
+def _build_monthly_congestion() -> dict[str, dict[int, float]]:
+    """congestion_stats.csv의 월별 혼잡도 점수 인덱스."""
+    result: dict[str, dict[int, float]] = {}
+    cong_path = _DATA_DIR / "congestion_stats.csv"
+    if not cong_path.exists():
+        return result
+    with open(cong_path, encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            name = row["poi_name"]
+            try:
+                month = int(row["month"])
+                score = float(row.get("congestion_score") or row.get("avg_visitors") or 0)
+                if name not in result:
+                    result[name] = {}
+                result[name][month] = score
+            except (ValueError, TypeError):
+                pass
+    return result
+
+
 # ── 모듈 로드 시 1회 빌드 ──────────────────────────────────────────────────
 _COORD_INDEX: dict[str, dict] = _build_coord_index()
 _PLACE_LIST: list[dict] = _build_place_list(_COORD_INDEX)
+_FULL_PLACE_LIST: list[dict] = _build_full_place_list(_COORD_INDEX)
+_MONTHLY_CONG: dict[str, dict[int, float]] = _build_monthly_congestion()
 # 이름 정규화 → place dict 역방향 인덱스
 _PLACE_NORM_INDEX: dict[str, dict] = {_normalize(p["name"]): p for p in _PLACE_LIST}
 # _COORD_CATALOG 수동 큐레이션 목록 정규화 키 집합 (신뢰도 High 판정용)
@@ -361,14 +519,29 @@ def _get_pipeline() -> ValidatorPipeline:
 
 
 @router.get("/places", response_model=PlacesResponse)
-async def list_places(q: str = "", region: str = "") -> PlacesResponse:
-    """등록 장소 목록. q=검색어, region=지역 필터."""
-    filtered = _PLACE_LIST
+async def list_places(
+    q: str = "", region: str = "", extended: bool = False, cat: str = "",
+    offset: int = 0, limit: int = 2000,
+) -> PlacesResponse:
+    """등록 장소 목록.
+    q=검색어, region=지역 필터, cat=카테고리 코드, extended=전체DB 초기 로드.
+    offset/limit으로 서버 측 페이지네이션 지원.
+    q/cat/region 없이 호출 시 congestion 기반 인기 장소 4,174건 반환.
+    """
+    use_full = bool(q or extended or region or cat)
+    source = _FULL_PLACE_LIST if use_full else _PLACE_LIST
+    filtered = source
     if region:
-        filtered = [p for p in filtered if p["region"] == region]
+        filtered = [p for p in filtered if p.get("region", "") == region]
+    if cat and cat not in ("all", "fav"):
+        filtered = [p for p in filtered if p.get("cat", "") == cat]
     if q:
         ql = q.lower()
         filtered = [p for p in filtered if ql in p["name"].lower()]
+
+    total_count = len(filtered)
+    page_size = min(limit, 2000) if use_full else total_count
+    paged = filtered[offset : offset + page_size]
 
     items = [
         PlaceItem(
@@ -378,10 +551,37 @@ async def list_places(q: str = "", region: str = "") -> PlacesResponse:
             category_code=p["cat"],
             has_coords=p["has_coords"],
             annual_max=p["annual_max"],
+            firstimage=p.get("firstimage", ""),
+            addr=p.get("addr", ""),
+            tags=p.get("tags", []),
         )
-        for p in filtered
+        for p in paged
     ]
-    return PlacesResponse(places=items, total=len(items))
+    return PlacesResponse(places=items, total=total_count)
+
+
+@router.get("/monthly/{name}")
+async def monthly_congestion(name: str) -> dict:
+    """특정 장소의 월별 혼잡도 데이터."""
+    monthly = _MONTHLY_CONG.get(name, {})
+    if not monthly:
+        for raw_name, data in _MONTHLY_CONG.items():
+            if _normalize(raw_name) == _normalize(name):
+                monthly = data
+                break
+    return {"name": name, "monthly": {str(k): round(v, 1) for k, v in monthly.items()}}
+
+
+@router.get("/regions")
+async def list_regions() -> dict:
+    """지역별 장소 수 통계."""
+    from collections import Counter
+    counts: Counter[str] = Counter()
+    for p in _FULL_PLACE_LIST:
+        r = p.get("region") or "기타"
+        if r:
+            counts[r] += 1
+    return {"regions": [{"name": k, "count": v} for k, v in sorted(counts.items(), key=lambda x: -x[1])]}
 
 
 @router.post("/validate", response_model=ValidateResponse)
@@ -421,6 +621,47 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
 
     data_reliability_score = _calc_reliability_score(poi_info_list)
 
+    # ── 월별 혼잡도 경고 생성 ──────────────────────────────────────
+    congestion_warnings: list[dict] = []
+    try:
+        travel_month = int(req.date.split("-")[1])
+    except (IndexError, ValueError):
+        travel_month = 5
+
+    MONTH_NAMES = {1:"1월",2:"2월",3:"3월",4:"4월",5:"5월",6:"6월",
+                   7:"7월",8:"8월",9:"9월",10:"10월",11:"11월",12:"12월"}
+
+    for info in poi_info_list:
+        monthly = _MONTHLY_CONG.get(info.name)
+        if not monthly:
+            continue
+        score = monthly.get(travel_month, 0)
+        if not score:
+            continue
+        max_score = max(monthly.values())
+        min_score = min(monthly.values())
+        if max_score <= 0:
+            continue
+        ratio = score / max_score
+        # 연중 최대 대비 85% 이상이면 경고
+        if ratio >= 0.85:
+            level = "high" if ratio >= 0.95 else "medium"
+            best_month = min(monthly, key=monthly.get)
+            congestion_warnings.append({
+                "poi_name": info.name,
+                "month": travel_month,
+                "level": level,
+                "ratio": round(ratio, 2),
+                "message": (
+                    f"{MONTH_NAMES[travel_month]}은 연중 가장 붐비는 시기예요. "
+                    f"예약이나 이른 방문을 추천해요."
+                    if level == "high" else
+                    f"{MONTH_NAMES[travel_month]}은 사람이 꽤 많은 편이에요. "
+                    f"여유 있게 시간을 잡으세요."
+                ),
+                "best_month": best_month,
+            })
+
     return ValidateResponse(
         plan_id=result.plan_id,
         final_score=result.final_score,
@@ -440,4 +681,5 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
             if result.vrptw_optimal_route else None
         ),
         vrptw_efficiency_gap=result.vrptw_efficiency_gap,
+        congestion_warnings=congestion_warnings,
     )

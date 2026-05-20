@@ -14,14 +14,6 @@ class DayPlanWeb(BaseModel):
     places: list[PlaceInputWeb]
 
 
-class ValidateRequest(BaseModel):
-    days: list[DayPlanWeb]
-    party_size: Literal[1, 2, 3, 4, 5] = 2
-    party_type: Literal["혼자", "친구", "연인", "가족", "아기동반", "어르신동반"] = "친구"
-    travel_type: Literal["cultural", "nature", "shopping", "food", "adventure"] | None = None
-    date: str = "2026-05-10"
-
-
 class POIInfo(BaseModel):
     name: str
     found: bool
@@ -41,11 +33,23 @@ class PlaceItem(BaseModel):
     category_code: str
     has_coords: bool = False
     annual_max: float = 0.0
+    firstimage: str = ""
+    addr: str = ""
+    tags: list[str] = []
 
 
 class PlacesResponse(BaseModel):
     places: list[PlaceItem]
     total: int
+
+
+class ValidateRequest(BaseModel):
+    days: list[DayPlanWeb]
+    party_size: Literal[1, 2, 3, 4, 5] = 2
+    party_type: Literal["혼자", "친구", "연인", "가족", "아기동반", "어르신동반"] = "친구"
+    travel_type: Literal["cultural", "nature", "shopping", "food", "adventure"] | None = None
+    date: str = "2026-05-10"
+    start_time: str = "09:00"
 
 
 class ValidateResponse(BaseModel):
@@ -64,3 +68,4 @@ class ValidateResponse(BaseModel):
     repair_suggestions: dict | None = None
     optimal_route: list[dict] | None = None
     vrptw_efficiency_gap: float | None = None
+    congestion_warnings: list[dict] = []
