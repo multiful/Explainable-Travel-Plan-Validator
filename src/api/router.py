@@ -164,6 +164,21 @@ _COORD_CATALOG: dict[str, dict] = {
 }
 
 
+_CHOSUNG_LIST = list("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ")
+_JAMO_CHARS = set("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ")
+
+
+def _extract_chosung(text: str) -> str:
+    result = []
+    for ch in text:
+        code = ord(ch)
+        if 0xAC00 <= code <= 0xD7A3:
+            result.append(_CHOSUNG_LIST[(code - 0xAC00) // (21 * 28)])
+        elif ch in _JAMO_CHARS:
+            result.append(ch)
+    return "".join(result)
+
+
 def _normalize(name: str) -> str:
     # 1. 괄호 안 내용 제거: "한강공원(뚝섬지구)" → "한강공원"
     s = re.sub(r'[\(（\[【][^\)）\]】]*[\)）\]】]', '', name)
@@ -537,7 +552,12 @@ async def list_places(
         filtered = [p for p in filtered if p.get("cat", "") == cat]
     if q:
         ql = q.lower()
-        filtered = [p for p in filtered if ql in p["name"].lower()]
+        # 초성 검색: q가 자모로만 구성된 경우(예: 'ㄱㅂㄱ') 초성 매칭 사용
+        if all(ch in _JAMO_CHARS for ch in q if ch.strip()):
+            qcho = _extract_chosung(q)
+            filtered = [p for p in filtered if _extract_chosung(p["name"]).startswith(qcho)]
+        else:
+            filtered = [p for p in filtered if ql in p["name"].lower()]
 
     total_count = len(filtered)
     page_size = min(limit, 2000) if use_full else total_count

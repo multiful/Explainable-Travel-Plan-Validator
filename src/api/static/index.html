@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>가볼까 — 내 여행 계획, 솔직하게 검증해드려요</title>
-<meta name="description" content="AI 기반 여행 일정 검증 서비스. 한국관광공사 TourAPI 34,000여 개 관광지 데이터로 내 여행 계획이 실제로 가능한지 분석해드려요. 동선·운영시간·이동시간 종합 검증."/>
-<meta name="keywords" content="여행 계획, 여행 일정 검증, 국내여행, 여행 앱, 관광지, 동선 최적화, 가볼까"/>
-<meta name="author" content="가볼까(Gabola)"/>
+<title>Qtrip — 내 여행 계획, 솔직하게 검증해드려요</title>
+<meta name="description" content="내 여행 일정이 실제로 가능한지 데이터로 분석해드리는 서비스. 동선·운영시간·이동시간을 종합적으로 검증해드려요."/>
+<meta name="keywords" content="여행 계획, 여행 일정 검증, 국내여행, 여행 앱, 관광지, 동선 최적화, Qtrip"/>
+<meta name="author" content="Qtrip"/>
 <meta name="robots" content="index, follow"/>
 <meta name="theme-color" content="#FF5733"/>
 <meta property="og:type" content="website"/>
-<meta property="og:title" content="가볼까 — 내 여행 계획 솔직 검증"/>
-<meta property="og:description" content="여행 일정이 실제로 되는지, 동선이 꼬이지는 않는지 AI가 솔직하게 알려드려요. 무료 · 34,000여 관광지 데이터 기반."/>
+<meta property="og:title" content="Qtrip — 내 여행 계획 솔직 검증"/>
+<meta property="og:description" content="여행 일정이 실제로 되는지, 동선이 꼬이지는 않는지 솔직하게 알려드려요."/>
 <meta property="og:locale" content="ko_KR"/>
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="가볼까 — 내 여행 계획 솔직 검증"/>
+<meta name="twitter:title" content="Qtrip — 내 여행 계획 솔직 검증"/>
 <meta name="twitter:description" content="AI 기반 여행 계획 검증. 동선·운영시간·이동시간을 종합 분석해드려요."/>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23FF5733'/><path d='M50 15C36 15 25 26 25 40c0 20 25 45 25 45s25-25 25-45c0-14-11-25-25-25zm0 34a9 9 0 1 1 0-18 9 9 0 0 1 0 18z' fill='white'/></svg>"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -86,15 +86,25 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 
 /* ━━━ Step 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 #s1{background:var(--n50)}
-.s1-hero{background:linear-gradient(140deg,#FF5733 0%,#FF8C42 55%,#FFB347 100%);
-  padding:2.2rem 1.5rem 2.8rem;text-align:center;color:#fff;position:relative;overflow:hidden}
+.s1-hero{background:linear-gradient(150deg,#1B2F5B 0%,#2d4a8a 40%,#FF5733 100%);
+  padding:2.6rem 1.5rem 3.2rem;text-align:center;color:#fff;position:relative;overflow:hidden}
 .s1-hero::before{content:"";position:absolute;inset:0;
-  background:radial-gradient(circle at 70% 50%,rgba(255,255,255,.08) 0%,transparent 60%)}
+  background:radial-gradient(ellipse at 80% 20%,rgba(255,87,51,.35) 0%,transparent 55%),
+             radial-gradient(ellipse at 15% 80%,rgba(0,191,165,.12) 0%,transparent 45%)}
+.s1-hero::after{content:"";position:absolute;inset:0;opacity:.04;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(255,255,255,1) 40px,rgba(255,255,255,1) 41px),
+                   repeating-linear-gradient(90deg,transparent,transparent 40px,rgba(255,255,255,1) 40px,rgba(255,255,255,1) 41px)}
 .s1-hero-inner{position:relative;z-index:1}
-.s1-eyebrow{font-size:.68rem;font-weight:700;letter-spacing:1.8px;opacity:.7;
-  margin-bottom:.4rem;text-transform:uppercase}
-.s1-hero h2{font-size:1.8rem;font-weight:900;letter-spacing:-.6px;margin-bottom:.3rem}
-.s1-hero p{font-size:.87rem;opacity:.78;max-width:360px;margin:0 auto;line-height:1.65}
+.s1-eyebrow{font-size:.65rem;font-weight:700;letter-spacing:2.2px;opacity:.6;
+  margin-bottom:.6rem;text-transform:uppercase}
+.s1-hero h2{font-size:2.1rem;font-weight:900;letter-spacing:-.8px;margin-bottom:.5rem;line-height:1.15}
+.s1-hero p{font-size:.88rem;opacity:.75;max-width:380px;margin:0 auto;line-height:1.7}
+
+/* Hero stats strip */
+.hero-stats{display:flex;justify-content:center;gap:2rem;margin-top:1.4rem;margin-bottom:0}
+.hstat{text-align:center}
+.hstat-num{font-size:1.5rem;font-weight:900;letter-spacing:-.5px;display:block}
+.hstat-label{font-size:.62rem;opacity:.6;font-weight:500;display:block;margin-top:.05rem}
 .s1-body{max-width:640px;margin:-1.2rem auto 0;padding:0 1rem 3rem;position:relative;z-index:2}
 .scard{background:var(--card);border-radius:var(--r-lg);border:1px solid var(--n200);
   box-shadow:var(--sh-sm);padding:1.2rem;margin-bottom:.8rem}
@@ -114,6 +124,9 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .rcard-name{font-size:.77rem;font-weight:800;color:var(--n700)}
 .rcard.sel .rcard-name{color:var(--pri-d)}
 .rcard-desc{font-size:.6rem;color:var(--n400);line-height:1.35}
+.rcard-cnt{font-size:.58rem;font-weight:700;color:var(--n400);background:var(--n100);
+  padding:.05rem .3rem;border-radius:999px;line-height:1.4}
+.rcard.sel .rcard-cnt{background:rgba(255,255,255,.4);color:var(--pri-d)}
 .sel-check{position:absolute;top:.28rem;right:.28rem;width:15px;height:15px;
   background:var(--pri);border-radius:50%;color:#fff;font-size:.58rem;
   display:none;align-items:center;justify-content:center}
@@ -179,6 +192,19 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .psearch-inp{width:100%;border:1.5px solid var(--n200);border-radius:9px;
   padding:.42rem .62rem .42rem 2.1rem;font-size:.83rem;background:var(--n50);transition:all .14s}
 .psearch-inp:focus{outline:none;border-color:var(--pri);background:#fff;box-shadow:0 0 0 3px var(--pri-m)}
+.psearch-clear{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);
+  border:none;background:none;cursor:pointer;color:var(--n400);padding:.2rem;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.psearch-clear:hover{background:var(--n100);color:var(--n600)}
+.suggest-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;
+  border:1.5px solid var(--n200);border-radius:10px;box-shadow:var(--sh);
+  max-height:200px;overflow-y:auto;z-index:200;display:none}
+.suggest-drop.open{display:block}
+.suggest-item{padding:.52rem .75rem;font-size:.81rem;color:var(--n700);cursor:pointer;
+  display:flex;align-items:center;gap:.5rem;transition:background .1s}
+.suggest-item:hover,.suggest-item.focused{background:var(--pri-l);color:var(--pri-d)}
+.suggest-item mark{background:none;color:var(--pri);font-weight:800}
+.suggest-cat{font-size:.62rem;color:var(--n400);margin-left:auto;flex-shrink:0}
 
 /* Category pills */
 .cat-pills{display:flex;gap:.28rem;overflow-x:auto;padding-bottom:.35rem;scrollbar-width:none}
@@ -226,6 +252,17 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .pdb-foot{padding:.45rem .7rem;border-top:1px solid var(--n100);
   display:flex;justify-content:space-between;align-items:center;font-size:.67rem;color:var(--n400)}
 .load-more-btn{font-size:.69rem;color:var(--pri);background:none;border:none;cursor:pointer;font-weight:700}
+
+/* Grid view */
+.plist-wrap.grid-view{display:grid;grid-template-columns:1fr 1fr;gap:.38rem;padding:.38rem .5rem}
+.plist-wrap.grid-view .place-item{flex-direction:column;align-items:flex-start;gap:.3rem;padding:.55rem}
+.plist-wrap.grid-view .pi-thumb,.plist-wrap.grid-view .pi-thumb-ph{width:100%;height:72px;border-radius:6px}
+.plist-wrap.grid-view .pi-thumb{object-fit:cover}
+.plist-wrap.grid-view .pi-info{width:100%}
+.plist-wrap.grid-view .pi-name{font-size:.78rem;white-space:normal;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.plist-wrap.grid-view .pi-fav{position:absolute;top:.38rem;right:.38rem}
+.plist-wrap.grid-view .pi-add{display:none}
+.plist-wrap.grid-view .place-item{position:relative;cursor:pointer}
 
 /* Builder */
 .builder{display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--n50)}
@@ -710,6 +747,102 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .service-notice{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
   border-radius:var(--r-sm);padding:.55rem 1rem;font-size:.75rem;color:rgba(255,255,255,.85);
   margin-top:1rem;display:inline-flex;align-items:center;gap:.4rem}
+
+/* ━━━ Header scroll shadow ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+header{transition:box-shadow .2s}
+header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
+
+/* ━━━ Day tab count badge ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.tab-cnt{display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:50%;font-size:.52rem;font-weight:900;
+  margin-left:.28rem;line-height:1;vertical-align:middle}
+.day-tab.active .tab-cnt{background:rgba(255,255,255,.35);color:#fff}
+.day-tab:not(.active) .tab-cnt{background:var(--n200);color:var(--n600)}
+
+/* ━━━ Slot drag-and-drop ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.slot-drag{width:18px;height:20px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2.5px;cursor:grab;flex-shrink:0;opacity:.18;transition:opacity .15s;
+  user-select:none;-webkit-user-drag:none}
+.place-slot:hover .slot-drag{opacity:.5}
+.slot-drag span{width:10px;height:1.5px;background:var(--n600);border-radius:1px;display:block}
+.place-slot.drag-src{opacity:.42;background:var(--pri-l)!important;border-style:dashed!important}
+.place-slot.drag-over{border-color:var(--mint)!important;background:var(--mint-l)!important;
+  box-shadow:0 0 0 2px rgba(0,191,165,.22)}
+
+/* ━━━ Image hover scale ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.place-item .pi-thumb{transition:transform .22s ease;will-change:transform}
+.place-item:hover .pi-thumb{transform:scale(1.08)}
+
+/* ━━━ Score card colored top bars ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.score-card.sc-pass::before{background:linear-gradient(90deg,var(--mint),#27AE60)}
+.score-card.sc-warn::before{background:linear-gradient(90deg,var(--stay),#F5A623)}
+.score-card.sc-fail::before{background:linear-gradient(90deg,var(--pri),#FF9A50)}
+
+/* ━━━ Score detail bars — animate from 0 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.sbf{transition:width .82s cubic-bezier(.22,.61,.36,1)}
+.rel-bar-fill{transition:width .7s cubic-bezier(.22,.61,.36,1)}
+
+/* ━━━ Builder footer sticky glass ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.builder-foot{position:sticky;bottom:0;backdrop-filter:blur(12px);
+  background:rgba(255,255,255,.96)!important;border-top:1px solid rgba(0,0,0,.06)!important}
+
+/* ━━━ Empty-day example chips ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.eds-chips{display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center;margin-top:.78rem}
+.eds-chip{font-size:.7rem;padding:.25rem .55rem;background:var(--pri-l);color:var(--pri-d);
+  border:1.5px solid var(--pri-m);border-radius:999px;cursor:pointer;font-weight:600;
+  transition:all .13s;white-space:nowrap}
+.eds-chip:hover{background:var(--pri);color:#fff;border-color:var(--pri)}
+
+/* ━━━ Place item overflow clip for image scale ━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.place-item{overflow:hidden}
+
+/* ━━━ Custom calendar picker ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.cal-wrap{position:relative}
+.cal-popup{position:absolute;z-index:500;background:#fff;border-radius:var(--r-lg);
+  border:1.5px solid var(--n200);box-shadow:var(--sh-lg);padding:.85rem;
+  min-width:268px;margin-top:.35rem;top:100%;left:0;display:none}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem}
+.cal-nav-btn{width:30px;height:30px;border:1.5px solid var(--n200);border-radius:8px;
+  background:#fff;cursor:pointer;font-size:1.15rem;font-weight:700;color:var(--n600);
+  display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1}
+.cal-nav-btn:hover{border-color:var(--pri);color:var(--pri);background:var(--pri-l)}
+.cal-month-label{font-size:.9rem;font-weight:800;color:var(--n800)}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:.3rem}
+.cal-wd{text-align:center;font-size:.62rem;font-weight:700;color:var(--n400);padding:.22rem 0}
+.cal-wd:first-child{color:#EF4444}
+.cal-wd:last-child{color:#3B7AF5}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-day{text-align:center;padding:.38rem 0;font-size:.8rem;border-radius:7px;cursor:pointer;
+  color:var(--n700);transition:all .12s;font-weight:500}
+.cal-day:hover:not(.cal-empty){background:var(--pri-l);color:var(--pri-d);font-weight:700}
+.cal-day.cal-sel{background:var(--pri);color:#fff;font-weight:800}
+.cal-day.cal-today{font-weight:800;box-shadow:0 0 0 1.5px var(--pri)}
+.cal-day.cal-today:not(.cal-sel){color:var(--pri)}
+.cal-day.cal-empty{cursor:default;pointer-events:none}
+.cal-day.cal-sun{color:#EF4444}
+.cal-day.cal-sat{color:#3B7AF5}
+.cal-day.cal-sel.cal-sun,.cal-day.cal-sel.cal-sat{color:#fff}
+
+/* ━━━ Dark legal modals ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.legal-modal{background:linear-gradient(150deg,#1B2F5B 0%,#243e7a 50%,#1d3060 100%);
+  color:rgba(255,255,255,.88)}
+.legal-head{background:rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.14)}
+.legal-head h2{color:#fff}
+.legal-close{background:rgba(255,255,255,.12);color:rgba(255,255,255,.8)}
+.legal-close:hover{background:rgba(255,255,255,.22);color:#fff}
+.legal-body{color:rgba(255,255,255,.8)}
+.legal-body h3{color:#fff;border-left-color:var(--pri)}
+.legal-body p,.legal-body li{color:rgba(255,255,255,.75)}
+.legal-body table{border:none}
+.legal-body th{background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);
+  border:1px solid rgba(255,255,255,.18);font-weight:700}
+.legal-body td{color:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.12)}
+.legal-body tr:hover td{background:rgba(255,255,255,.05)}
+.legal-body .highlight-box{background:rgba(255,87,51,.22);border-left-color:var(--pri);
+  color:rgba(255,255,255,.88)}
+.legal-date{color:rgba(255,255,255,.4);border-top:1px solid rgba(255,255,255,.14)}
+.legal-body strong{color:rgba(255,255,255,.95)}
+.legal-body a{color:#7DB3FF}
 </style>
 </head>
 <body>
@@ -717,7 +850,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 <!-- Cookie consent banner -->
 <div class="cookie-bar" id="cookie-bar" role="alertdialog" aria-label="쿠키 및 개인정보 안내">
   <div class="cookie-text">
-    가볼까는 서비스 개선을 위해 방문 기록(서버 로그)을 수집하며, 즐겨찾기·최근 검색은 <strong>기기 내 저장(LocalStorage)</strong>만 사용합니다.
+    Qtrip은 즐겨찾기·최근 검색을 기기 내에만 저장하며, 개인정보를 서버에 보관하지 않습니다.
     자세한 내용은 <a onclick="openPrivacy()">개인정보처리방침</a>을 확인해주세요.
   </div>
   <div class="cookie-btns">
@@ -727,12 +860,12 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 </div>
 
 <header>
-  <a class="brand" href="#" aria-label="가볼까 홈으로">
+  <a class="brand" href="#" aria-label="Qtrip 홈으로">
     <div class="brand-mark" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white"/><circle cx="12" cy="9" r="2.5" fill="rgba(255,255,255,.4)"/></svg>
     </div>
     <div>
-      <div class="brand-name">가볼까</div>
+      <div class="brand-name">Qtrip</div>
       <div class="brand-sub">여행 계획 검증 서비스</div>
     </div>
   </a>
@@ -762,21 +895,21 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 <section class="step-section active" id="s1">
   <div class="s1-hero">
     <div class="s1-hero-inner">
-      <div class="s1-eyebrow">여행 계획 검증 서비스 · 무료</div>
-      <h2>어디로 떠나세요?</h2>
-      <p>동선이 꼬이지는 않는지, 하루에 너무 많이 넣은 건 아닌지 솔직하게 짚어드려요</p>
-      <div class="trust-badges">
-        <span class="trust-badge">34,000여 관광지</span>
-        <span class="trust-badge">동선·혼잡도 분석</span>
-        <span class="trust-badge">완전 무료</span>
-        <span class="trust-badge">개인정보 미수집</span>
+      <div class="s1-eyebrow">여행 계획 검증 서비스</div>
+      <h2>내 여행 일정,<br/>실제로 가능한 건지 확인해볼게요</h2>
+      <p>동선이 꼬이지는 않는지, 하루에 너무 많이 넣진 않았는지<br/>데이터로 솔직하게 짚어드려요</p>
+      <div class="hero-stats">
+        <div class="hstat"><span class="hstat-num" id="stat-poi">34,000+</span><span class="hstat-label">등록 장소</span></div>
+        <div class="hstat" style="opacity:.25;font-size:1.4rem;align-self:center">|</div>
+        <div class="hstat"><span class="hstat-num">16</span><span class="hstat-label">지역 커버</span></div>
+        <div class="hstat" style="opacity:.25;font-size:1.4rem;align-self:center">|</div>
+        <div class="hstat"><span class="hstat-num">5가지</span><span class="hstat-label">검증 항목</span></div>
       </div>
-      <div class="hero-how">
+      <div class="hero-how" style="margin-top:1.4rem">
         <div class="hero-step"><div class="hero-step-n">01</div><div class="hero-step-t">여행지·날짜 선택</div></div>
         <div class="hero-step"><div class="hero-step-n">02</div><div class="hero-step-t">방문 장소 구성</div></div>
         <div class="hero-step"><div class="hero-step-n">03</div><div class="hero-step-t">검증 결과 확인</div></div>
       </div>
-      <div class="service-notice">2026 한국관광공사 관광데이터 활용 공모전 출품작</div>
     </div>
   </div>
   <div class="s1-body">
@@ -787,9 +920,25 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
     <div class="scard">
       <div class="scard-label">여행 날짜 · 출발 시간</div>
       <div class="date-time-row">
-        <div>
+        <div class="cal-wrap">
           <div class="time-label">여행 시작 날짜</div>
-          <input type="date" class="date-inp" id="date-inp" value="2026-06-01"/>
+          <div class="date-inp" id="date-display" onclick="toggleCalendar(event)" style="display:flex;align-items:center;justify-content:space-between;user-select:none;cursor:pointer">
+            <span id="date-display-text">2026년 6월 1일 (월)</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;opacity:.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="cal-popup" id="cal-popup">
+            <div class="cal-nav">
+              <button class="cal-nav-btn" onclick="moveCalMonth(-1);event.stopPropagation()">‹</button>
+              <span class="cal-month-label" id="cal-month-label"></span>
+              <button class="cal-nav-btn" onclick="moveCalMonth(1);event.stopPropagation()">›</button>
+            </div>
+            <div class="cal-weekdays">
+              <div class="cal-wd">일</div><div class="cal-wd">월</div><div class="cal-wd">화</div>
+              <div class="cal-wd">수</div><div class="cal-wd">목</div><div class="cal-wd">금</div>
+              <div class="cal-wd">토</div>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+          </div>
         </div>
         <div>
           <div class="time-label">출발 시간</div>
@@ -813,9 +962,9 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
       <div class="scard-label">여행 스타일 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(선택)</span></div>
       <div class="theme-grid" id="theme-grid"></div>
     </div>
-    <button class="cta" onclick="goStep(2)">일정 짜러 가기 →</button>
+    <button class="cta" onclick="goStep(2)">일정 검증하기 →</button>
     <p style="text-align:center;font-size:.72rem;color:var(--n400);margin-top:.85rem;line-height:1.7">
-      서비스 이용 시 <button onclick="openPrivacy()" style="background:none;border:none;cursor:pointer;color:var(--pri);font-size:.72rem;font-weight:600;text-decoration:underline">개인정보처리방침</button>에 동의하신 것으로 간주됩니다.
+      이용 시 <button onclick="openPrivacy()" style="background:none;border:none;cursor:pointer;color:var(--pri);font-size:.72rem;font-weight:600;text-decoration:underline">개인정보처리방침</button>에 동의하신 것으로 간주됩니다.
     </p>
   </div>
 </section>
@@ -832,7 +981,11 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
         <div id="pdb-region-badge" class="pdb-region-badge">전국 장소들</div>
         <div class="psearch-wrap">
           <svg class="psearch-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input class="psearch-inp" id="psearch" placeholder="장소 이름으로 찾기... (전체 3.4만개 검색)" oninput="onSearchInput()" onkeydown="if(event.key==='Enter'){clearTimeout(searchTimer);fetchSearchResults(this.value.trim());}"/>
+          <input class="psearch-inp" id="psearch" placeholder="장소 이름으로 찾기... (전체 3.4만개 검색)" oninput="onSearchInput()" onkeydown="onSearchKeydown(event)" autocomplete="off"/>
+          <button class="psearch-clear" id="psearch-clear" onclick="clearSearch()" style="display:none" aria-label="검색어 지우기">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div id="suggest-drop" class="suggest-drop"></div>
         </div>
         <div id="recent-searches" class="recent-wrap" style="display:none"></div>
         <div class="cat-pills" id="cat-pills"></div>
@@ -843,6 +996,10 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
           <div class="sort-btns">
             <button class="sort-btn active" data-sort="pop" onclick="setSort('pop')">인기순</button>
             <button class="sort-btn" data-sort="name" onclick="setSort('name')">이름순</button>
+            <button class="sort-btn view-toggle" id="view-toggle" onclick="toggleView()" title="그리드/리스트 전환">
+              <svg id="view-icon-grid" viewBox="0 0 16 16" fill="currentColor" width="11" height="11" style="display:none"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+              <svg id="view-icon-list" viewBox="0 0 16 16" fill="currentColor" width="11" height="11"><rect x="1" y="2" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="12" width="14" height="2" rx="1"/></svg>
+            </button>
           </div>
         </label>
       </div>
@@ -893,9 +1050,9 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
           <div class="footer-logo-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white"/><circle cx="12" cy="9" r="2.5" fill="rgba(255,255,255,.4)"/></svg>
         </div>
-          <span class="footer-logo-name">가볼까</span>
+          <span class="footer-logo-name">Qtrip</span>
         </div>
-        <p class="footer-desc">여행 계획의 실행 가능성과 동선을<br/>데이터로 분석하는 무료 서비스입니다.<br/>회원가입 없이 누구나 이용할 수 있어요.</p>
+        <p class="footer-desc">여행 계획의 실행 가능성과 동선을<br/>데이터로 분석하는 서비스입니다.</p>
       </div>
       <div>
         <div class="footer-col-title">서비스 안내</div>
@@ -903,21 +1060,20 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
           <li><button onclick="openPrivacy()">개인정보처리방침</button></li>
           <li><button onclick="openTerms()">이용약관</button></li>
           <li><button onclick="openLicense()">오픈소스 라이선스</button></li>
-          <li><a href="mailto:contact@gabola.kr">문의하기</a></li>
+          <li><a href="mailto:rlaehdrb2458@naver.com">문의하기</a></li>
         </ul>
       </div>
       <div>
-        <div class="footer-col-title">데이터 출처</div>
+        <div class="footer-col-title">데이터</div>
         <div class="footer-data-sources">
-          <p><strong>한국관광공사 TourAPI 4.0</strong><br/>34,000여 개 관광·문화시설·음식점 데이터</p>
-          <p><strong>무장애 관광정보</strong><br/>한국관광공사 무장애 여행지 1,799건</p>
-          <p><strong>지도 서비스</strong><br/>OpenStreetMap Contributors</p>
+          <p><strong>관광지 데이터</strong><br/>전국 34,000여 개 관광·문화·음식점</p>
+          <p><strong>무장애 여행지</strong><br/>접근성 정보 포함 1,800여 곳</p>
+          <p><strong>지도</strong><br/>OpenStreetMap Contributors</p>
         </div>
       </div>
     </div>
     <div class="footer-bottom">
-      <div class="footer-copy">© 2026 가볼까(Gabola). 본 서비스는 비상업적 공모전 출품작입니다. 관광 데이터는 한국관광공사 TourAPI를 통해 제공됩니다.</div>
-      <div class="footer-badge">2026 관광데이터 활용 공모전</div>
+      <div class="footer-copy">© 2026 Qtrip. All rights reserved.</div>
     </div>
   </div>
 </footer>
@@ -933,7 +1089,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
       <button class="legal-close" onclick="closeLegal('privacy')" aria-label="닫기">×</button>
     </div>
     <div class="legal-body">
-      <div class="highlight-box">가볼까는 회원가입·로그인·결제 기능이 없으며, 사용자의 개인정보를 서버에 저장하지 않습니다.</div>
+      <div class="highlight-box">Qtrip은 사용자의 개인정보를 서버에 저장하지 않습니다.</div>
       <h3>제1조 개인정보 수집 항목 및 방법</h3>
       <table><thead><tr><th>구분</th><th>항목</th><th>저장 위치</th><th>서버 전송</th></tr></thead><tbody>
         <tr><td>즐겨찾기</td><td>찜한 장소명 목록</td><td>기기 LocalStorage</td><td>없음</td></tr>
@@ -946,16 +1102,16 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
       <h3>제3조 개인정보 보유 및 이용 기간</h3>
       <p>서버 접속 로그는 수집일로부터 <strong>30일</strong> 보관 후 자동 삭제됩니다.<br/>기기 내 저장 데이터(LocalStorage)는 브라우저 설정에서 직접 삭제할 수 있습니다.</p>
       <h3>제4조 개인정보의 제3자 제공</h3>
-      <p>가볼까는 수집한 정보를 제3자에게 제공하지 않습니다.</p>
+      <p>Qtrip은 수집한 정보를 제3자에게 제공하지 않습니다.</p>
       <h3>제5조 외부 서비스 연계</h3>
       <table><thead><tr><th>서비스</th><th>목적</th><th>전달 정보</th></tr></thead><tbody>
         <tr><td>OpenStreetMap</td><td>지도 타일 제공</td><td>IP 주소 (타일 접속 시)</td></tr>
-        <tr><td>한국관광공사 TourAPI</td><td>관광지 데이터</td><td>없음 (서버 간 통신)</td></tr>
+        <tr><td>관광지 DB</td><td>관광지 데이터</td><td>없음 (서버 간 통신)</td></tr>
       </tbody></table>
       <h3>제6조 정보주체의 권리</h3>
-      <ul><li>이메일 문의: <strong>contact@gabola.kr</strong></li><li>LocalStorage 삭제: 브라우저 개발자도구 → Application → Local Storage</li></ul>
+      <ul><li>이메일 문의: <strong>rlaehdrb2458@naver.com</strong></li><li>LocalStorage 삭제: 브라우저 개발자도구 → Application → Local Storage</li></ul>
       <h3>제7조 개인정보 보호책임자</h3>
-      <p>책임자: 가볼까 운영팀&nbsp;&nbsp;|&nbsp;&nbsp;이메일: contact@gabola.kr</p>
+      <p>책임자: Qtrip 운영팀&nbsp;&nbsp;|&nbsp;&nbsp;이메일: rlaehdrb2458@naver.com</p>
       <h3>제8조 처리방침 변경</h3>
       <p>법령 또는 서비스 변경에 따라 개정될 수 있으며, 변경 시 서비스 내 공지합니다.</p>
       <div class="legal-date">시행일: 2026년 5월 21일</div>
@@ -972,17 +1128,17 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
     </div>
     <div class="legal-body">
       <h3>제1조 목적</h3>
-      <p>본 약관은 가볼까(이하 "서비스")가 제공하는 여행 계획 검증 서비스의 이용 조건을 규정합니다.</p>
+      <p>본 약관은 Qtrip(이하 "서비스")이 제공하는 여행 계획 검증 서비스의 이용 조건을 규정합니다.</p>
       <h3>제2조 서비스 소개</h3>
-      <p>가볼까는 이용자가 입력한 여행 일정을 분석하여 실행 가능성·동선 효율·혼잡도 등을 검증하는 무료 서비스입니다. 2026 한국관광공사 관광데이터 활용 공모전 출품작으로, 비상업적 목적으로 운영됩니다.</p>
+      <p>Qtrip은 이용자가 입력한 여행 일정을 분석하여 실행 가능성·동선 효율·혼잡도 등을 검증하는 서비스입니다.</p>
       <h3>제3조 서비스 이용</h3>
-      <ul><li>서비스는 별도의 회원가입 없이 무료로 이용 가능합니다.</li><li>서비스 내 AI 검증 결과는 참고용이며, 실제 여행 결과에 법적 책임을 지지 않습니다.</li><li>관광지 운영시간·입장료는 실시간 변동될 수 있으며, 현장과 다를 수 있습니다.</li></ul>
+      <ul><li>서비스 내 검증 결과는 참고용이며, 실제 여행 결과에 대한 법적 책임을 지지 않습니다.</li><li>관광지 운영시간·입장료는 실시간 변동될 수 있으며, 현장과 다를 수 있습니다.</li></ul>
       <h3>제4조 서비스 제한</h3>
       <p>시스템 점검, 서비스 장애, 데이터 제공 기관 API 중단 등의 경우 서비스가 일시 중단될 수 있습니다.</p>
       <h3>제5조 면책 조항</h3>
       <ul><li>AI 검증 결과는 참고용이며 실제 여행 결과에 대한 책임은 이용자에게 있습니다.</li><li>이동시간은 교통 상황에 따라 달라질 수 있습니다.</li></ul>
       <h3>제6조 지식재산권</h3>
-      <p>서비스 UI·알고리즘·코드의 저작권은 가볼까 개발팀에 있습니다. 관광 데이터 저작권은 한국관광공사에 있으며 TourAPI 이용약관을 따릅니다.</p>
+      <p>서비스 UI·알고리즘·코드의 저작권은 Qtrip 개발팀에 있습니다.</p>
       <h3>제7조 준거법</h3>
       <p>본 약관은 대한민국 법령에 따르며, 분쟁 발생 시 서울중앙지방법원을 제1심 관할로 합니다.</p>
       <div class="legal-date">시행일: 2026년 5월 21일</div>
@@ -998,7 +1154,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
       <button class="legal-close" onclick="closeLegal('license')" aria-label="닫기">×</button>
     </div>
     <div class="legal-body">
-      <p>가볼까 서비스는 아래 오픈소스 라이브러리 및 공공 데이터를 사용합니다.</p>
+      <p>Qtrip 서비스는 아래 오픈소스 라이브러리 및 공공 데이터를 사용합니다.</p>
       <table><thead><tr><th>라이브러리</th><th>버전</th><th>라이선스</th><th>용도</th></tr></thead><tbody>
         <tr><td>FastAPI</td><td>0.115+</td><td>MIT</td><td>웹 API 서버</td></tr>
         <tr><td>Leaflet.js</td><td>1.9.4</td><td>BSD-2-Clause</td><td>인터랙티브 지도</td></tr>
@@ -1008,13 +1164,12 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
         <tr><td>httpx</td><td>0.27+</td><td>BSD-3-Clause</td><td>HTTP 클라이언트</td></tr>
         <tr><td>Anthropic SDK</td><td>최신</td><td>MIT</td><td>Claude AI 연동</td></tr>
       </tbody></table>
-      <h3>공공 데이터 라이선스</h3>
-      <table><thead><tr><th>데이터</th><th>제공</th><th>라이선스</th></tr></thead><tbody>
-        <tr><td>TourAPI 관광지 데이터</td><td>한국관광공사</td><td>공공누리 제1유형</td></tr>
-        <tr><td>무장애 관광 정보</td><td>한국관광공사</td><td>공공누리 제1유형</td></tr>
-        <tr><td>지도 타일</td><td>OpenStreetMap Contributors</td><td>ODbL 1.0</td></tr>
+      <h3>데이터 라이선스</h3>
+      <table><thead><tr><th>데이터</th><th>라이선스</th></tr></thead><tbody>
+        <tr><td>관광지 데이터</td><td>공공누리 제1유형</td></tr>
+        <tr><td>무장애 여행 정보</td><td>공공누리 제1유형</td></tr>
+        <tr><td>지도 타일 (OpenStreetMap)</td><td>ODbL 1.0</td></tr>
       </tbody></table>
-      <p>공공누리 제1유형: 출처 표시 조건으로 자유로운 이용 가능 (비상업적 공모전 출품작)</p>
       <div class="legal-date">최종 갱신: 2026년 5월 21일</div>
     </div>
   </div>
@@ -1129,15 +1284,41 @@ var SLABELS = {
   area_intensity:{label:"다양성",   tip:"다양한 카테고리의 장소가 고루 포함됐는지예요"},
 };
 
+/* ─── Region quick-start examples ───────────────────────────────────── */
+var QUICK_EXAMPLES = {
+  "서울":["경복궁","북촌한옥마을","광화문광장"],
+  "제주":["성산일출봉","협재해수욕장","우도"],
+  "부산":["해운대해수욕장","감천문화마을","광안리해수욕장"],
+  "경기":["에버랜드","수원화성","가평"],
+  "강원":["설악산","정동진","강릉"],
+  "경북":["불국사","석굴암","첨성대"],
+  "전남":["여수엑스포해양공원","순천만국가정원","담양죽녹원"],
+  "경남":["통영케이블카","거제씨월드","남해독일마을"],
+  "전국":["경복궁","해운대해수욕장","성산일출봉"],
+};
+function addNameToDay(nm) {
+  days[selDay].push(nm);
+  renderDays(); updateSummary();
+  showToast(nm+" 추가됐어요");
+}
+
 /* ─── Step 1 Init ───────────────────────────────────────────────────── */
-function initS1() {
+var _regionCounts = {};
+
+function renderRegionGrid() {
   var rg = document.getElementById("region-grid");
+  if (!rg) return;
   rg.innerHTML = REGIONS.map(function(r) {
+    var cnt = _regionCounts[r.name] || _regionCounts[r.key] || 0;
+    var cntHtml = cnt > 0
+      ? '<div class="rcard-cnt">'+( cnt >= 1000 ? (Math.round(cnt/100)/10)+'k' : cnt )+'</div>'
+      : '';
     return '<div class="rcard'+(cfg.region===r.key?" sel":"")+'" data-key="'+r.key+'">' +
       '<div class="sel-check">✓</div>' +
       '<div class="rcard-dot" style="background:'+r.color+'">'+esc(r.name.charAt(0))+'</div>' +
       '<div class="rcard-name">'+esc(r.name)+'</div>' +
       '<div class="rcard-desc">'+esc(r.desc)+'</div>' +
+      cntHtml +
     '</div>';
   }).join("");
   rg.querySelectorAll(".rcard").forEach(function(el) {
@@ -1148,6 +1329,16 @@ function initS1() {
       showToast((cfg.region==="전체"?"전국":cfg.region) + " 선택됨");
     });
   });
+}
+
+function initS1() {
+  renderRegionGrid();
+  // 지역별 장소 수 비동기 로드
+  fetch("/api/regions").then(function(r){return r.json();}).then(function(d){
+    d.regions.forEach(function(r){ _regionCounts[r.name] = r.count; });
+    _regionCounts["전체"] = d.regions.reduce(function(a,r){return a+r.count;},0);
+    renderRegionGrid();
+  }).catch(function(){});
 
   var pg = document.getElementById("party-grid");
   pg.innerHTML = PARTY_TYPES.map(function(p) {
@@ -1181,8 +1372,8 @@ function initS1() {
     });
   });
 
-  document.getElementById("date-inp").value = cfg.date;
-  document.getElementById("date-inp").addEventListener("change", function(){cfg.date=this.value;});
+  var ddt = document.getElementById("date-display-text");
+  if (ddt) ddt.textContent = formatCalDisplay(cfg.date);
   document.getElementById("time-inp").value = cfg.startTime;
   document.getElementById("time-inp").addEventListener("change", function(){cfg.startTime=this.value;});
   updateSizeDisplay();
@@ -1228,6 +1419,7 @@ function buildCatPills() {
 var searchTimer = null;
 var isExtendedSearch = false;
 var currentSort = "pop";
+var currentView = "list";
 
 function loadPlaces() {
   fetch("/api/places").then(function(r){return r.json();}).then(function(d) {
@@ -1239,18 +1431,167 @@ function loadPlaces() {
   });
 }
 
+var _suggestIdx = -1;
+
 function onSearchInput() {
   var q = document.getElementById("psearch").value.trim();
+  var clearBtn = document.getElementById("psearch-clear");
+  if (clearBtn) clearBtn.style.display = q ? "flex" : "none";
   clearTimeout(searchTimer);
   if (!q) {
     isExtendedSearch = false;
+    closeSuggest();
     filterPlaces();
     return;
   }
-  // 즉시 로컬 필터 적용 (빠른 응답)
+  showSuggest(q);
   filterPlaces();
-  // 300ms 후 전체 DB 서버 검색
-  searchTimer = setTimeout(function() { fetchSearchResults(q); }, 300);
+  searchTimer = setTimeout(function() { fetchSearchResults(q); }, 350);
+}
+
+function onSearchKeydown(e) {
+  var drop = document.getElementById("suggest-drop");
+  var items = drop ? drop.querySelectorAll(".suggest-item") : [];
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    _suggestIdx = Math.min(_suggestIdx+1, items.length-1);
+    items.forEach(function(el,i){el.classList.toggle("focused",i===_suggestIdx);});
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    _suggestIdx = Math.max(_suggestIdx-1, -1);
+    items.forEach(function(el,i){el.classList.toggle("focused",i===_suggestIdx);});
+  } else if (e.key === "Enter") {
+    if (_suggestIdx >= 0 && items[_suggestIdx]) {
+      var txt = items[_suggestIdx].dataset.name;
+      document.getElementById("psearch").value = txt;
+      closeSuggest(); clearTimeout(searchTimer); fetchSearchResults(txt);
+    } else {
+      clearTimeout(searchTimer); fetchSearchResults(document.getElementById("psearch").value.trim());
+    }
+  } else if (e.key === "Escape") {
+    closeSuggest();
+  }
+}
+
+function showSuggest(q) {
+  var drop = document.getElementById("suggest-drop");
+  if (!drop) return;
+  var ql = q.toLowerCase();
+  var matches = allPlaces.filter(function(p){
+    return p.name.toLowerCase().includes(ql);
+  }).slice(0, 8);
+  if (!matches.length) { closeSuggest(); return; }
+  var re = new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+')', "gi");
+  drop.innerHTML = matches.map(function(p, i) {
+    var highlighted = p.name.replace(re, "<mark>$1</mark>");
+    var cat = CAT[p.category_code];
+    return '<div class="suggest-item" data-name="'+esc(p.name)+'" data-idx="'+i+'" onclick="pickSuggest(this)">' +
+      highlighted +
+      (cat ? '<span class="suggest-cat">'+cat.label+'</span>' : '') +
+    '</div>';
+  }).join("");
+  _suggestIdx = -1;
+  drop.classList.add("open");
+}
+
+function pickSuggest(el) {
+  var name = el.dataset.name;
+  document.getElementById("psearch").value = name;
+  closeSuggest();
+  clearTimeout(searchTimer);
+  fetchSearchResults(name);
+}
+
+function closeSuggest() {
+  var drop = document.getElementById("suggest-drop");
+  if (drop) { drop.classList.remove("open"); drop.innerHTML = ""; }
+  _suggestIdx = -1;
+}
+
+function clearSearch() {
+  var inp = document.getElementById("psearch");
+  inp.value = "";
+  var clearBtn = document.getElementById("psearch-clear");
+  if (clearBtn) clearBtn.style.display = "none";
+  closeSuggest();
+  isExtendedSearch = false;
+  filterPlaces();
+  inp.focus();
+}
+
+document.addEventListener("click", function(e) {
+  if (!e.target.closest(".psearch-wrap")) closeSuggest();
+  if (_calOpen && !e.target.closest(".cal-wrap")) closeCalendar();
+});
+
+/* ─── Custom Calendar ────────────────────────────────────────────────── */
+var _calOpen = false;
+var _calYear = 2026, _calMonth = 6;
+
+function formatCalDisplay(dateStr) {
+  var parts = dateStr.split("-");
+  var y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+  var DOW = ["일","월","화","수","목","금","토"];
+  var dow = new Date(y, m-1, d).getDay();
+  return y+"년 "+m+"월 "+d+"일 ("+DOW[dow]+")";
+}
+
+function toggleCalendar(e) {
+  if (e) e.stopPropagation();
+  _calOpen = !_calOpen;
+  if (_calOpen) {
+    var parts = cfg.date.split("-");
+    _calYear = parseInt(parts[0]); _calMonth = parseInt(parts[1]);
+    renderCalendar();
+    document.getElementById("cal-popup").style.display = "block";
+  } else {
+    document.getElementById("cal-popup").style.display = "none";
+  }
+}
+
+function closeCalendar() {
+  _calOpen = false;
+  var p = document.getElementById("cal-popup");
+  if (p) p.style.display = "none";
+}
+
+function moveCalMonth(delta) {
+  _calMonth += delta;
+  if (_calMonth < 1) { _calMonth = 12; _calYear--; }
+  if (_calMonth > 12) { _calMonth = 1; _calYear++; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  var lbl = document.getElementById("cal-month-label");
+  if (lbl) lbl.textContent = _calYear+"년 "+_calMonth+"월";
+  var firstDow = new Date(_calYear, _calMonth-1, 1).getDay();
+  var lastDay = new Date(_calYear, _calMonth, 0).getDate();
+  var today = new Date();
+  var todayStr = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  var selStr = cfg.date;
+  var html = "";
+  for (var i = 0; i < firstDow; i++) html += '<div class="cal-day cal-empty"></div>';
+  for (var d = 1; d <= lastDay; d++) {
+    var ms = String(_calMonth).padStart(2,"0"), ds2 = String(d).padStart(2,"0");
+    var dstr = _calYear+"-"+ms+"-"+ds2;
+    var dow = new Date(_calYear, _calMonth-1, d).getDay();
+    var cls = "cal-day";
+    if (dow===0) cls += " cal-sun"; else if (dow===6) cls += " cal-sat";
+    if (dstr===todayStr) cls += " cal-today";
+    if (dstr===selStr) cls += " cal-sel";
+    html += '<div class="'+cls+'" onclick="selectCalDay('+d+');event.stopPropagation()">'+d+'</div>';
+  }
+  var grid = document.getElementById("cal-grid");
+  if (grid) grid.innerHTML = html;
+}
+
+function selectCalDay(d) {
+  var ms = String(_calMonth).padStart(2,"0"), ds2 = String(d).padStart(2,"0");
+  cfg.date = _calYear+"-"+ms+"-"+ds2;
+  var el = document.getElementById("date-display-text");
+  if (el) el.textContent = formatCalDisplay(cfg.date);
+  closeCalendar();
 }
 
 function fetchSearchResults(q) {
@@ -1328,9 +1669,17 @@ function filterPlaces() {
   renderPlaceList(false);
 }
 
+function toggleView() {
+  currentView = currentView === "list" ? "grid" : "list";
+  var wrap = document.getElementById("plist");
+  wrap.classList.toggle("grid-view", currentView === "grid");
+  document.getElementById("view-icon-grid").style.display = currentView === "grid" ? "none" : "block";
+  document.getElementById("view-icon-list").style.display = currentView === "grid" ? "block" : "none";
+}
+
 function setSort(s) {
   currentSort = s;
-  document.querySelectorAll(".sort-btn").forEach(function(b){b.classList.toggle("active", b.dataset.sort===s);});
+  document.querySelectorAll(".sort-btn:not(.view-toggle)").forEach(function(b){b.classList.toggle("active", b.dataset.sort===s);});
   if (activeCategory === "fav") {
     filteredCache = filteredCache.slice().sort(function(a,b){return s==="name"?a.name.localeCompare(b.name,"ko"):0;});
     renderPlaceList(isExtendedSearch);
@@ -1439,8 +1788,10 @@ document.getElementById("plist").addEventListener("click", function(e) {
 
 /* ─── Builder ───────────────────────────────────────────────────────── */
 function renderDayTabs() {
-  document.getElementById("day-tabs").innerHTML = days.map(function(_,i){
-    return '<button class="day-tab'+(i===selDay?" active":"")+'" data-day="'+i+'">Day '+(i+1)+'</button>';
+  document.getElementById("day-tabs").innerHTML = days.map(function(d,i){
+    var cnt = d.filter(function(p){return p.trim();}).length;
+    var badge = cnt > 0 ? '<span class="tab-cnt">'+cnt+'</span>' : '';
+    return '<button class="day-tab'+(i===selDay?" active":"")+'" data-day="'+i+'">Day '+(i+1)+badge+'</button>';
   }).join("");
 }
 document.getElementById("day-tabs").addEventListener("click", function(e) {
@@ -1456,10 +1807,20 @@ function renderDays() {
   var filled = places.filter(function(p){return p.trim();});
   var html = '<div class="day-place-header"><h3>Day '+(selDay+1)+' 일정</h3><span class="place-count-badge">'+filled.length+'곳</span></div>';
   if (!places.length) {
-    html += '<div class="empty-day"><div class="empty-day-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></div><p style="font-size:.83rem;line-height:1.65">왼쪽에서 장소를 클릭하거나<br/>직접 이름을 입력해보세요</p></div>';
+    var exKey = cfg.region === "전체" ? "전국" : (QUICK_EXAMPLES[cfg.region] ? cfg.region : "전국");
+    var examples = QUICK_EXAMPLES[exKey] || QUICK_EXAMPLES["전국"];
+    var chips = examples.map(function(nm){
+      return '<button class="eds-chip" onclick="addNameToDay(\''+nm.replace(/'/g,"\\'")+'\')">' + esc(nm) + '</button>';
+    }).join("");
+    html += '<div class="empty-day"><div class="empty-day-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="opacity:.3"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></div>'+
+      '<p style="font-size:.83rem;line-height:1.65;color:var(--n500)">왼쪽에서 장소를 클릭하거나<br/>직접 이름을 입력해보세요</p>'+
+      (chips ? '<div class="eds-chips">'+chips+'</div>' : '') +
+    '</div>';
   } else {
     places.forEach(function(name, pi) {
-      html += '<div class="place-slot"><span class="slot-num">'+(pi+1)+'</span>' +
+      html += '<div class="place-slot" draggable="true" data-pi="'+pi+'">' +
+        '<div class="slot-drag" aria-hidden="true"><span></span><span></span><span></span></div>' +
+        '<span class="slot-num">'+(pi+1)+'</span>' +
         '<input class="slot-inp" type="text" value="'+esc(name)+'" placeholder="장소 이름..." data-day="'+selDay+'" data-pi="'+pi+'"/>' +
         '<button class="slot-rm" data-day="'+selDay+'" data-pi="'+pi+'" title="삭제">×</button></div>';
     });
@@ -1480,6 +1841,38 @@ function renderDays() {
       renderDays(); updateSummary();
     });
   });
+
+  // ── Drag-and-drop to reorder ────────────────────────────────────────
+  var dragSrcIdx = null;
+  document.getElementById("day-content").querySelectorAll(".place-slot[draggable]").forEach(function(el) {
+    el.addEventListener("dragstart", function(e) {
+      dragSrcIdx = parseInt(this.dataset.pi);
+      this.classList.add("drag-src");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    el.addEventListener("dragend", function() {
+      this.classList.remove("drag-src");
+      document.getElementById("day-content").querySelectorAll(".place-slot").forEach(function(s){ s.classList.remove("drag-over"); });
+    });
+    el.addEventListener("dragover", function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      document.getElementById("day-content").querySelectorAll(".place-slot").forEach(function(s){ s.classList.remove("drag-over"); });
+      this.classList.add("drag-over");
+    });
+    el.addEventListener("dragleave", function() { this.classList.remove("drag-over"); });
+    el.addEventListener("drop", function(e) {
+      e.preventDefault();
+      this.classList.remove("drag-over");
+      var destIdx = parseInt(this.dataset.pi);
+      if (dragSrcIdx === null || dragSrcIdx === destIdx) { dragSrcIdx = null; return; }
+      var moved = days[selDay].splice(dragSrcIdx, 1)[0];
+      days[selDay].splice(destIdx, 0, moved);
+      dragSrcIdx = null;
+      renderDays(); updateSummary();
+      showToast("순서가 바뀌었어요");
+    });
+  });
 }
 
 function addPlace() {
@@ -1494,12 +1887,40 @@ function removeDay() {
   if (days.length<=1){showToast("최소 1일은 있어야 해요");return;}
   days.splice(selDay,1); selDay=Math.min(selDay,days.length-1); renderDays(); updateSummary();
 }
+function savePlan() {
+  try {
+    localStorage.setItem("qtrip-plan", JSON.stringify({ days: days, cfg: cfg }));
+  } catch(_) {}
+}
+
+function loadSavedPlan() {
+  try {
+    var raw = localStorage.getItem("qtrip-plan");
+    if (!raw) return false;
+    var saved = JSON.parse(raw);
+    if (saved.days && Array.isArray(saved.days) && saved.days.length) {
+      days = saved.days;
+      if (saved.cfg) {
+        cfg.region = saved.cfg.region || cfg.region;
+        cfg.date = saved.cfg.date || cfg.date;
+        cfg.startTime = saved.cfg.startTime || cfg.startTime;
+        cfg.partyType = saved.cfg.partyType || cfg.partyType;
+        cfg.partySize = saved.cfg.partySize || cfg.partySize;
+        cfg.travelType = saved.cfg.travelType || cfg.travelType;
+      }
+      return true;
+    }
+  } catch(_) {}
+  return false;
+}
+
 function updateSummary() {
   var total = days.reduce(function(a,d){return a+d.filter(function(p){return p.trim();}).length;},0);
   document.getElementById("plan-summary").innerHTML =
     '<div class="ps-item"><strong>'+days.length+'일</strong> 여행</div>'+
     '<div class="ps-item"><strong>'+total+'곳</strong> 방문 예정</div>'+
     '<div class="ps-item"><strong>'+cfg.partyType+'</strong> '+cfg.partySize+'명</div>';
+  savePlan();
 }
 
 /* ─── Step nav ──────────────────────────────────────────────────────── */
@@ -1533,7 +1954,7 @@ async function runValidate() {
   if (fd.every(function(d){return !d.length;})) {showToast("장소를 하나 이상 입력해주세요!");return;}
 
   var payload = {
-    days: fd.map(function(places){return {places:places.map(function(n){return {name:n};});};}),
+    days: fd.map(function(places){return {places:places.map(function(n){return {name:n};})};}),
     party_size:cfg.partySize, party_type:cfg.partyType,
     date:cfg.date, start_time:cfg.startTime, travel_type:cfg.travelType||null
   };
@@ -1576,9 +1997,9 @@ function renderResult(d) {
   var html = "";
 
   // Score hero
-  html += '<div class="score-card">' +
+  html += '<div class="score-card sc-'+scoreClass+'">' +
     '<div><span class="score-badge '+badgeClass+'">'+verdict+'</span></div>' +
-    '<div class="score-num '+scoreClass+'">'+s+'<span class="score-denom">/100</span></div>' +
+    '<div class="score-num '+scoreClass+'" id="score-num-el">0<span class="score-denom">/100</span></div>' +
     '<div class="score-label">종합 여행 계획 점수</div>' +
     '<div class="score-desc">'+esc(scoreDesc(s,d.passed))+'</div>' +
     '</div>';
@@ -1633,7 +2054,7 @@ function renderResult(d) {
       '<div class="rel-icon">'+relIcon+'</div>'+
       '<div class="rel-body">'+
         '<div class="rel-title">데이터 정확도 — '+rel+'점</div>'+
-        '<div class="rel-bar-wrap"><div class="rel-bar-fill" style="width:'+rel+'%;background:'+rc+'"></div></div>'+
+        '<div class="rel-bar-wrap"><div class="rel-bar-fill" data-w="'+rel+'" style="width:0%;background:'+rc+'"></div></div>'+
         '<div class="rel-desc">'+esc(relMsg)+'</div>'+
       '</div></div>';
   }
@@ -1650,7 +2071,7 @@ function renderResult(d) {
       html+='<div class="scard-item">'+
         '<div class="sv" style="color:'+cc+'">'+pct+'<span style="font-size:.7rem">%</span></div>'+
         '<div class="sk"><span class="tip" data-tip="'+esc(lbl.tip)+'">'+esc(lbl.label)+'</span></div>'+
-        '<div class="sbw"><div class="sbf" style="width:'+pct+'%;background:'+cc+'"></div></div>'+
+        '<div class="sbw"><div class="sbf" data-w="'+pct+'" style="width:0%;background:'+cc+'"></div></div>'+
       '</div>';
     });
     html+='</div></div></div>';
@@ -1820,9 +2241,35 @@ function renderResult(d) {
   '</div>';
 
   document.getElementById("result-content").innerHTML = html;
+  requestAnimationFrame(function(){ animateScore(s); });
+  // Animate progress bars from 0 → target (CSS transition)
+  setTimeout(function() {
+    document.querySelectorAll(".sbf[data-w]").forEach(function(el) {
+      el.style.width = (el.dataset.w || "0") + "%";
+    });
+    // Reliability bar
+    document.querySelectorAll(".rel-bar-fill[data-w]").forEach(function(el) {
+      el.style.width = (el.dataset.w || "0") + "%";
+    });
+  }, 60);
   if(d.scores) requestAnimationFrame(function(){drawRadar(d.scores);});
   var mapPoisFinal = (d.poi_info||[]).filter(function(p){return p.lat&&p.lng&&p.lat!==37.5665;});
   if (mapPoisFinal.length) requestAnimationFrame(function(){initMap(mapPoisFinal, d.optimal_route);});
+}
+
+function animateScore(target) {
+  var el = document.getElementById("score-num-el");
+  if (!el) return;
+  var duration = 900, startTime = null;
+  function step(ts) {
+    if (!startTime) startTime = ts;
+    var progress = Math.min((ts - startTime) / duration, 1);
+    var ease = 1 - Math.pow(1 - progress, 3);
+    var cur = Math.round(ease * target);
+    el.innerHTML = cur + '<span class="score-denom">/100</span>';
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 
 function toggleEx(i){document.getElementById("ex"+i).classList.toggle("open");}
@@ -1837,41 +2284,58 @@ function drawRadar(sc){
   var keys=["efficiency","feasibility","purpose_fit","flow","area_intensity"];
   var labels=["이동효율","실현가능","테마적합","동선흐름","다양성"];
   var vals=keys.map(function(k){return sc[k]||0;});
-  var n=keys.length,step=Math.PI*2/n,start=-Math.PI/2;
-  ctx.clearRect(0,0,W,H);
-  for(var ring=1;ring<=5;ring++){
+  var n=keys.length,stepA=Math.PI*2/n,start=-Math.PI/2;
+  var duration=680, startTime=null;
+
+  function frame(ts) {
+    if (!startTime) startTime=ts;
+    var progress=Math.min((ts-startTime)/duration,1);
+    var ease=1-Math.pow(1-progress,3);
+    ctx.clearRect(0,0,W,H);
+
+    // grid rings
+    for(var ring=1;ring<=5;ring++){
+      ctx.beginPath();
+      for(var i=0;i<n;i++){
+        var a=start+stepA*i,x=cx+Math.cos(a)*R*(ring/5),y=cy+Math.sin(a)*R*(ring/5);
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle=ring===5?"#CCCCC5":"#E5E5E0";ctx.lineWidth=ring===5?1.5:1;ctx.stroke();
+    }
+    // spokes
+    for(var i=0;i<n;i++){
+      ctx.beginPath();ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+Math.cos(start+stepA*i)*R,cy+Math.sin(start+stepA*i)*R);
+      ctx.strokeStyle="#E5E5E0";ctx.lineWidth=1;ctx.stroke();
+    }
+    // data polygon (animated)
     ctx.beginPath();
     for(var i=0;i<n;i++){
-      var a=start+step*i,x=cx+Math.cos(a)*R*(ring/5),y=cy+Math.sin(a)*R*(ring/5);
+      var a=start+stepA*i,v=vals[i]*ease;
+      var x=cx+Math.cos(a)*R*v,y=cy+Math.sin(a)*R*v;
       i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
     }
     ctx.closePath();
-    ctx.strokeStyle=ring===5?"#CCCCC5":"#E5E5E0";ctx.lineWidth=ring===5?1.5:1;ctx.stroke();
+    ctx.fillStyle="rgba(255,87,51,.14)";ctx.fill();
+    ctx.strokeStyle="#FF5733";ctx.lineWidth=2;ctx.stroke();
+    // dots
+    for(var i=0;i<n;i++){
+      var a=start+stepA*i,v=vals[i]*ease;
+      var x=cx+Math.cos(a)*R*v,y=cy+Math.sin(a)*R*v;
+      ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);
+      ctx.fillStyle="#FF5733";ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.stroke();
+    }
+    // labels
+    ctx.font="bold 9.5px 'Apple SD Gothic Neo',system-ui";
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    for(var i=0;i<n;i++){
+      ctx.fillStyle="#6B6B60";
+      ctx.fillText(labels[i],cx+Math.cos(start+stepA*i)*(R+17),cy+Math.sin(start+stepA*i)*(R+17));
+    }
+    if(progress<1) requestAnimationFrame(frame);
   }
-  for(var i=0;i<n;i++){
-    ctx.beginPath();ctx.moveTo(cx,cy);
-    ctx.lineTo(cx+Math.cos(start+step*i)*R,cy+Math.sin(start+step*i)*R);
-    ctx.strokeStyle="#E5E5E0";ctx.lineWidth=1;ctx.stroke();
-  }
-  ctx.beginPath();
-  for(var i=0;i<n;i++){
-    var a=start+step*i,x=cx+Math.cos(a)*R*vals[i],y=cy+Math.sin(a)*R*vals[i];
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  }
-  ctx.closePath();
-  ctx.fillStyle="rgba(255,87,51,.13)";ctx.fill();
-  ctx.strokeStyle="#FF5733";ctx.lineWidth=2;ctx.stroke();
-  for(var i=0;i<n;i++){
-    var a=start+step*i,x=cx+Math.cos(a)*R*vals[i],y=cy+Math.sin(a)*R*vals[i];
-    ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);
-    ctx.fillStyle="#FF5733";ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.stroke();
-  }
-  ctx.font="bold 9.5px 'Apple SD Gothic Neo',system-ui";
-  ctx.textAlign="center";ctx.textBaseline="middle";
-  for(var i=0;i<n;i++){
-    ctx.fillStyle="#6B6B60";
-    ctx.fillText(labels[i],cx+Math.cos(start+step*i)*(R+17),cy+Math.sin(start+step*i)*(R+17));
-  }
+  requestAnimationFrame(frame);
 }
 
 /* ─── Tooltip ───────────────────────────────────────────────────────── */
@@ -1906,10 +2370,10 @@ function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 var _favs = null;
 function loadFavorites() {
   if (_favs) return _favs;
-  try { _favs = JSON.parse(localStorage.getItem("gabola-favs")||"[]"); } catch(_){ _favs=[]; }
+  try { _favs = JSON.parse(localStorage.getItem("qtrip-favs")||"[]"); } catch(_){ _favs=[]; }
   return _favs;
 }
-function saveFavorites() { try{localStorage.setItem("gabola-favs", JSON.stringify(_favs));}catch(_){} }
+function saveFavorites() { try{localStorage.setItem("qtrip-favs", JSON.stringify(_favs));}catch(_){} }
 function isFavorite(name) { return loadFavorites().indexOf(name) !== -1; }
 function toggleFavorite(name) {
   loadFavorites();
@@ -1920,13 +2384,13 @@ function toggleFavorite(name) {
 
 /* ─── Recent searches ───────────────────────────────────────────────── */
 function loadRecent() {
-  try { return JSON.parse(localStorage.getItem("gabola-recent")||"[]"); } catch(_){ return []; }
+  try { return JSON.parse(localStorage.getItem("qtrip-recent")||"[]"); } catch(_){ return []; }
 }
 function saveRecent(q) {
   var list = loadRecent().filter(function(s){return s!==q;});
   list.unshift(q);
   list = list.slice(0,6);
-  try { localStorage.setItem("gabola-recent", JSON.stringify(list)); } catch(_){}
+  try { localStorage.setItem("qtrip-recent", JSON.stringify(list)); } catch(_){}
   renderRecentSearches();
 }
 function renderRecentSearches() {
@@ -1949,7 +2413,7 @@ function doRecentClick(q) {
 }
 function doRecentRemove(q) {
   var list = loadRecent().filter(function(s){return s!==q;});
-  try{localStorage.setItem("gabola-recent",JSON.stringify(list));}catch(_){}
+  try{localStorage.setItem("qtrip-recent",JSON.stringify(list));}catch(_){}
   renderRecentSearches();
 }
 
@@ -2013,13 +2477,13 @@ function toggleDetailFav() {
   if (!_detailPlace) return;
   toggleFavorite(_detailPlace.name);
   document.getElementById("dm-fav-btn").textContent = isFavorite(_detailPlace.name) ? "찜됨" : "찜하기";
-  showToast(isFavorite(_detailPlace.name) ? "⭐ 찜 목록에 추가됨" : "☆ 찜 해제됨");
+  showToast(isFavorite(_detailPlace.name) ? "찜 목록에 추가됐어요" : "찜 해제됐어요");
 }
 
 /* ─── Export plan ────────────────────────────────────────────────────── */
 function exportPlan() {
   var d = lastResult;
-  var lines = ["여행 계획 — 가볼까", ""];
+  var lines = ["여행 계획 — Qtrip", ""];
   lines.push("지역: "+(cfg.region==="전체"?"전국":cfg.region)+" | 날짜: "+cfg.date+" "+cfg.startTime);
   lines.push(cfg.partyType+" "+cfg.partySize+"명");
   lines.push("");
@@ -2033,7 +2497,7 @@ function exportPlan() {
   if (d) {
     lines.push("검증 결과: "+(d.final_score)+"점 / "+(d.passed?"통과":"재검토 필요"));
   }
-  lines.push("— 가볼까(gabola) 여행 계획 검증기 —");
+  lines.push("— Qtrip 여행 계획 검증기 —");
   var text = lines.join("\n");
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(function(){ showToast("일정이 클립보드에 복사됐어요"); });
@@ -2101,15 +2565,24 @@ function initMap(pois, optimalRoute) {
     maxZoom: 18,
   }).addTo(_leafletMap);
 
-  var CAT_COLORS = {"12":"#3B7AF5","14":"#0EA5C8","15":"#E91E8C",
-    "28":"#00BFA5","32":"#F5A623","38":"#9C3CF5","39":"#FF5733"};
+  var DAY_COLORS = ["#FF5733","#3B7AF5","#00BFA5","#E91E8C","#F5A623","#8B5CF6","#27AE60"];
 
-  // 마커 + 번호
+  // 마커 + 번호 (Day별 색상 구분)
+  var dayBoundaries = [];
+  if (optimalRoute && optimalRoute.length) {
+    var acc = 0;
+    optimalRoute.forEach(function(day) {
+      dayBoundaries.push(acc);
+      acc += (day && day.user_order ? day.user_order.length : 0);
+    });
+  }
   pois.forEach(function(p, i) {
-    var catColor = CAT_COLORS[p.source==="catalog"?"12":"12"] || "#FF5733";
+    var dayIdx = 0;
+    for (var d = dayBoundaries.length-1; d >= 0; d--) { if (i >= dayBoundaries[d]) { dayIdx = d; break; } }
+    var color = DAY_COLORS[dayIdx % DAY_COLORS.length];
     var icon = L.divIcon({
       className: "",
-      html: '<div style="background:#FF5733;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+(i+1)+'</div>',
+      html: '<div style="background:'+color+';color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.28)">'+(i+1)+'</div>',
       iconSize: [28, 28],
       iconAnchor: [14, 14],
     });
@@ -2146,13 +2619,13 @@ function initMap(pois, optimalRoute) {
 
 /* ─── Cookie consent ─────────────────────────────────────────────────── */
 function acceptCookie() {
-  try { localStorage.setItem("gabola-cookie", "1"); } catch(_){}
+  try { localStorage.setItem("qtrip-cookie", "1"); } catch(_){}
   var bar = document.getElementById("cookie-bar");
   if (bar) { bar.style.transition="transform .3s ease"; bar.style.transform="translateY(100%)"; }
 }
 (function initCookie() {
   var accepted = false;
-  try { accepted = localStorage.getItem("gabola-cookie") === "1"; } catch(_){}
+  try { accepted = localStorage.getItem("qtrip-cookie") === "1"; } catch(_){}
   if (!accepted) {
     setTimeout(function() {
       var bar = document.getElementById("cookie-bar");
@@ -2206,13 +2679,27 @@ function showSkeleton() {
   document.getElementById("pdb-count").textContent = "불러오는 중...";
 }
 
+/* ─── Header scroll shadow ──────────────────────────────────────────── */
+window.addEventListener("scroll", function() {
+  document.querySelector("header").classList.toggle("scrolled", window.scrollY > 8);
+}, {passive:true});
+
 /* ─── Init ──────────────────────────────────────────────────────────── */
+var _hasSaved = loadSavedPlan();
 initS1();
 showSkeleton();
 loadPlaces();
 renderDays();
 updateSummary();
 renderRecentSearches();
+if (_hasSaved) {
+  var savedTotal = days.reduce(function(a,d){return a+d.filter(function(p){return p.trim();}).length;},0);
+  if (savedTotal > 0) {
+    setTimeout(function(){
+      showToast("이전에 저장된 일정 "+savedTotal+"곳이 복원됐어요");
+    }, 1200);
+  }
+}
 </script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </body>
