@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Qtrip — 내 여행 계획, 솔직하게 검증해드려요</title>
+<title>Qtrip - 내 여행 계획, 솔직하게 검증해드립니다</title>
 <meta name="description" content="내 여행 일정이 실제로 가능한지 데이터로 분석해드리는 서비스. 동선·운영시간·이동시간을 종합적으로 검증해드려요."/>
 <meta name="keywords" content="여행 계획, 여행 일정 검증, 국내여행, 여행 앱, 관광지, 동선 최적화, Qtrip"/>
 <meta name="author" content="Qtrip"/>
 <meta name="robots" content="index, follow"/>
 <meta name="theme-color" content="#FF5733"/>
 <meta property="og:type" content="website"/>
-<meta property="og:title" content="Qtrip — 내 여행 계획 솔직 검증"/>
+<meta property="og:title" content="Qtrip - 내 여행 계획 솔직 검증"/>
 <meta property="og:description" content="여행 일정이 실제로 되는지, 동선이 꼬이지는 않는지 솔직하게 알려드려요."/>
 <meta property="og:locale" content="ko_KR"/>
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Qtrip — 내 여행 계획 솔직 검증"/>
+<meta name="twitter:title" content="Qtrip - 내 여행 계획 솔직 검증"/>
 <meta name="twitter:description" content="AI 기반 여행 계획 검증. 동선·운영시간·이동시간을 종합 분석해드려요."/>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23FF5733'/><path d='M50 15C36 15 25 26 25 40c0 20 25 45 25 45s25-25 25-45c0-14-11-25-25-25zm0 34a9 9 0 1 1 0-18 9 9 0 0 1 0 18z' fill='white'/></svg>"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -778,7 +778,41 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
 .score-card.sc-warn::before{background:linear-gradient(90deg,var(--stay),#F5A623)}
 .score-card.sc-fail::before{background:linear-gradient(90deg,var(--pri),#FF9A50)}
 
-/* ━━━ Score detail bars — animate from 0 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━ Builder context strip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.builder-ctx{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;
+  padding:.42rem .9rem;background:var(--n50);border-bottom:1px solid var(--n100);
+  font-size:.69rem;color:var(--n500);font-weight:600}
+.builder-ctx-item{display:flex;align-items:center;gap:.22rem;white-space:nowrap}
+.builder-ctx-sep{color:var(--n300);font-size:.65rem}
+
+/* ━━━ Day load indicator ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.place-count-badge.load-ok{background:#DCFCE7;color:#166534}
+.place-count-badge.load-busy{background:#FEF3C7;color:#92400E}
+.place-count-badge.load-over{background:#FEE2E2;color:#991B1B}
+.day-load-bar{display:flex;gap:3px;margin-top:.42rem;padding:.3rem .5rem;
+  background:var(--n50);border-radius:6px;align-items:center}
+.day-load-seg{height:5px;flex:1;border-radius:3px;background:var(--n200);transition:background .2s}
+.day-load-seg.filled-ok{background:var(--mint)}
+.day-load-seg.filled-busy{background:#F59E0B}
+.day-load-seg.filled-over{background:#EF4444}
+.day-load-label{font-size:.63rem;color:var(--n400);font-weight:600;white-space:nowrap;margin-left:.35rem}
+
+/* ━━━ Place slot time tag ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.slot-time{font-size:.62rem;color:var(--n400);white-space:nowrap;font-weight:600;
+  padding:.04rem .28rem;background:var(--n100);border-radius:4px;flex-shrink:0}
+
+/* ━━━ Builder drag hint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.drag-hint{text-align:center;font-size:.65rem;color:var(--n400);
+  padding:.32rem;letter-spacing:.1px;margin-top:-.1rem;margin-bottom:.1rem}
+
+/* ━━━ Validation readiness strip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.val-ready-strip{display:flex;align-items:center;gap:.38rem;
+  font-size:.72rem;color:var(--mint);font-weight:700;margin-bottom:.45rem;
+  opacity:0;transition:opacity .25s}
+.val-ready-strip.show{opacity:1}
+.val-ready-dot{width:7px;height:7px;border-radius:50%;background:var(--mint);flex-shrink:0}
+
+/* ━━━ Score detail bars ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .sbf{transition:width .82s cubic-bezier(.22,.61,.36,1)}
 .rel-bar-fill{transition:width .7s cubic-bezier(.22,.61,.36,1)}
 
@@ -896,7 +930,7 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
   <div class="s1-hero">
     <div class="s1-hero-inner">
       <div class="s1-eyebrow">여행 계획 검증 서비스</div>
-      <h2>내 여행 일정,<br/>실제로 가능한 건지 확인해볼게요</h2>
+      <h2>내 여행 일정,<br/>실제로 가능한지 검증해드립니다</h2>
       <p>동선이 꼬이지는 않는지, 하루에 너무 많이 넣진 않았는지<br/>데이터로 솔직하게 짚어드려요</p>
       <div class="hero-stats">
         <div class="hstat"><span class="hstat-num" id="stat-poi">34,000+</span><span class="hstat-label">등록 장소</span></div>
@@ -1015,14 +1049,18 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
           <div class="builder-head-title">내 여행 일정</div>
           <div class="day-mgmt-row">
             <button class="dmgmt-btn" onclick="addDay()">+ 날 추가</button>
-            <button class="dmgmt-btn rm" onclick="removeDay()">− 날 빼기</button>
+            <button class="dmgmt-btn rm" onclick="removeDay()">- 날 빼기</button>
           </div>
         </div>
         <div class="day-tabs" id="day-tabs"></div>
       </div>
+      <div class="builder-ctx" id="builder-ctx"></div>
       <div class="builder-content" id="day-content"></div>
       <div class="builder-foot">
         <div class="plan-summary" id="plan-summary"></div>
+        <div class="val-ready-strip" id="val-ready-strip">
+          <div class="val-ready-dot"></div>검증 준비 완료
+        </div>
         <button class="val-btn" id="val-btn" onclick="runValidate()">이 일정 검증하기</button>
       </div>
     </div>
@@ -1158,7 +1196,7 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
       <table><thead><tr><th>라이브러리</th><th>버전</th><th>라이선스</th><th>용도</th></tr></thead><tbody>
         <tr><td>FastAPI</td><td>0.115+</td><td>MIT</td><td>웹 API 서버</td></tr>
         <tr><td>Leaflet.js</td><td>1.9.4</td><td>BSD-2-Clause</td><td>인터랙티브 지도</td></tr>
-        <tr><td>OpenStreetMap</td><td>—</td><td>ODbL 1.0</td><td>지도 타일 데이터</td></tr>
+        <tr><td>OpenStreetMap</td><td>-</td><td>ODbL 1.0</td><td>지도 타일 데이터</td></tr>
         <tr><td>OR-Tools</td><td>9.x</td><td>Apache 2.0</td><td>경로 최적화(VRPTW)</td></tr>
         <tr><td>Pydantic</td><td>2.9+</td><td>MIT</td><td>데이터 검증</td></tr>
         <tr><td>httpx</td><td>0.27+</td><td>BSD-3-Clause</td><td>HTTP 클라이언트</td></tr>
@@ -1405,12 +1443,15 @@ function buildCatPills() {
     pill.classList.add("active");
     visCount = PAGE;
     if (activeCategory === "fav") {
-      filteredCache = allPlaces.filter(function(p){ return isFavorite(p.name); });
-      visCount = PAGE; renderPlaceList(false);
-    } else if (activeCategory === "wellness" || activeCategory === "bf") {
-      fetchCategoryResults(activeCategory);
-    } else {
+      var favObjs = loadFavorites();
+      filteredCache = favObjs;
+      serverTotal = favObjs.length;
+      visCount = PAGE;
+      renderPlaceList(false);
+    } else if (activeCategory === "all") {
       filterPlaces();
+    } else {
+      fetchCategoryResults(activeCategory);
     }
   });
 }
@@ -1767,10 +1808,15 @@ document.getElementById("plist").addEventListener("click", function(e) {
   var act = action ? action.dataset.action : "add";
 
   if (act === "fav") {
-    toggleFavorite(place.name);
+    toggleFavorite(place);
     var btn = e.target.closest(".pi-fav");
     if (btn) btn.classList.toggle("active", isFavorite(place.name));
     showToast(isFavorite(place.name) ? "찜 목록에 추가됐어요" : "찜 해제됐어요");
+    if (activeCategory === "fav") {
+      filteredCache = loadFavorites();
+      serverTotal = filteredCache.length;
+      renderPlaceList(false);
+    }
     return;
   }
   if (act === "detail") {
@@ -1781,7 +1827,7 @@ document.getElementById("plist").addEventListener("click", function(e) {
   if (!place.has_coords) {
     if (!confirm("'"+place.name+"'은(는) 정확한 위치 정보가 없어서\n이동시간 계산이 대략값으로 처리돼요.\n그래도 추가할까요?")) return;
   }
-  days[selDay].push(place.name);
+  days[selDay].push({name:place.name, cat:place.category_code||""});
   renderDays(); updateSummary();
   showToast(place.name+" 추가됐어요");
 });
@@ -1789,7 +1835,7 @@ document.getElementById("plist").addEventListener("click", function(e) {
 /* ─── Builder ───────────────────────────────────────────────────────── */
 function renderDayTabs() {
   document.getElementById("day-tabs").innerHTML = days.map(function(d,i){
-    var cnt = d.filter(function(p){return p.trim();}).length;
+    var cnt = d.filter(function(p){return pname(p).trim();}).length;
     var badge = cnt > 0 ? '<span class="tab-cnt">'+cnt+'</span>' : '';
     return '<button class="day-tab'+(i===selDay?" active":"")+'" data-day="'+i+'">Day '+(i+1)+badge+'</button>';
   }).join("");
@@ -1804,40 +1850,58 @@ document.getElementById("day-tabs").addEventListener("click", function(e) {
 function renderDays() {
   renderDayTabs();
   var places = days[selDay];
-  var filled = places.filter(function(p){return p.trim();});
-  var html = '<div class="day-place-header"><h3>Day '+(selDay+1)+' 일정</h3><span class="place-count-badge">'+filled.length+'곳</span></div>';
+  var filled = places.filter(function(p){return pname(p).trim();});
+  var cnt = filled.length;
+  var loadCls = cnt === 0 ? "" : cnt <= 4 ? "load-ok" : cnt <= 6 ? "load-busy" : "load-over";
+  var loadLabel = cnt === 0 ? "" : cnt <= 4 ? "여유로운 하루" : cnt <= 6 ? "빡빡한 편이에요" : "너무 많아요";
+  var html = '<div class="day-place-header"><h3>Day '+(selDay+1)+' 일정</h3><span class="place-count-badge '+loadCls+'">'+cnt+'곳</span></div>';
+  if (cnt > 0) {
+    var segs = "";
+    for (var si = 0; si < 7; si++) {
+      var segCls = si >= cnt ? "" : cnt <= 4 ? "filled-ok" : cnt <= 6 ? "filled-busy" : "filled-over";
+      segs += '<div class="day-load-seg '+segCls+'"></div>';
+    }
+    html += '<div class="day-load-bar">'+segs+'<span class="day-load-label">'+loadLabel+'</span></div>';
+  }
   if (!places.length) {
-    var exKey = cfg.region === "전체" ? "전국" : (QUICK_EXAMPLES[cfg.region] ? cfg.region : "전국");
-    var examples = QUICK_EXAMPLES[exKey] || QUICK_EXAMPLES["전국"];
-    var chips = examples.map(function(nm){
-      return '<button class="eds-chip" onclick="addNameToDay(\''+nm.replace(/'/g,"\\'")+'\')">' + esc(nm) + '</button>';
-    }).join("");
     html += '<div class="empty-day"><div class="empty-day-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="opacity:.3"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></div>'+
       '<p style="font-size:.83rem;line-height:1.65;color:var(--n500)">왼쪽에서 장소를 클릭하거나<br/>직접 이름을 입력해보세요</p>'+
-      (chips ? '<div class="eds-chips">'+chips+'</div>' : '') +
+      '<p style="font-size:.72rem;color:var(--n400);margin-top:.35rem">하루에 3-5곳이 적당해요</p>'+
     '</div>';
   } else {
-    places.forEach(function(name, pi) {
+    places.forEach(function(item, pi) {
+      var nm = pname(item);
+      var cat = pcat(item);
+      var c = CAT[cat];
+      var numStyle = c ? 'background:'+c.bg+';color:'+c.color : 'background:var(--pri-m);color:var(--pri-d)';
       html += '<div class="place-slot" draggable="true" data-pi="'+pi+'">' +
         '<div class="slot-drag" aria-hidden="true"><span></span><span></span><span></span></div>' +
-        '<span class="slot-num">'+(pi+1)+'</span>' +
-        '<input class="slot-inp" type="text" value="'+esc(name)+'" placeholder="장소 이름..." data-day="'+selDay+'" data-pi="'+pi+'"/>' +
+        '<span class="slot-num" style="'+numStyle+'">'+(pi+1)+'</span>' +
+        '<input class="slot-inp" type="text" value="'+esc(nm)+'" placeholder="장소 이름..." data-day="'+selDay+'" data-pi="'+pi+'" data-cat="'+esc(cat)+'"/>' +
+        (c ? '<span class="slot-cat-dot" style="width:6px;height:6px;border-radius:50%;background:'+c.color+';flex-shrink:0"></span>' : '') +
         '<button class="slot-rm" data-day="'+selDay+'" data-pi="'+pi+'" title="삭제">×</button></div>';
     });
+    if (filled.length >= 2) {
+      html += '<div class="drag-hint">드래그로 순서를 바꿀 수 있어요</div>';
+    }
   }
   html += '<button class="add-slot-btn" onclick="addPlace()">+ 장소 추가</button>';
   document.getElementById("day-content").innerHTML = html;
 
   document.getElementById("day-content").querySelectorAll(".slot-inp").forEach(function(inp) {
     inp.addEventListener("input", function(){
-      days[parseInt(this.dataset.day)][parseInt(this.dataset.pi)] = this.value;
+      var di=parseInt(this.dataset.day), pi2=parseInt(this.dataset.pi);
+      var existing=days[di][pi2];
+      days[di][pi2] = (typeof existing==="object"&&existing!==null)
+        ? {name:this.value, cat:existing.cat||""}
+        : this.value;
       updateSummary();
     });
   });
   document.getElementById("day-content").querySelectorAll(".slot-rm").forEach(function(btn) {
     btn.addEventListener("click", function(){
       var d=parseInt(this.dataset.day), p=parseInt(this.dataset.pi);
-      days[d].length<=1 ? days[d].splice(p,1,"") : days[d].splice(p,1);
+      days[d].length<=1 ? days[d].splice(p,1,{name:"",cat:""}) : days[d].splice(p,1);
       renderDays(); updateSummary();
     });
   });
@@ -1876,12 +1940,12 @@ function renderDays() {
 }
 
 function addPlace() {
-  days[selDay].push(""); renderDays();
+  days[selDay].push({name:"",cat:""}); renderDays();
   var inputs = document.getElementById("day-content").querySelectorAll(".slot-inp");
   if (inputs.length) inputs[inputs.length-1].focus();
 }
 function addDay() {
-  days.push([""]); selDay=days.length-1; renderDays(); updateSummary();
+  days.push([{name:"",cat:""}]); selDay=days.length-1; renderDays(); updateSummary();
 }
 function removeDay() {
   if (days.length<=1){showToast("최소 1일은 있어야 해요");return;}
@@ -1899,7 +1963,11 @@ function loadSavedPlan() {
     if (!raw) return false;
     var saved = JSON.parse(raw);
     if (saved.days && Array.isArray(saved.days) && saved.days.length) {
-      days = saved.days;
+      days = saved.days.map(function(day){
+        return Array.isArray(day) ? day.map(function(p){
+          return typeof p==="string" ? {name:p,cat:""} : p;
+        }) : day;
+      });
       if (saved.cfg) {
         cfg.region = saved.cfg.region || cfg.region;
         cfg.date = saved.cfg.date || cfg.date;
@@ -1915,12 +1983,39 @@ function loadSavedPlan() {
 }
 
 function updateSummary() {
-  var total = days.reduce(function(a,d){return a+d.filter(function(p){return p.trim();}).length;},0);
+  var total = days.reduce(function(a,d){return a+d.filter(function(p){return pname(p).trim();}).length;},0);
+  var avg = days.length ? Math.round(total/days.length*10)/10 : 0;
   document.getElementById("plan-summary").innerHTML =
     '<div class="ps-item"><strong>'+days.length+'일</strong> 여행</div>'+
     '<div class="ps-item"><strong>'+total+'곳</strong> 방문 예정</div>'+
-    '<div class="ps-item"><strong>'+cfg.partyType+'</strong> '+cfg.partySize+'명</div>';
+    '<div class="ps-item"><strong>'+cfg.partyType+'</strong> '+cfg.partySize+'명</div>'+
+    (days.length > 1 ? '<div class="ps-item" style="color:var(--n400)">하루 평균 <strong style="color:var(--n600)">'+avg+'곳</strong></div>' : '');
+  var strip = document.getElementById("val-ready-strip");
+  if (strip) strip.className = "val-ready-strip" + (total > 0 ? " show" : "");
+  updateBuilderCtx();
   savePlan();
+}
+
+function updateBuilderCtx() {
+  var ctx = document.getElementById("builder-ctx");
+  if (!ctx) return;
+  var region = cfg.region === "전체" ? "전국" : cfg.region;
+  var dateStr = cfg.date ? cfg.date.replace(/-/g, ".") : "";
+  var dayLabel = days.length + "박" + (days.length+1) + "일";
+  if (days.length === 1) dayLabel = "당일치기";
+  ctx.innerHTML =
+    '<span class="builder-ctx-item">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>'+
+      region+
+    '</span>'+
+    '<span class="builder-ctx-sep">|</span>'+
+    '<span class="builder-ctx-item">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'+
+      dateStr+
+    '</span>'+
+    '<span class="builder-ctx-sep">|</span>'+
+    '<span class="builder-ctx-item">'+dayLabel+'</span>'+
+    (cfg.startTime ? '<span class="builder-ctx-sep">|</span><span class="builder-ctx-item">출발 '+cfg.startTime+'</span>' : '');
 }
 
 /* ─── Step nav ──────────────────────────────────────────────────────── */
@@ -1948,13 +2043,17 @@ function updateStepBar(n) {
 async function runValidate() {
   document.querySelectorAll(".slot-inp").forEach(function(inp){
     var d=parseInt(inp.dataset.day),p=parseInt(inp.dataset.pi);
-    if(!isNaN(d)&&!isNaN(p)) days[d][p]=inp.value;
+    if(!isNaN(d)&&!isNaN(p)){
+      var existing=days[d][p];
+      days[d][p]=(typeof existing==="object"&&existing!==null)
+        ?{name:inp.value,cat:existing.cat||""}:inp.value;
+    }
   });
-  var fd = days.map(function(d){return d.filter(function(p){return p.trim();});});
+  var fd = days.map(function(d){return d.filter(function(p){return pname(p).trim();});});
   if (fd.every(function(d){return !d.length;})) {showToast("장소를 하나 이상 입력해주세요!");return;}
 
   var payload = {
-    days: fd.map(function(places){return {places:places.map(function(n){return {name:n};})};}),
+    days: fd.map(function(places){return {places:places.map(function(p){return {name:pname(p)};})};}),
     party_size:cfg.partySize, party_type:cfg.partyType,
     date:cfg.date, start_time:cfg.startTime, travel_type:cfg.travelType||null
   };
@@ -2028,7 +2127,7 @@ function renderResult(d) {
       html += '<div class="cong-item" style="flex-direction:column;gap:.3rem">' +
         '<div style="display:flex;align-items:flex-start;gap:.55rem">' +
           '<span class="cong-badge '+cls+'">'+(cw.level==="high"?"성수기":"혼잡")+'</span>' +
-          '<div style="flex:1"><strong>'+esc(cw.poi_name)+'</strong> — '+esc(cw.message)+
+          '<div style="flex:1"><strong>'+esc(cw.poi_name)+'</strong> - '+esc(cw.message)+
           (cw.best_month ? ' <span style="font-size:.72rem;color:var(--n400)">(비수기: '+cw.best_month+'월)</span>':'')+
           '</div>' +
           '<button onclick="renderMonthlyChart(\''+esc(cw.poi_name)+'\',this.closest(\'.cong-item\').querySelector(\'.mc-mount\'),'+travelMonth+')" '+
@@ -2044,16 +2143,16 @@ function renderResult(d) {
   if(d.data_reliability_score!=null){
     var rel=d.data_reliability_score;
     var rc=rel>=70?"#27AE60":rel>=40?"#F5A623":"#FF5733";
-    var relMsg=rel>=70?"위치 정보가 정확해요 — 분석 결과를 믿어도 돼요":
-               rel>=40?"일부 장소의 위치 정보가 대략적이에요 — 결과 참고 시 감안해주세요":
-               "여러 장소의 위치 정보가 불확실해요 — 분석이 덜 정확할 수 있어요";
+    var relMsg=rel>=70?"위치 정보가 정확해요. 분석 결과를 믿어도 돼요.":
+               rel>=40?"일부 장소의 위치 정보가 대략적이에요. 결과 참고 시 감안해주세요.":
+               "여러 장소의 위치 정보가 불확실해요. 분석이 덜 정확할 수 있어요.";
     var relIcon = rel>=70
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M1.5 8.5a13 13 0 0121 0M5 12a10 10 0 0114 0M8.5 15.5a6 6 0 017 0M12 19h.01"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.56 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>';
     html+='<div class="rel-card">'+
       '<div class="rel-icon">'+relIcon+'</div>'+
       '<div class="rel-body">'+
-        '<div class="rel-title">데이터 정확도 — '+rel+'점</div>'+
+        '<div class="rel-title">데이터 정확도 '+rel+'점</div>'+
         '<div class="rel-bar-wrap"><div class="rel-bar-fill" data-w="'+rel+'" style="width:0%;background:'+rc+'"></div></div>'+
         '<div class="rel-desc">'+esc(relMsg)+'</div>'+
       '</div></div>';
@@ -2099,7 +2198,7 @@ function renderResult(d) {
     d.hard_fails.forEach(function(f){
       var info=HLABELS[f.fail_type]||{title:f.fail_type};
       html+='<div class="issue i-hard">'+
-        '<div class="issue-title">'+esc(info.title)+(f.poi_name?' — <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
+        '<div class="issue-title">'+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
         '<div class="issue-body">'+esc(f.message)+'</div>'+
         (f.evidence?'<div class="issue-evid"><span class="evid-dot"></span><span>'+esc(f.evidence)+'</span></div>':'')+
       '</div>';
@@ -2365,20 +2464,35 @@ function showToast(msg){
 
 /* ─── Utils ─────────────────────────────────────────────────────────── */
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function pname(p){return typeof p==="object"&&p!==null ? (p.name||"") : String(p||"");}
+function pcat(p){return typeof p==="object"&&p!==null ? (p.cat||"") : "";}
 
 /* ─── Favorites ─────────────────────────────────────────────────────── */
 var _favs = null;
 function loadFavorites() {
   if (_favs) return _favs;
-  try { _favs = JSON.parse(localStorage.getItem("qtrip-favs")||"[]"); } catch(_){ _favs=[]; }
+  try {
+    var raw = JSON.parse(localStorage.getItem("qtrip-favs")||"[]");
+    _favs = raw.map(function(f){ return typeof f==="string"?{name:f,category_code:"",has_coords:false,region:"",firstimage:"",tags:[]}:f; });
+  } catch(_){ _favs=[]; }
   return _favs;
 }
 function saveFavorites() { try{localStorage.setItem("qtrip-favs", JSON.stringify(_favs));}catch(_){} }
-function isFavorite(name) { return loadFavorites().indexOf(name) !== -1; }
-function toggleFavorite(name) {
+function isFavorite(name) { return loadFavorites().some(function(f){return f.name===name;}); }
+function toggleFavorite(place) {
   loadFavorites();
-  var idx = _favs.indexOf(name);
-  if (idx === -1) _favs.push(name); else _favs.splice(idx, 1);
+  var nm = typeof place==="string" ? place : place.name;
+  var idx = _favs.findIndex ? _favs.findIndex(function(f){return f.name===nm;})
+    : (function(){ for(var i=0;i<_favs.length;i++) if(_favs[i].name===nm) return i; return -1; })();
+  if (idx === -1) {
+    var obj = typeof place==="string" ? {name:place,category_code:"",has_coords:false,region:"",firstimage:"",tags:[]} : {
+      name:place.name, category_code:place.category_code||"", has_coords:!!place.has_coords,
+      region:place.region||"", firstimage:place.firstimage||"", annual_max:place.annual_max||0, tags:place.tags||[]
+    };
+    _favs.push(obj);
+  } else {
+    _favs.splice(idx, 1);
+  }
   saveFavorites();
 }
 
@@ -2468,36 +2582,41 @@ function addFromDetail() {
   if (!_detailPlace) return;
   var p = _detailPlace;
   if (!p.has_coords && !confirm("'"+p.name+"'은(는) 위치 정보가 없어서 이동시간이 대략값이에요.\n그래도 추가할까요?")) return;
-  days[selDay].push(p.name);
+  days[selDay].push({name:p.name, cat:p.category_code||""});
   renderDays(); updateSummary();
   showToast(p.name+" 추가됐어요");
   closeDetail();
 }
 function toggleDetailFav() {
   if (!_detailPlace) return;
-  toggleFavorite(_detailPlace.name);
+  toggleFavorite(_detailPlace);
   document.getElementById("dm-fav-btn").textContent = isFavorite(_detailPlace.name) ? "찜됨" : "찜하기";
   showToast(isFavorite(_detailPlace.name) ? "찜 목록에 추가됐어요" : "찜 해제됐어요");
+  if (activeCategory === "fav") {
+    filteredCache = loadFavorites();
+    serverTotal = filteredCache.length;
+    renderPlaceList(false);
+  }
 }
 
 /* ─── Export plan ────────────────────────────────────────────────────── */
 function exportPlan() {
   var d = lastResult;
-  var lines = ["여행 계획 — Qtrip", ""];
+  var lines = ["여행 계획 - Qtrip", ""];
   lines.push("지역: "+(cfg.region==="전체"?"전국":cfg.region)+" | 날짜: "+cfg.date+" "+cfg.startTime);
   lines.push(cfg.partyType+" "+cfg.partySize+"명");
   lines.push("");
   days.forEach(function(day, di) {
-    var filled = day.filter(function(p){return p.trim();});
+    var filled = day.filter(function(p){return pname(p).trim();});
     if (!filled.length) return;
     lines.push("[ Day "+(di+1)+" ]");
-    filled.forEach(function(name, pi){ lines.push("  "+(pi+1)+". "+name); });
+    filled.forEach(function(p, pi){ lines.push("  "+(pi+1)+". "+pname(p)); });
     lines.push("");
   });
   if (d) {
     lines.push("검증 결과: "+(d.final_score)+"점 / "+(d.passed?"통과":"재검토 필요"));
   }
-  lines.push("— Qtrip 여행 계획 검증기 —");
+  lines.push("- Qtrip 여행 계획 검증기 -");
   var text = lines.join("\n");
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(function(){ showToast("일정이 클립보드에 복사됐어요"); });
