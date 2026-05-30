@@ -1,0 +1,33 @@
+{
+  "name": "Qtrip — 여행 계획 검증",
+  "short_name": "Qtrip",
+  "description": "내 여행 일정이 실제로 가능한지 데이터로 분석해드리는 서비스",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAFAF8",
+  "theme_color": "#FF5733",
+  "orientation": "portrait-primary",
+  "lang": "ko",
+  "categories": ["travel", "utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%23FF5733'/%3E%3Cpath d='M96 32C72 32 52 52 52 76c0 36 44 84 44 84s44-48 44-84c0-24-20-44-44-44zm0 60a16 16 0 1 1 0-32 16 16 0 0 1 0 32z' fill='white'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23FF5733'/%3E%3Cpath d='M256 90C210 90 172 128 172 174c0 84 84 190 84 190s84-106 84-190c0-46-38-84-84-84zm0 116a32 32 0 1 1 0-64 32 32 0 0 1 0 64z' fill='white'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "새 여행 계획",
+      "url": "/",
+      "description": "새로운 여행 일정 검증 시작"
+    }
+  ]
+}

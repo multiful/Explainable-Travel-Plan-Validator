@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from src.api.router import router
@@ -47,6 +47,26 @@ async def index() -> str:
     if html_file.exists():
         return html_file.read_text(encoding="utf-8")
     return "<h1>Travel Plan Validator</h1><p><a href='/docs'>API Docs</a></p>"
+
+
+@app.get("/manifest.json", include_in_schema=False)
+async def manifest() -> Response:
+    f = _STATIC_DIR / "manifest.json"
+    if f.exists():
+        return Response(f.read_text(encoding="utf-8"), media_type="application/json")
+    return Response("{}", media_type="application/json")
+
+
+@app.get("/service-worker.js", include_in_schema=False)
+async def service_worker() -> Response:
+    f = _STATIC_DIR / "service-worker.js"
+    if f.exists():
+        return Response(
+            f.read_text(encoding="utf-8"),
+            media_type="application/javascript",
+            headers={"Service-Worker-Allowed": "/"},
+        )
+    return Response("", media_type="application/javascript")
 
 
 @app.get("/health", include_in_schema=False)
