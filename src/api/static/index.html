@@ -387,6 +387,15 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .score-num.pass{color:var(--mint)}
 .score-num.warn{color:var(--stay)}
 .score-num.fail{color:var(--pri)}
+.score-gauge-wrap{position:relative;width:172px;height:172px;margin:.5rem auto .2rem}
+.score-gauge{width:172px;height:172px;transform:rotate(-90deg)}
+.gauge-track{fill:none;stroke:var(--n200);stroke-width:11}
+.gauge-arc{fill:none;stroke-width:11;stroke-linecap:round;stroke-dasharray:326.726;stroke-dashoffset:326.726}
+.gauge-arc.pass{stroke:var(--mint)}
+.gauge-arc.warn{stroke:var(--stay)}
+.gauge-arc.fail{stroke:var(--pri)}
+.score-gauge-wrap .score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;letter-spacing:-2px}
+.score-gauge-wrap .score-denom{font-size:1.05rem;font-weight:800;opacity:.5;letter-spacing:0;align-self:flex-end;margin-bottom:.9rem;margin-left:1px}
 .score-denom{font-size:1.4rem;font-weight:400;color:var(--n400);letter-spacing:0}
 .score-label{font-size:.78rem;color:var(--n500);margin-top:.15rem}
 .score-desc{font-size:.88rem;color:var(--n600);margin-top:.7rem;line-height:1.65;word-break:keep-all}
@@ -2606,7 +2615,13 @@ function renderResult(d) {
   // Score hero
   html += '<div class="score-card sc-'+scoreClass+'">' +
     '<div><span class="score-badge '+badgeClass+'">'+verdict+'</span></div>' +
-    '<div class="score-num '+scoreClass+'" id="score-num-el">0<span class="score-denom">/100</span></div>' +
+    '<div class="score-gauge-wrap">' +
+      '<svg class="score-gauge" viewBox="0 0 120 120" aria-hidden="true">' +
+        '<circle class="gauge-track" cx="60" cy="60" r="52"></circle>' +
+        '<circle class="gauge-arc '+scoreClass+'" id="score-gauge-arc" cx="60" cy="60" r="52"></circle>' +
+      '</svg>' +
+      '<div class="score-num '+scoreClass+'" id="score-num-el">0<span class="score-denom">/100</span></div>' +
+    '</div>' +
     '<div class="score-label">종합 여행 계획 점수</div>' +
     '<div class="score-desc">'+esc(scoreDesc(s,d.passed))+'</div>' +
     '</div>';
@@ -2906,13 +2921,18 @@ function renderResult(d) {
 function animateScore(target) {
   var el = document.getElementById("score-num-el");
   if (!el) return;
-  var duration = 900, startTime = null;
+  var arc = document.getElementById("score-gauge-arc");
+  var CIRC = 326.726; // 2πr, r=52
+  var duration = 1100, startTime = null;
   function step(ts) {
     if (!startTime) startTime = ts;
     var progress = Math.min((ts - startTime) / duration, 1);
     var ease = 1 - Math.pow(1 - progress, 3);
     var cur = Math.round(ease * target);
     el.innerHTML = cur + '<span class="score-denom">/100</span>';
+    if (arc) {
+      arc.style.strokeDashoffset = CIRC * (1 - (ease * target) / 100);
+    }
     if (progress < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
