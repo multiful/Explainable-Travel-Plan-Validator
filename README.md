@@ -1,8 +1,57 @@
-<!-- updated: 2026-05-07 | hash: db0b7d15 | summary: VRPTWEngine 파이프라인 통합 반영 — step 3b, Efficiency Gap 패널티, optimal_route API 공개 -->
+<!-- updated: 2026-06-05 | hash: 556e231d | summary: 빠른 시작(Docker/venv)·뱃지·공공데이터 출처표·/health 진단 추가 + 기존 검증 파이프라인 문서 -->
 
 # 관광 일정 QA 엔진 — Explainable Travel Plan Validator
 
 > 여행을 **추천**하지 않는다. 그 일정이 실패할지, 성공할지를 **데이터로 증명**한다.
+
+![python](https://img.shields.io/badge/python-3.11+-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
+![pydantic](https://img.shields.io/badge/pydantic-2.9+-e92063)
+![license](https://img.shields.io/badge/license-MIT-green)
+
+---
+
+## 빠른 시작 (5분)
+
+### 방법 A — Docker (권장, 한 줄 실행)
+
+```bash
+cp .env.example .env          # 실제 API 키 입력
+docker compose up --build
+```
+
+### 방법 B — 로컬 (Python 3.11+ 필요)
+
+```bash
+cp .env.example .env          # 실제 API 키 입력
+make install                  # venv 생성 + 의존성 설치
+make run                      # 개발 서버
+# 또는 수동:
+#   python3.12 -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+#   uvicorn src.api.main:app --reload
+```
+
+실행 후:
+
+| 항목 | 주소 |
+|------|------|
+| 웹앱 | http://localhost:8000 |
+| API 문서 (Swagger) | http://localhost:8000/docs |
+| 상태 진단 (키·데이터 적재 확인) | http://localhost:8000/health |
+
+> `/health` 는 시크릿 노출 없이 어떤 외부 API가 연동됐는지(bool)와
+> POI·혼잡도 데이터 적재 건수를 반환한다 — 연동 검증용.
+
+### 활용 공공데이터
+
+| 데이터 | 출처 | 용도 |
+|--------|------|------|
+| 관광지 POI 34,442건 | 한국관광공사 TourAPI | 좌표·주소·카테고리 |
+| 실시간 도시데이터 | 서울 열린데이터광장 | 혼잡도 검증 |
+| 무장애 여행 정보 | 한국관광공사 | party_type별 접근성 검증 |
+| 웰니스 관광지 | 한국관광공사 | 테마 정합성 |
+| 이동시간 행렬 | 카카오 모빌리티 | 실측 경로·이동비율 |
 
 ---
 

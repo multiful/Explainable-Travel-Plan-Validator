@@ -71,4 +71,40 @@ async def service_worker() -> Response:
 
 @app.get("/health", include_in_schema=False)
 async def health() -> dict:
-    return {"status": "ok"}
+    """라이브니스 + 구성 진단.
+
+    시크릿 값은 절대 노출하지 않고, 키 설정 여부(bool)와
+    로딩된 데이터 건수만 반환한다. 심사 시 외부 API 연동 및
+    데이터 적재 상태를 한 번에 확인하는 용도.
+    """
+
+    def _is_set(name: str) -> bool:
+        return bool(os.environ.get(name, "").strip())
+
+    apis_configured = {
+        "anthropic": _is_set("ANTHROPIC_API_KEY"),
+        "tour_api": _is_set("TOUR_API_KEY"),
+        "kakao_rest": _is_set("KAKAO_REST_API_KEY"),
+        "kakao_mobility": _is_set("KAKAO_MOBILITY_KEY"),
+        "seoul_data": _is_set("SEOUL_DATA_API_KEY"),
+        "naver": _is_set("NAVER_API_KEY"),
+    }
+
+    data_loaded: dict[str, int] = {}
+    try:
+        from src.api import router as _r
+
+        data_loaded = {
+            "places": len(_r._PLACE_LIST),
+            "full_places": len(_r._FULL_PLACE_LIST),
+            "congestion_places": len(_r._MONTHLY_CONG),
+        }
+    except Exception:  # pragma: no cover - 진단용, 실패해도 health 는 200
+        data_loaded = {}
+
+    return {
+        "status": "ok",
+        "version": app.version,
+        "apis_configured": apis_configured,
+        "data_loaded": data_loaded,
+    }
