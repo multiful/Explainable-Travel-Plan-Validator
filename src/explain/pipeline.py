@@ -212,7 +212,9 @@ class ValidatorPipeline:
         penalty_total = cluster_penalty + travel_ratio_penalty + theme_penalty + vrptw_penalty
         adjusted = base_score - penalty_total + total_bonus
         adjusted = max(0, min(100, adjusted))
-        if hard_fails:
+        # 추정 영업시간 충돌(estimated=True)은 '확인 필요' 수준 → 점수 캡에서 제외.
+        capping_fails = [hf for hf in hard_fails if not getattr(hf, "estimated", False)]
+        if capping_fails:
             adjusted = min(adjusted, 59)
 
         # ── 9. Rewards ──────────────────────────────────────────────────

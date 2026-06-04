@@ -19,6 +19,18 @@ from pydantic_settings import BaseSettings
 # ---------------------------------------------------------------------------
 
 
+class KakaoPlace(BaseModel):
+    """카카오 로컬 키워드 검색 결과 1건 (좌표·카테고리·주소)."""
+
+    name: str
+    lat: float
+    lng: float
+    category_name: str = ""
+    address: str = ""
+    phone: str = ""
+    place_url: str = ""
+
+
 class HardFail(BaseModel):
     fail_type: Literal[
         "OPERATING_HOURS_CONFLICT",
@@ -29,6 +41,9 @@ class HardFail(BaseModel):
     evidence: str
     confidence: Literal["High", "Medium", "Low"]
     poi_name: str | None = None
+    # 추정(미검증) 영업시간에 근거한 충돌이면 True.
+    # True 인 항목은 점수 캡(≤59)·passed 판정에서 제외하고 '확인 필요' 수준으로 다룬다.
+    estimated: bool = False
 
 
 class Warning(BaseModel):
@@ -77,6 +92,9 @@ class POI(BaseModel):
     open_end: str    # HH:MM
     duration_min: int
     category: str = ""
+    # 영업시간이 실측/검증값이 아니라 카테고리 추정값이면 True.
+    # 기본 False(기존 동작 유지) — 라우터에서 해석한 POI 만 True 로 설정한다.
+    hours_estimated: bool = False
 
     @field_validator("poi_id")
     @classmethod

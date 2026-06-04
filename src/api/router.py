@@ -17,10 +17,29 @@ from src.api.schemas import (
 )
 from src.data.dwell_db import MANUAL_OVERRIDES as _DWELL_OVERRIDES
 from src.data.hours_db import resolve_hours
+from src.data.kakao_local import KakaoLocalClient
 from src.data.models import DayPlan, ItineraryPlan, PlaceInput, POI
 from src.explain.pipeline import ValidatorPipeline
 
 router = APIRouter()
+
+# 카카오 로컬 키워드 검색 (식당 등 pois.csv 미수록 장소의 좌표 보강).
+# 키가 없으면 enabled=False 로 동작해 기존 폴백을 유지한다.
+_KAKAO_LOCAL = KakaoLocalClient.from_env()
+
+
+def _kakao_hint(category_name: str) -> str | None:
+    """카카오 category_name → hours_db 카테고리 힌트."""
+    c = category_name or ""
+    if "음식점" in c:
+        return "식당"
+    if "카페" in c:
+        return "카페"
+    if "문화" in c or "박물관" in c or "미술관" in c:
+        return "문화시설"
+    if "백화점" in c or "마트" in c or "쇼핑" in c:
+        return "쇼핑"
+    return None
 
 _DATA_DIR = Path(__file__).parent.parent.parent / "data"
 _DEFAULT_CENTER = (37.5665, 126.9780)  # 서울 시청
@@ -477,6 +496,7 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
     #   High   — 수동 큐레이션 카탈로그(_COORD_CATALOG) 매칭 (86건 검증된 좌표)
     #   Medium — pois.csv / naver_metadata 매칭 (TourAPI 수집 좌표)
     #   Low    — 서울 시청 폴백 (좌표 신뢰 불가)
+    hint: str | None = None
     if norm in _COORD_CATALOG_NORM:
         confidence: str = "High"
         source = "catalog"
@@ -489,12 +509,22 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
         lat, lng = place["lat"], place["lng"]
         category = place["cat"]
     else:
-        confidence = "Low"
-        source = "fallback"
-        lat, lng = _DEFAULT_CENTER
-        category = "12"
+        # pois.csv·카탈로그 미매칭 → 카카오 로컬 키워드 검색으로 좌표 보강
+        # (식당·카페 등). 실패 시에만 서울시청 폴백으로 떨어진다.
+        kp = _KAKAO_LOCAL.search_keyword(name)
+        if kp is not None:
+            confidence = "Medium"
+            source = "kakao"
+            lat, lng = kp.lat, kp.lng
+            category = "12"
+            hint = _kakao_hint(kp.category_name)
+        else:
+            confidence = "Low"
+            source = "fallback"
+            lat, lng = _DEFAULT_CENTER
+            category = "12"
 
-    hours = resolve_hours(name)
+    hours = resolve_hours(name, hint)
     dwell = _guess_dwell(name)
 
     poi = POI(
@@ -502,6 +532,8 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
         name=name, lat=lat, lng=lng,
         open_start=hours.open_, open_end=hours.close_,
         duration_min=dwell, category=category,
+        # 영업시간은 카테고리 추정값 → 미검증 표시(P1: 하드페일 강등 근거)
+        hours_estimated=True,
     )
     info = POIInfo(
         name=name, found=(confidence != "Low"), source=source,
@@ -685,7 +717,10 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
     return ValidateResponse(
         plan_id=result.plan_id,
         final_score=result.final_score,
-        passed=(result.final_score >= 60 and not result.hard_fails),
+        passed=(
+            result.final_score >= 60
+            and not [hf for hf in result.hard_fails if not getattr(hf, "estimated", False)]
+        ),
         data_reliability_score=data_reliability_score,
         hard_fails=[hf.model_dump() for hf in result.hard_fails],
         warnings=[w.model_dump() for w in result.warnings],

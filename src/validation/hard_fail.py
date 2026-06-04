@@ -70,27 +70,32 @@ class HardFailDetector:
             )
 
             if not is_fallback:
+                # 영업시간이 추정값이면 충돌을 '확인 필요'로 강등(점수 캡 제외).
+                est = getattr(poi, "hours_estimated", False)
+                note = " (추정 영업시간 기준 — 방문 전 확인을 권장합니다)" if est else ""
                 if arrive < open_min:
                     fails.append(HardFail(
                         fail_type="OPERATING_HOURS_CONFLICT",
                         message=(
                             f"'{poi.name}' 도착 예정 {self._min_to_time(arrive)}, "
-                            f"운영 시작 {poi.open_start} — 아직 문을 열지 않았습니다."
+                            f"운영 시작 {poi.open_start} — 아직 문을 열지 않았습니다." + note
                         ),
                         evidence=f"도착 {self._min_to_time(arrive)} < 운영시작 {poi.open_start}",
                         confidence="Medium",
                         poi_name=poi.name,
+                        estimated=est,
                     ))
                 elif arrive > close_min:
                     fails.append(HardFail(
                         fail_type="OPERATING_HOURS_CONFLICT",
                         message=(
                             f"'{poi.name}' 도착 예정 {self._min_to_time(arrive)}, "
-                            f"운영 종료 {poi.open_end} — 이미 문을 닫았습니다."
+                            f"운영 종료 {poi.open_end} — 이미 문을 닫았습니다." + note
                         ),
                         evidence=f"도착 {self._min_to_time(arrive)} > 운영종료 {poi.open_end}",
                         confidence="Medium",
                         poi_name=poi.name,
+                        estimated=est,
                     ))
 
             effective_arrive = max(arrive, open_min)
