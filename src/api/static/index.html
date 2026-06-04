@@ -2900,7 +2900,7 @@ function renderResult(d) {
   }, 60);
   if(d.scores) requestAnimationFrame(function(){drawRadar(d.scores);});
   var mapPoisFinal = (d.poi_info||[]).filter(function(p){return p.lat&&p.lng&&p.lat!==37.5665;});
-  if (mapPoisFinal.length) requestAnimationFrame(function(){initMap(mapPoisFinal, d.optimal_route);});
+  if (mapPoisFinal.length) requestAnimationFrame(function(){initMap(mapPoisFinal, d.optimal_route, d.congestion_warnings);});
 }
 
 function animateScore(target) {
@@ -3363,7 +3363,7 @@ function loadLeaflet(cb) {
   document.head.appendChild(js);
 }
 
-function initMap(pois, optimalRoute) {
+function initMap(pois, optimalRoute, congestionWarnings) {
   loadLeaflet(function(){
   var mapEl = document.getElementById("travel-map");
   if (!mapEl) return;
@@ -3426,6 +3426,54 @@ function initMap(pois, optimalRoute) {
       L.polyline(optCoords, {color:"#00BFA5", weight:2, opacity:.7, dashArray:"6,6"}).addTo(_leafletMap);
     }
   }
+
+  // 과밀 지점 표시 (congestion_warnings 의 poi_name 을 좌표에 매칭)
+  var congCount = 0;
+  if (congestionWarnings && congestionWarnings.length) {
+    var byName = {};
+    pois.forEach(function(p){ byName[p.name] = p; });
+    congestionWarnings.forEach(function(cw){
+      var poi = byName[cw.poi_name];
+      if (!poi) return;
+      var high = cw.level === "high";
+      var ring = high ? "#E5484D" : "#F2922B";
+      var cicon = L.divIcon({
+        className: "",
+        html: '<div style="width:34px;height:34px;border-radius:50%;border:3px solid '+ring+
+              ';background:'+ring+'22;display:flex;align-items:center;justify-content:center;'+
+              'font-size:15px;box-shadow:0 0 0 4px '+ring+'1a">⚠</div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+      });
+      L.marker([poi.lat, poi.lng], {icon: cicon, zIndexOffset: 1000})
+        .addTo(_leafletMap)
+        .bindPopup("<strong>"+poi.name+"</strong><br/>"+
+                   (high ? "혼잡 매우 높음" : "혼잡 높음")+
+                   (cw.ratio!=null ? " (연중 최대 대비 "+Math.round(cw.ratio*100)+"%)" : ""),
+                   {maxWidth:220});
+      congCount++;
+    });
+  }
+
+  // 범례
+  var legend = L.control({position: "bottomright"});
+  legend.onAdd = function(){
+    var div = L.DomUtil.create("div");
+    div.style.cssText = "background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;"+
+      "font-size:11px;line-height:1.7;box-shadow:0 1px 6px rgba(0,0,0,.2);color:#222";
+    var rows = '<div><span style="display:inline-block;width:18px;border-top:3px solid #3B7AF5;'+
+               'vertical-align:middle"></span> 현재 동선</div>';
+    if (optimalRoute && optimalRoute.length) {
+      rows += '<div><span style="display:inline-block;width:18px;border-top:3px dashed #00BFA5;'+
+              'vertical-align:middle"></span> 최적 동선</div>';
+    }
+    if (congCount) {
+      rows += '<div><span style="vertical-align:middle">⚠</span> 과밀 지점 ('+congCount+')</div>';
+    }
+    div.innerHTML = rows;
+    return div;
+  };
+  legend.addTo(_leafletMap);
 
   // 지도 범위 자동 맞춤
   if (coords.length > 1) {
