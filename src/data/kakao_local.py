@@ -27,6 +27,7 @@ class KakaoLocalClient:
         self._api_key = (api_key or "").strip()
         self._timeout = timeout_sec
         self._cache: dict[str, KakaoPlace | None] = {}
+        self._list_cache: dict[str, list[KakaoPlace]] = {}
         self.stats: dict[str, int] = {"hit": 0, "miss": 0, "api_ok": 0, "api_fail": 0}
 
     @classmethod
@@ -75,3 +76,46 @@ class KakaoLocalClient:
 
         self._cache[q] = result
         return result
+
+    def search_keyword_list(self, query: str, size: int = 15) -> list[KakaoPlace]:
+        """키워드로 다수 후보를 조회(검색 패널 보강용). 실패 시 빈 리스트."""
+        q = (query or "").strip()
+        if not q or not self.enabled:
+            return []
+        ck = f"{size}:{q}"
+        if ck in self._list_cache:
+            self.stats["hit"] += 1
+            return self._list_cache[ck]
+
+        self.stats["miss"] += 1
+        out: list[KakaoPlace] = []
+        try:
+            resp = httpx.get(
+                _KEYWORD_URL,
+                params={"query": q, "size": max(1, min(size, 15))},
+                headers={"Authorization": f"KakaoAK {self._api_key}"},
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            for d in resp.json().get("documents", []):
+                try:
+                    out.append(
+                        KakaoPlace(
+                            name=d.get("place_name", ""),
+                            lat=float(d["y"]),
+                            lng=float(d["x"]),
+                            category_name=d.get("category_name", ""),
+                            address=d.get("road_address_name") or d.get("address_name", ""),
+                            phone=d.get("phone", ""),
+                            place_url=d.get("place_url", ""),
+                        )
+                    )
+                except (KeyError, ValueError, TypeError):
+                    continue
+            self.stats["api_ok"] += 1
+        except (httpx.HTTPError, ValueError, TypeError):
+            self.stats["api_fail"] += 1
+            out = []
+
+        self._list_cache[ck] = out
+        return out

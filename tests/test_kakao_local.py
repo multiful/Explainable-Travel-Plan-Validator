@@ -68,3 +68,31 @@ def test_http_error_falls_back_to_none() -> None:
     with patch("src.data.kakao_local.httpx.get", side_effect=httpx.ConnectTimeout("x")):
         assert client.search_keyword("개성만두 궁") is None
     assert client.stats["api_fail"] == 1
+
+
+def _multi_response() -> MagicMock:
+    m = MagicMock()
+    m.raise_for_status.return_value = None
+    m.json.return_value = {
+        "documents": [
+            {"place_name": "금복식당", "x": "126.922", "y": "37.547",
+             "category_name": "음식점 > 한식", "road_address_name": "서울 마포구 ..."},
+            {"place_name": "금복식당 2호점", "x": "126.923", "y": "37.548",
+             "category_name": "음식점 > 한식", "address_name": "서울 마포구 ..."},
+        ]
+    }
+    return m
+
+
+def test_search_keyword_list_parses_all() -> None:
+    client = KakaoLocalClient(api_key="dummy")
+    with patch("src.data.kakao_local.httpx.get", return_value=_multi_response()):
+        places = client.search_keyword_list("금복식당")
+    assert len(places) == 2
+    assert places[0].name == "금복식당"
+    assert places[0].lat == 37.547
+
+
+def test_search_keyword_list_disabled_returns_empty() -> None:
+    client = KakaoLocalClient(api_key="")
+    assert client.search_keyword_list("금복식당") == []

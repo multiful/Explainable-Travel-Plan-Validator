@@ -41,6 +41,20 @@ def _kakao_hint(category_name: str) -> str | None:
         return "쇼핑"
     return None
 
+
+def _kakao_cat_code(category_name: str) -> str:
+    """카카오 category_name → 앱 카테고리 코드(12 관광지·14 문화·38 쇼핑·39 음식점·32 숙박)."""
+    c = category_name or ""
+    if "음식점" in c or "카페" in c:
+        return "39"
+    if "문화" in c or "박물관" in c or "미술관" in c:
+        return "14"
+    if "백화점" in c or "마트" in c or "쇼핑" in c:
+        return "38"
+    if "숙박" in c or "호텔" in c or "모텔" in c:
+        return "32"
+    return "12"
+
 _DATA_DIR = Path(__file__).parent.parent.parent / "data"
 _DEFAULT_CENTER = (37.5665, 126.9780)  # 서울 시청
 
@@ -582,14 +596,41 @@ async def list_places(
         filtered = [p for p in filtered if p.get("region", "") == region]
     if cat and cat not in ("all", "fav"):
         filtered = [p for p in filtered if p.get("cat", "") == cat]
+    q_is_jamo = bool(q) and all(ch in _JAMO_CHARS for ch in q if ch.strip())
     if q:
         ql = q.lower()
         # 초성 검색: q가 자모로만 구성된 경우(예: 'ㄱㅂㄱ') 초성 매칭 사용
-        if all(ch in _JAMO_CHARS for ch in q if ch.strip()):
+        if q_is_jamo:
             qcho = _extract_chosung(q)
             filtered = [p for p in filtered if _extract_chosung(p["name"]).startswith(qcho)]
         else:
             filtered = [p for p in filtered if ql in p["name"].lower()]
+
+    # 로컬 DB(pois.csv)에 결과가 적으면 카카오 키워드 검색으로 보강(식당 등 미수록 장소).
+    if q and not q_is_jamo and len(filtered) < 8 and _KAKAO_LOCAL.enabled:
+        existing = {_normalize(p["name"]) for p in filtered}
+        for kp in _KAKAO_LOCAL.search_keyword_list(q, size=15):
+            nm = _normalize(kp.name)
+            if not nm or nm in existing:
+                continue
+            kp_region = _addr_to_region(kp.address) or "기타"
+            if region and kp_region != region:
+                continue
+            code = _kakao_cat_code(kp.category_name)
+            if cat and cat not in ("all", "fav") and code != cat:
+                continue
+            existing.add(nm)
+            filtered = filtered + [{
+                "name": kp.name,
+                "region": kp_region,
+                "cat": code,
+                "cat_name": (kp.category_name.split(">")[-1].strip() if kp.category_name else "장소"),
+                "has_coords": True,
+                "annual_max": 0.0,
+                "firstimage": "",
+                "addr": kp.address,
+                "tags": ["카카오"],
+            }]
 
     total_count = len(filtered)
     page_size = min(limit, 2000) if use_full else total_count
