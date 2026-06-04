@@ -1352,6 +1352,11 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
             <button class="dmgmt-btn rm" id="remove-day-btn" onclick="askRemoveDay()">− 날 빼기</button>
           </div>
         </div>
+        <div class="demo-strip" style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.5rem">
+          <span style="font-size:.72rem;color:var(--n400)">예시로 30초 체험:</span>
+          <button class="dmgmt-btn" onclick="loadSample('good')" aria-label="잘 짜인 예시 일정 불러와 검증">잘 짜인 일정 ✓</button>
+          <button class="dmgmt-btn rm" onclick="loadSample('bad')" aria-label="문제 있는 예시 일정 불러와 검증">문제 있는 일정 ⚠</button>
+        </div>
         <div class="copy-strip" id="copy-strip" role="group" aria-label="일정 복사"></div>
         <div class="day-tabs" id="day-tabs"></div>
       </div>
@@ -2347,6 +2352,35 @@ function addPlace() {
 function addDay() {
   days.push([{name:"",cat:""}]); selDay=days.length-1;
   closeCopyStrip(); renderDays(); updateSummary();
+}
+
+/* ─── 데모 샘플 (원클릭 로드 + 자동 검증) ───────────────────────────── */
+var DEMO_PLANS = {
+  // 종로 도보권 클러스터 — 통과 예상
+  good: {
+    cfg: { region:"서울", partyType:"친구", partySize:2, date:"2026-06-13", startTime:"09:00", travelType:"cultural" },
+    days: [["경복궁","북촌한옥마을","인사동","창덕궁"]]
+  },
+  // 하루에 서울→부산→제주 — 이동 불가, 위험 예상
+  bad: {
+    cfg: { region:"전체", partyType:"가족", partySize:4, date:"2026-08-15", startTime:"10:00", travelType:"" },
+    days: [["경복궁","해운대해수욕장","성산일출봉","한라산"]]
+  }
+};
+function loadSample(which) {
+  var plan = DEMO_PLANS[which];
+  if (!plan) return;
+  cfg.region = plan.cfg.region; cfg.partyType = plan.cfg.partyType;
+  cfg.partySize = plan.cfg.partySize; cfg.date = plan.cfg.date;
+  cfg.startTime = plan.cfg.startTime; cfg.travelType = plan.cfg.travelType;
+  days = plan.days.map(function(d){ return d.slice(); });
+  selDay = 0;
+  closeCopyStrip();
+  if (currentStep !== 2) goStep(2);
+  renderDays(); updateSummary();
+  showToast(which === "good" ? "잘 짜인 예시 일정을 불러왔어요 — 검증을 시작할게요"
+                              : "문제 있는 예시 일정을 불러왔어요 — 검증을 시작할게요");
+  setTimeout(function(){ runValidate(); }, 400);
 }
 
 /* ─── Copy Day ──────────────────────────────────────────────────────── */
