@@ -1,4 +1,4 @@
-<!-- updated: 2026-06-05 | hash: 556e231d | summary: 빠른 시작(Docker/venv)·뱃지·공공데이터 출처표·/health 진단 추가 + 기존 검증 파이프라인 문서 -->
+<!-- updated: 2026-06-09 | hash: d14dcb5d | summary: POI 34,441건 반영·카카오 키워드 검색 폴백·추정 영업시간 강등·구현 현황 ⑰~⑲ 추가 -->
 
 # 관광 일정 QA 엔진 — Explainable Travel Plan Validator
 
@@ -101,6 +101,8 @@ AI 기반 여행 일정 추천 서비스가 국내에서 빠르게 확산되고 
 | 운영시간 충돌 | CRITICAL | 도착 시각 > 운영 종료 시각 |
 | 이동 불가 | CRITICAL | 직전 체류 + 이동 시간 > 다음 장소 마감 |
 | Safety Margin | WARNING | 종료 60분 이내 도착 |
+
+> **추정 영업시간 처리**: pois.csv 미수록 장소는 카테고리 기반으로 영업시간을 추정(`hours_estimated=True`). 추정 영업시간에 근거한 CRITICAL 충돌은 점수 캡(≤59)·PASS 판정에서 제외되고 "확인 필요" 수준으로 강등된다 — `HardFail.estimated` 필드로 구분.
 
 **Soft Warning 6종 (`src/validation/warning.py`, party_type별 임계 적용):**
 
@@ -210,9 +212,22 @@ Suggestion → 구체적 개선 제안
 
 | 서비스 | 활용 내용 | 데이터 현황 |
 |--------|-----------|------------|
-| 국문관광정보 (KorService2) | 전국 POI 좌표·카테고리·운영시간 | `data/pois.csv` 20,168건 |
+| 국문관광정보 (KorService2) | 전국 POI 좌표·카테고리·운영시간 | `data/pois.csv` 34,441건 |
 | 무장애 여행 정보 (KorWithService2) | 아기동반·어르신동반 +5점/장소 가산점 소스 | 1,799건 |
 | 웰니스관광 정보 (WellnessTursmService) | 전 party_type 힐링 +3점/장소 가산점 소스 | 175건 |
+
+**POI 유형별 구성 (34,441건):**
+
+| 유형 | 건수 |
+|------|------|
+| 관광지 | 12,633 |
+| 음식점 | 10,349 |
+| 레저스포츠 | 3,915 |
+| 문화시설 | 2,640 |
+| 숙박 | 1,993 |
+| 여행코스 | 1,056 |
+| 축제공연행사 | 1,024 |
+| 쇼핑 | 829 |
 
 ### 보조 데이터
 
@@ -227,8 +242,9 @@ Suggestion → 구체적 개선 제안
 ### 좌표 조회 우선순위
 
 ```
-1차: data/pois.csv  (TourAPI 원본, 20,168건)
-2차: data/naver/naver_metadata.json  (보조, 1,000건)
+1차: data/pois.csv  (TourAPI 원본, 34,441건)
+2차: Kakao Local API 키워드 검색  (실시간, 식당·카페 등 pois.csv 미수록 장소)
+3차: data/naver/naver_metadata.json  (보조, 1,000건)
 보정: _COORD_CATALOG  (수동 큐레이션 86건, pois.csv 오류 보정)
 폴백: 서울 시청 (37.5665, 126.9780) — 신뢰도 Low
 ```
@@ -328,6 +344,9 @@ Suggestion → 구체적 개선 제안
 | ⑭ | ExplainEngine (4단계 자연어 보고서 + 캐시) | `explain/explain_engine.py` | ✅ |
 | ⑮ | 데이터 신뢰도 점수 (data_reliability) | `api/schemas.py` | ✅ |
 | ⑯ | VRPTWEngine 파이프라인 통합 (OR-Tools 최적 경로 + Efficiency Gap 패널티) | `validation/vrptw_engine.py` · `explain/pipeline.py` | ✅ |
+| ⑰ | 카카오 키워드 검색 좌표 보강 (pois.csv 미수록 식당·카페 등 실시간 폴백) | `data/kakao_local.py` | ✅ |
+| ⑱ | 추정 영업시간 Hard Fail 강등 (`hours_estimated` 필드, 점수 캡·PASS 제외) | `data/models.py` · `api/router.py` | ✅ |
+| ⑲ | 장소 검색 패널 카카오 결과 병합 (로컬 8건 미만 시 Kakao 결과 자동 보충) | `api/router.py` | ✅ |
 
 ---
 
