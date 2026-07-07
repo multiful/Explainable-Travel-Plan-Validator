@@ -116,7 +116,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 
 .s1-body{max-width:640px;margin:-1.2rem auto 0;padding:0 1rem 3rem;position:relative;z-index:2}
 .scard{background:var(--card);border-radius:var(--r-lg);border:1px solid var(--n200);
-  box-shadow:var(--sh-sm);padding:1.2rem;margin-bottom:.8rem}
+  box-shadow:var(--sh-sm);padding:1.4rem;margin-bottom:1rem}
 .scard-label{font-size:.69rem;font-weight:800;color:var(--n400);text-transform:uppercase;
   letter-spacing:.7px;margin-bottom:.8rem;display:flex;align-items:center;gap:.35rem}
 
@@ -250,24 +250,24 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .plist-wrap::-webkit-scrollbar-thumb{background:var(--n200);border-radius:2px}
 
 /* Place item */
-.place-item{display:flex;align-items:center;gap:.5rem;padding:.48rem .58rem;
-  border-radius:var(--r-sm);border:1.5px solid transparent;
-  cursor:pointer;transition:background .12s,color .12s,border-color .12s,box-shadow .12s,transform .12s,opacity .12s;margin-bottom:.18rem}
+.place-item{display:flex;align-items:center;gap:.55rem;padding:.68rem .7rem;
+  border-radius:var(--r-sm);border:1.5px solid transparent;min-height:52px;
+  cursor:pointer;transition:background .12s,color .12s,border-color .12s,box-shadow .12s,transform .12s,opacity .12s;margin-bottom:.22rem}
 .place-item:hover{background:var(--pri-l);border-color:var(--pri-m)}
 .place-item.no-coord{opacity:.65}
 .pi-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:.15rem}
 .pi-info{flex:1;min-width:0}
-.pi-name{font-size:.81rem;font-weight:600;color:var(--n700);
+.pi-name{font-size:.83rem;font-weight:600;color:var(--n700);
   display:flex;align-items:center;gap:.28rem;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .no-coord-tag{font-size:.57rem;background:var(--st-fail-bg);color:var(--st-fail-fg);
   padding:.03rem .26rem;border-radius:3px;font-weight:700;flex-shrink:0}
-.pi-meta{font-size:.66rem;color:var(--n400);margin-top:.04rem}
+.pi-meta{font-size:.67rem;color:var(--n400);margin-top:.06rem}
 .cat-badge{font-size:.59rem;padding:.04rem .27rem;border-radius:4px;font-weight:700;display:inline-block}
-.pi-add{width:44px;height:44px;border:1.5px solid var(--n300);border-radius:6px;
-  background:var(--card);cursor:pointer;font-size:.85rem;color:var(--n400);
+.pi-add{width:44px;height:44px;border:1.5px solid var(--pri-m);border-radius:8px;
+  background:var(--pri-l);cursor:pointer;font-size:1.05rem;font-weight:700;color:var(--pri);
   display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .12s,color .12s,border-color .12s,box-shadow .12s,transform .12s,opacity .12s}
-.pi-add:hover{background:var(--pri);border-color:var(--pri);color:#fff}
+.pi-add:hover{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 2px 8px var(--pri-m)}
 .pdb-foot{padding:.45rem .7rem;border-top:1px solid var(--n100);
   display:flex;justify-content:space-between;align-items:center;font-size:.67rem;color:var(--n400)}
 .load-more-btn{font-size:.69rem;color:var(--pri);background:none;border:none;cursor:pointer;font-weight:700;transition:opacity .15s}
@@ -341,8 +341,8 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
   background:#fff;border:1.5px solid var(--n200);border-radius:var(--r-sm);
   margin-bottom:.42rem;transition:background .14s,color .14s,border-color .14s,box-shadow .14s,transform .14s,opacity .14s}
 .place-slot:hover{border-color:var(--n300)}
-.slot-num{width:22px;height:22px;border-radius:50%;background:var(--pri-m);
-  color:var(--pri-d);font-size:.68rem;font-weight:800;
+.slot-num{width:24px;height:24px;border-radius:50%;background:var(--pri-m);
+  color:var(--pri-d);font-size:.7rem;font-weight:900;
   display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .slot-inp{flex:1;border:none;outline:none;font-size:.86rem;font-weight:500;color:var(--n800);background:transparent}
 .slot-inp::placeholder{color:var(--n400)}
@@ -361,10 +361,10 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
   display:flex;gap:.55rem;flex-wrap:wrap}
 .ps-item{display:flex;align-items:center;gap:.22rem}
 .ps-item strong{color:var(--n700);font-weight:700}
-.val-btn{width:100%;padding:.82rem;font-size:.96rem;font-weight:800;color:oklch(99% 0 0);
+.val-btn{width:100%;padding:.95rem 1.2rem;font-size:1rem;font-weight:900;color:oklch(99% 0 0);
   background:var(--pri);border:none;border-radius:var(--r);
-  cursor:pointer;box-shadow:0 4px 18px var(--pri-m);transition:background .2s,color .2s,border-color .2s,box-shadow .2s,transform .2s,opacity .2s;letter-spacing:.1px}
-.val-btn:hover{background:var(--pri-d);transform:translateY(-1px);box-shadow:0 7px 26px var(--pri-m)}
+  cursor:pointer;box-shadow:0 5px 22px var(--pri-m);transition:background .2s,color .2s,border-color .2s,box-shadow .2s,transform .2s,opacity .2s;letter-spacing:.15px}
+.val-btn:hover{background:var(--pri-d);transform:translateY(-2px);box-shadow:0 9px 30px var(--pri-m)}
 .val-btn:active{transform:translateY(0)}
 .val-btn:disabled{background:var(--n300);cursor:not-allowed;transform:none;box-shadow:none}
 
@@ -558,11 +558,12 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
   color:rgba(255,255,255,.9);background:var(--n300)}
 
 /* ━━━ Mobile tabs (Step 2) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.mobile-tab-bar{display:none;background:#fff;border-bottom:1px solid var(--n200)}
-.mobile-tab-bar button{flex:1;padding:.65rem;font-size:.82rem;font-weight:700;
-  border:none;background:none;cursor:pointer;color:var(--n500);
+.mobile-tab-bar{display:none;background:var(--card);border-bottom:1px solid var(--n200);
+  position:sticky;top:var(--hh);z-index:100}
+.mobile-tab-bar button{flex:1;padding:.7rem;font-size:.83rem;font-weight:700;
+  border:none;background:none;cursor:pointer;color:var(--n400);
   border-bottom:2.5px solid transparent;transition:background .15s,color .15s,border-color .15s,box-shadow .15s,transform .15s,opacity .15s}
-.mobile-tab-bar button.active{color:var(--pri);border-bottom-color:var(--pri)}
+.mobile-tab-bar button.active{color:var(--pri);border-bottom-color:var(--pri);background:var(--pri-l)}
 @media(max-width:780px){
   .mobile-tab-bar{display:flex}
   .s2-layout{grid-template-columns:1fr;height:auto;overflow:visible}
@@ -1037,7 +1038,30 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
   justify-content:center;flex-shrink:0;transition:background .12s,color .12s,border-color .12s,box-shadow .12s,transform .12s,opacity .12s}
 .save-cancel-btn:hover{background:var(--n200);color:var(--n700)}
 
-/* ━━━ Saved plans — result nudge ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━ Result context bar ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.result-ctx-bar{display:flex;flex-wrap:wrap;gap:.32rem;margin-bottom:1.1rem}
+.result-ctx-chip{font-size:.71rem;font-weight:700;padding:.22rem .58rem;border-radius:999px;
+  background:var(--n100);color:var(--n600);display:inline-flex;align-items:center;gap:.25rem;
+  border:1.5px solid var(--n200)}
+
+/* ━━━ Hero scroll indicator ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.hero-scroll-cue{display:flex;flex-direction:column;align-items:center;gap:.28rem;
+  margin-top:1.6rem;cursor:pointer;opacity:.6;transition:opacity .18s}
+.hero-scroll-cue:hover{opacity:.9}
+.hero-scroll-cue span{font-size:.68rem;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.5px;text-transform:uppercase}
+.hero-scroll-chevron{width:28px;height:28px;border:2px solid rgba(255,255,255,.45);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  animation:bounceDown 1.8s ease-in-out infinite}
+@keyframes bounceDown{0%,100%{transform:translateY(0)}55%{transform:translateY(5px)}}
+
+/* ━━━ Slot category chip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.slot-cat-chip{font-size:.58rem;font-weight:800;padding:.05rem .32rem;border-radius:4px;
+  flex-shrink:0;line-height:1.55;white-space:nowrap}
+
+/* ━━━ Pdb-head improved spacing ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.pdb-head{padding:1rem 1rem .6rem}
+
+/* ━━━ Saved plans — result nudge ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .save-result-nudge{display:flex;align-items:center;gap:.55rem;padding:.58rem .78rem;
   background:var(--pri-l);border:1.5px solid var(--pri-m);border-radius:var(--r-sm);
   margin-bottom:.6rem;font-size:.8rem;color:oklch(32% 0.12 28);flex-wrap:wrap}
@@ -1077,8 +1101,8 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
 .result-nav-chip.chip-fail{border-color:var(--st-fail-bd);background:var(--st-fail-bg);color:var(--st-fail-fg)}
 .result-nav-chip.chip-warn{border-color:var(--st-warn-bd);background:var(--st-warn-bg);color:var(--st-warn-fg)}
 @media(min-width:600px){.result-nav{display:none}}
-.val-preview{font-size:.69rem;color:var(--n400);text-align:center;
-  margin-bottom:.32rem;line-height:1.5}
+.val-preview{font-size:.64rem;color:var(--n300);text-align:center;
+  margin-bottom:.28rem;line-height:1.5}
 
 /* ━━━ Slot note ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .slot-note-btn{min-width:44px;min-height:44px;border:none;background:none;cursor:pointer;
@@ -1268,6 +1292,12 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
         <div class="hero-step"><div class="hero-step-n">02</div><div class="hero-step-t">방문 장소 구성</div></div>
         <div class="hero-step"><div class="hero-step-n">03</div><div class="hero-step-t">검증 결과 확인</div></div>
       </div>
+      <div class="hero-scroll-cue" onclick="document.querySelector('.s1-body').scrollIntoView({behavior:'smooth'})" aria-hidden="true">
+        <span>시작하기</span>
+        <div class="hero-scroll-chevron">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
     </div>
   </div>
   <div class="s1-body">
@@ -1339,7 +1369,7 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
         <div id="pdb-region-badge" class="pdb-region-badge">전국 장소들</div>
         <div class="psearch-wrap">
           <svg class="psearch-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input class="psearch-inp" id="psearch" placeholder="장소 이름으로 찾기... (전체 3.4만개 검색)" aria-label="장소 검색" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest-drop" oninput="onSearchInput()" onkeydown="onSearchKeydown(event)" autocomplete="off"/>
+          <input class="psearch-inp" id="psearch" placeholder="장소 검색..." aria-label="장소 검색" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest-drop" oninput="onSearchInput()" onkeydown="onSearchKeydown(event)" autocomplete="off"/>
           <button class="psearch-clear" id="psearch-clear" onclick="clearSearch()" style="display:none" aria-label="검색어 지우기">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -2305,7 +2335,7 @@ function renderDays() {
         '<div class="slot-drag" aria-hidden="true"><span></span><span></span><span></span></div>' +
         '<span class="slot-num" style="'+numStyle+'">'+(pi+1)+'</span>' +
         '<input class="slot-inp" type="text" value="'+esc(nm)+'" placeholder="장소 이름..." data-day="'+selDay+'" data-pi="'+pi+'" data-cat="'+esc(cat)+'" aria-label="Day '+(selDay+1)+' 장소 '+(pi+1)+'번"/>' +
-        (c ? '<span class="slot-cat-dot" style="width:6px;height:6px;border-radius:50%;background:'+c.color+';flex-shrink:0"></span>' : '') +
+        (c ? '<span class="slot-cat-chip" style="background:'+c.bg+';color:'+c.color+'">'+esc(c.abbr)+'</span>' : '') +
         '<button class="slot-note-btn'+(pnote(item)?' has-note':'')+'" data-pi="'+pi+'" title="메모" aria-label="메모 추가">✏</button>'+
         '<button class="slot-rm" data-day="'+selDay+'" data-pi="'+pi+'" title="삭제">×</button>'+
         '<div class="slot-note-area">'+
@@ -2746,6 +2776,16 @@ function renderResult(d) {
   var badgeLabel = d.passed?"통과 ✓":s>=40?"검토 필요":"재구성 필요";
   var verdict = d.passed?"이 일정, 좋아요!":s>=40?"조금 손봐야 해요":"일정을 다시 짜봐요";
   var html = "";
+
+  // Travel context summary bar
+  var ctxHtml = '<div class="result-ctx-bar">' +
+    '<span class="result-ctx-chip">' + esc(cfg.region === "전체" ? "전국" : cfg.region) + '</span>' +
+    '<span class="result-ctx-chip">' + esc(cfg.date.replace(/-/g, '.')) + '</span>' +
+    '<span class="result-ctx-chip">' + esc(cfg.partyType) + ' ' + cfg.partySize + '명</span>' +
+    (cfg.startTime ? '<span class="result-ctx-chip">출발 ' + esc(cfg.startTime) + '</span>' : '') +
+    (cfg.travelType ? '<span class="result-ctx-chip">' + esc(cfg.travelType) + '</span>' : '') +
+    '</div>';
+  html += ctxHtml;
 
   // Score hero — verdict-first layout
   html += '<div class="score-card sc-'+scoreClass+'">' +
