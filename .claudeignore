@@ -1,0 +1,26 @@
+# 캐시/생성물
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+node_modules/
+.git/
+.DS_Store
+.impeccable/
+
+# 원본 데이터/문서 (코드 아님, 용량만 큼)
+data/
+gun/data/
+*.xlsx
+*.xls
+*.docx
+*.pptx
+*.bak
+test.ipynb
+
+# 백업/락 파일
+.~lock.*
+~$*

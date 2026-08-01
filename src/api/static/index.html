@@ -1366,7 +1366,7 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
   <div class="s2-layout">
     <div class="placedb mtab-active" id="placedb-panel">
       <div class="pdb-head">
-        <div id="pdb-region-badge" class="pdb-region-badge">전국 장소들</div>
+        <div id="pdb-region-badge" class="pdb-region-badge">제주 장소들</div>
         <div class="psearch-wrap">
           <svg class="psearch-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input class="psearch-inp" id="psearch" placeholder="장소 검색..." aria-label="장소 검색" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest-drop" oninput="onSearchInput()" onkeydown="onSearchKeydown(event)" autocomplete="off"/>
@@ -1484,8 +1484,8 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
       <div>
         <div class="footer-col-title">데이터</div>
         <div class="footer-data-sources">
-          <p><strong>관광지 데이터</strong><br/>전국 34,000여 개 관광·문화·음식점</p>
-          <p><strong>무장애 여행지</strong><br/>접근성 정보 포함 1,800여 곳</p>
+          <p><strong>관광지 데이터</strong><br/>제주 1,500여 개 관광·문화·음식점</p>
+          <p><strong>무장애 여행지</strong><br/>접근성 정보 포함 45여 곳</p>
           <p><strong>지도</strong><br/>OpenStreetMap Contributors</p>
         </div>
       </div>
@@ -1620,8 +1620,8 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
 
 <script>
 /* ─── State ─────────────────────────────────────────────────────────── */
-var cfg = { region:"전체", date:"2026-06-01", startTime:"09:00", partyType:"친구", partySize:2, travelType:"" };
-var days = [["경복궁","북촌한옥마을","인사동"],["남산타워","명동"]];
+var cfg = { region:"제주", date:"2026-06-01", startTime:"09:00", partyType:"친구", partySize:2, travelType:"" };
+var days = [["성산일출봉","섭지코지","우도"],["한라산","사려니숲길"]];
 var selDay = 0;
 var allPlaces = [], filteredCache = [];
 var PAGE = 80, visCount = PAGE;
@@ -1634,22 +1634,7 @@ var serverFetchParams = null;
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 var REGIONS = [
-  {name:"서울",   key:"서울", color:"#3B7AF5", desc:"고궁·한강·명동"},
   {name:"제주",   key:"제주", color:"#00BFA5", desc:"해변·오름·한라산"},
-  {name:"부산",   key:"부산", color:"#FF5733", desc:"해운대·감천·광안리"},
-  {name:"경북",   key:"경북", color:"#F5A623", desc:"경주·안동·포항"},
-  {name:"강원",   key:"강원", color:"#27AE60", desc:"강릉·속초·춘천"},
-  {name:"전북",   key:"전북", color:"#E91E8C", desc:"전주·군산·남원"},
-  {name:"전남",   key:"전남", color:"#0EA5C8", desc:"여수·순천·담양"},
-  {name:"인천",   key:"인천", color:"#8B5CF6", desc:"강화도·송도·인천"},
-  {name:"경기",   key:"경기", color:"#4CAF50", desc:"수원·가평·남양주"},
-  {name:"충남",   key:"충남", color:"#795548", desc:"공주·보령·태안"},
-  {name:"경남",   key:"경남", color:"#FF9800", desc:"통영·거제·남해"},
-  {name:"대구",   key:"대구", color:"#F44336", desc:"근대골목·팔공산·동성로"},
-  {name:"광주",   key:"광주", color:"#9C27B0", desc:"무등산·양림동·5·18"},
-  {name:"대전",   key:"대전", color:"#2196F3", desc:"엑스포·유성온천·계룡산"},
-  {name:"충북",   key:"충북", color:"#607D8B", desc:"청주·단양·충주"},
-  {name:"전국",   key:"전체", color:"#9C9C92", desc:"지역 상관없이"},
 ];
 var PARTY_TYPES = [
   {label:"혼자",     val:"혼자"},
@@ -1722,15 +1707,7 @@ var SLABELS = {
 
 /* ─── Region quick-start examples ───────────────────────────────────── */
 var QUICK_EXAMPLES = {
-  "서울":["경복궁","북촌한옥마을","광화문광장"],
   "제주":["성산일출봉","협재해수욕장","우도"],
-  "부산":["해운대해수욕장","감천문화마을","광안리해수욕장"],
-  "경기":["에버랜드","수원화성","가평"],
-  "강원":["설악산","정동진","강릉"],
-  "경북":["불국사","석굴암","첨성대"],
-  "전남":["여수엑스포해양공원","순천만국가정원","담양죽녹원"],
-  "경남":["통영케이블카","거제씨월드","남해독일마을"],
-  "전국":["경복궁","해운대해수욕장","성산일출봉"],
 };
 function addNameToDay(nm) {
   days[selDay].push(nm);
@@ -2452,15 +2429,15 @@ function addDay() {
 
 /* ─── 데모 샘플 (원클릭 로드 + 자동 검증) ───────────────────────────── */
 var DEMO_PLANS = {
-  // 종로 도보권 클러스터 — 통과 예상
+  // 성산 동쪽 도보·차량 근접 클러스터 — 통과 예상
   good: {
-    cfg: { region:"서울", partyType:"친구", partySize:2, date:"2026-06-13", startTime:"09:00", travelType:"cultural" },
-    days: [["경복궁","북촌한옥마을","인사동","창덕궁"]]
+    cfg: { region:"제주", partyType:"친구", partySize:2, date:"2026-06-13", startTime:"09:00", travelType:"nature" },
+    days: [["성산일출봉","섭지코지","아쿠아플라넷제주","우도"]]
   },
-  // 하루에 서울→부산→제주 — 이동 불가, 위험 예상
+  // 하루에 협재(서)→성산(동)→쇠소깍(남)→한라산(중) — 섬 전역 이동, 위험 예상
   bad: {
-    cfg: { region:"전체", partyType:"가족", partySize:4, date:"2026-08-15", startTime:"10:00", travelType:"" },
-    days: [["경복궁","해운대해수욕장","성산일출봉","한라산"]]
+    cfg: { region:"제주", partyType:"가족", partySize:4, date:"2026-08-15", startTime:"10:00", travelType:"" },
+    days: [["협재해수욕장","성산일출봉","쇠소깍","한라산"]]
   }
 };
 function loadSample(which) {
