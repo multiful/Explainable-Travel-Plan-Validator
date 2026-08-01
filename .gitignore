@@ -27,6 +27,9 @@ chroma_db/
 *.db
 *.sqlite3
 
+# 지식그래프 빌드 산출물 (scripts/build_knowledge_graph.py로 재생성 가능)
+data/graph/
+
 # IDE
 .idea/
 .vscode/

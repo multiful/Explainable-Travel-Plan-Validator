@@ -18,6 +18,7 @@ import os
 from collections import OrderedDict
 from typing import Any
 
+from src.data.graph_retriever import GraphRetriever
 from src.data.models import (
     ExplanationItem,
     HardFail,
@@ -180,6 +181,24 @@ def _cache_key(
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
+def _graph_context(poi_name: str, graph: GraphRetriever | None) -> dict | None:
+    """지식그래프에서 POI명 검색 → 지역/카테고리 + 도보 근접 대안 근거.
+
+    그래프 미설정이거나 매칭 실패(대상 지역 밖 POI 등) 시 None — 프롬프트에 노이즈를 넣지 않는다.
+    """
+    if not poi_name or graph is None or not graph.enabled:
+        return None
+    places = graph.search_places(poi_name, limit=1)
+    if not places:
+        return None
+    place = places[0]
+    ctx: dict = {"지역": place.region_name or "미확인", "카테고리": place.category_name or "미확인"}
+    nearby = graph.find_nearby(place.place_id, limit=3)
+    if nearby:
+        ctx["도보권_대안"] = [f"{a.name}({a.distance_km}km)" for a in nearby]
+    return ctx
+
+
 def _build_user_prompt(
     hard_fails: list[HardFail],
     warnings: list[Warning],
@@ -188,20 +207,21 @@ def _build_user_prompt(
     scores: Scores | None,
     plan: ItineraryPlan,
     final_score: int,
+    graph: GraphRetriever | None = None,
 ) -> str:
     issues: list[dict] = []
 
     for hf in hard_fails:
-        issues.append({
-            "item_type": "hard_fail",
-            "item_key": hf.fail_type,
-            "data": {
-                "장소": hf.poi_name or "미지정",
-                "메시지": hf.message,
-                "증거": hf.evidence,
-                "신뢰도": hf.confidence,
-            },
-        })
+        data = {
+            "장소": hf.poi_name or "미지정",
+            "메시지": hf.message,
+            "증거": hf.evidence,
+            "신뢰도": hf.confidence,
+        }
+        gctx = _graph_context(hf.poi_name or "", graph)
+        if gctx:
+            data["지식그래프_근거"] = gctx
+        issues.append({"item_type": "hard_fail", "item_key": hf.fail_type, "data": data})
 
     for w in warnings:
         issues.append({
@@ -368,6 +388,7 @@ class ExplainEngine:
         timeout_sec: float = DEFAULT_TIMEOUT_SEC,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         client: Any = None,
+        graph_retriever: GraphRetriever | None = None,
     ) -> None:
         self._model = model
         self._timeout = timeout_sec
@@ -376,6 +397,8 @@ class ExplainEngine:
         self._client = client
         if self._client is None and _ANTHROPIC_AVAILABLE and self._api_key:
             self._client = anthropic.Anthropic(api_key=self._api_key)
+        # NEO4J_URI 미설정 시 GraphRetriever.enabled=False → 그래프 근거는 조용히 생략된다.
+        self._graph = graph_retriever if graph_retriever is not None else GraphRetriever.from_env()
 
     def is_available(self) -> bool:
         return self._client is not None
@@ -467,6 +490,7 @@ class ExplainEngine:
         user_prompt = _build_user_prompt(
             hard_fails, warnings, penalty_breakdown,
             bonus_breakdown, scores, plan, final_score,
+            graph=self._graph,
         )
 
         message = self._client.messages.create(

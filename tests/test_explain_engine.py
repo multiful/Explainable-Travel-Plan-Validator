@@ -7,10 +7,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.data.models import (
+    AlternativePOI,
     DayPlan,
     ExplanationItem,
     HardFail,
     ItineraryPlan,
+    PlaceEvidence,
     PlaceInput,
     Scores,
     Warning,
@@ -20,6 +22,7 @@ from src.explain.explain_engine import (
     _build_user_prompt,
     _cache_key,
     _fallback,
+    _graph_context,
     _parse_llm_response,
 )
 
@@ -59,6 +62,30 @@ def make_warning() -> Warning:
     )
 
 
+def make_graph_stub(with_nearby: bool = True) -> MagicMock:
+    """GraphRetriever 스텁 — 실제 Neo4j 연결 없이 성산일출봉 검색 결과를 흉내낸다."""
+    graph = MagicMock()
+    graph.enabled = True
+    graph.search_places.return_value = [
+        PlaceEvidence(
+            place_id="kakao_1", name="성산일출봉", place_type="ACTIVITY",
+            category_name="자연관광지", region_name="성산읍",
+            address="제주 서귀포시 성산읍", lat=33.458, lng=126.942,
+        )
+    ]
+    graph.find_nearby.return_value = (
+        [AlternativePOI(name="우도", distance_km=0.25, category="자연관광지", lat=33.5, lng=126.95)]
+        if with_nearby else []
+    )
+    return graph
+
+
+def make_disabled_graph_stub() -> MagicMock:
+    graph = MagicMock()
+    graph.enabled = False
+    return graph
+
+
 # ---------------------------------------------------------------------------
 # _cache_key
 # ---------------------------------------------------------------------------
@@ -77,6 +104,40 @@ class TestCacheKey:
     def test_empty_inputs(self):
         key = _cache_key([], [], {}, 80)
         assert isinstance(key, str) and len(key) == 32
+
+
+# ---------------------------------------------------------------------------
+# _graph_context
+# ---------------------------------------------------------------------------
+
+class TestGraphContext:
+    def test_none_graph_returns_none(self):
+        assert _graph_context("성산일출봉", None) is None
+
+    def test_disabled_graph_returns_none(self):
+        assert _graph_context("성산일출봉", make_disabled_graph_stub()) is None
+
+    def test_empty_poi_name_returns_none(self):
+        assert _graph_context("", make_graph_stub()) is None
+
+    def test_no_match_returns_none(self):
+        graph = make_graph_stub()
+        graph.search_places.return_value = []
+        assert _graph_context("경복궁", graph) is None
+
+    def test_match_includes_region_and_category(self):
+        ctx = _graph_context("성산일출봉", make_graph_stub())
+        assert ctx["지역"] == "성산읍"
+        assert ctx["카테고리"] == "자연관광지"
+
+    def test_match_includes_nearby_alternatives(self):
+        ctx = _graph_context("성산일출봉", make_graph_stub(with_nearby=True))
+        assert "도보권_대안" in ctx
+        assert "우도(0.25km)" in ctx["도보권_대안"]
+
+    def test_no_nearby_omits_key(self):
+        ctx = _graph_context("성산일출봉", make_graph_stub(with_nearby=False))
+        assert "도보권_대안" not in ctx
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +171,18 @@ class TestBuildUserPrompt:
         prompt = _build_user_prompt([], [], {}, {}, None, make_plan(), 80)
         assert "overall" in prompt
         assert "summary" in prompt
+
+    def test_graph_evidence_included_when_matched(self):
+        prompt = _build_user_prompt(
+            [make_hard_fail()], [], {}, {}, None, make_plan(), 45,
+            graph=make_graph_stub(),
+        )
+        assert "지식그래프_근거" in prompt
+        assert "성산읍" in prompt
+
+    def test_no_graph_omits_evidence_key(self):
+        prompt = _build_user_prompt([make_hard_fail()], [], {}, {}, None, make_plan(), 45)
+        assert "지식그래프_근거" not in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -329,3 +402,28 @@ class TestExplainEngineMockLLM:
         client = MagicMock()
         engine = ExplainEngine(api_key="test-key", client=client)
         assert engine.is_available()
+
+    def test_graph_evidence_reaches_llm_prompt(self):
+        import src.explain.explain_engine as ee
+        ee._CACHE.clear()
+
+        llm_output = [{
+            "item_type": "hard_fail", "item_key": "OPERATING_HOURS_CONFLICT",
+            "fact": "f", "rule": "r", "risk": "CRITICAL", "suggestion": "s",
+        }]
+        client = self._make_mock_client(llm_output)
+        engine = ExplainEngine(api_key="test-key", client=client, graph_retriever=make_graph_stub())
+        engine.generate(
+            hard_fails=[make_hard_fail()], warnings=[], penalty_breakdown={},
+            bonus_breakdown={}, scores=None, plan=make_plan(), final_score=45,
+        )
+        sent_prompt = client.messages.create.call_args.kwargs["messages"][0]["content"]
+        assert "지식그래프_근거" in sent_prompt
+        assert "성산읍" in sent_prompt
+
+
+class TestExplainEngineGraphDefault:
+    def test_default_graph_disabled_without_env(self, monkeypatch):
+        monkeypatch.delenv("NEO4J_URI", raising=False)
+        engine = ExplainEngine(api_key="", client=None)
+        assert engine._graph.enabled is False
