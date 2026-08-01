@@ -24,6 +24,9 @@ class POIInfo(BaseModel):
     open_start: str
     open_end: str
     duration_min: int
+    hours_estimated: bool = True
+    graph_region: str = ""
+    graph_nearby: list[str] = []
 
 
 class PlaceItem(BaseModel):
