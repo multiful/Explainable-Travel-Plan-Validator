@@ -16,6 +16,7 @@ from src.api.schemas import (
     ValidateResponse,
 )
 from src.data.dwell_db import MANUAL_OVERRIDES as _DWELL_OVERRIDES
+from src.data.graph_retriever import GraphRetriever
 from src.data.hours_db import resolve_hours
 from src.data.kakao_local import KakaoLocalClient
 from src.data.models import DayPlan, ItineraryPlan, PlaceInput, POI
@@ -26,6 +27,9 @@ router = APIRouter()
 # 카카오 로컬 키워드 검색 (식당 등 pois.csv 미수록 장소의 좌표 보강).
 # 키가 없으면 enabled=False 로 동작해 기존 폴백을 유지한다.
 _KAKAO_LOCAL = KakaoLocalClient.from_env()
+
+# Neo4j 지식그래프 — 지역/도보권 대안 근거. NEO4J_URI 미설정 시 enabled=False로 조용히 폴백.
+_GRAPH = GraphRetriever.from_env()
 
 
 def _kakao_hint(category_name: str) -> str | None:
@@ -57,6 +61,14 @@ def _kakao_cat_code(category_name: str) -> str:
 
 _DATA_DIR = Path(__file__).parent.parent.parent / "data"
 _DEFAULT_CENTER = (37.5665, 126.9780)  # 서울 시청
+
+# TourAPI 실제 운영시간 캐시 (scripts/fetch_jeju_hours.py 로 미리 조회, contentid → {open, close}).
+# 없는 곳은 기존처럼 hours_db.resolve_hours() 카테고리 추정값을 쓴다.
+_JEJU_HOURS: dict[str, dict] = {}
+_jeju_hours_path = _DATA_DIR / "jeju_hours.json"
+if _jeju_hours_path.exists():
+    with open(_jeju_hours_path, encoding="utf-8") as f:
+        _JEJU_HOURS = json.load(f)
 
 # ── sido 단축 매핑 ─────────────────────────────────────────────────────────
 _SIDO_MAP: dict[str, str] = {
@@ -267,6 +279,7 @@ def _build_coord_index() -> dict[str, dict]:
                             "region": _addr_to_region(row.get("addr1", "")),
                             "cat": row.get("contenttypeid", "12"),
                             "cat_name": _TYPEID_LABEL.get(row.get("contenttypeid", ""), "관광지"),
+                            "contentid": row.get("contentid", ""),
                         }
                     except (ValueError, TypeError):
                         pass
@@ -511,6 +524,7 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
     #   Medium — pois.csv / naver_metadata 매칭 (TourAPI 수집 좌표)
     #   Low    — 서울 시청 폴백 (좌표 신뢰 불가)
     hint: str | None = None
+    contentid = ""
     if norm in _COORD_CATALOG_NORM:
         confidence: str = "High"
         source = "catalog"
@@ -522,6 +536,7 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
         source = "pois"
         lat, lng = place["lat"], place["lng"]
         category = place["cat"]
+        contentid = str(place.get("contentid") or "")
     else:
         # pois.csv·카탈로그 미매칭 → 카카오 로컬 키워드 검색으로 좌표 보강
         # (식당·카페 등). 실패 시에만 서울시청 폴백으로 떨어진다.
@@ -538,23 +553,42 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
             lat, lng = _DEFAULT_CENTER
             category = "12"
 
-    hours = resolve_hours(name, hint)
+    # 운영시간: TourAPI 실측(jeju_hours.json, scripts/fetch_jeju_hours.py로 미리 조회)이
+    # 있으면 그걸 쓰고, 없으면 카테고리·키워드 추정(hours_db)으로 폴백.
+    real_hours = _JEJU_HOURS.get(contentid) if contentid else None
+    if real_hours:
+        open_start, open_end = real_hours["open"], real_hours["close"]
+        hours_estimated = False
+    else:
+        hours = resolve_hours(name, hint)
+        open_start, open_end = hours.open_, hours.close_
+        hours_estimated = True
     dwell = _guess_dwell(name)
+
+    # 지식그래프 근거 — 지역·도보권 대안. 그래프 미설정/미매칭 시 조용히 생략.
+    graph_region, graph_nearby = "", []
+    graph_places = _GRAPH.search_places(name, limit=1)
+    if graph_places:
+        gp = graph_places[0]
+        graph_region = gp.region_name
+        graph_nearby = [a.name for a in _GRAPH.find_nearby(gp.place_id, limit=3)]
 
     poi = POI(
         poi_id=f"web_{idx:04d}",
         name=name, lat=lat, lng=lng,
-        open_start=hours.open_, open_end=hours.close_,
+        open_start=open_start, open_end=open_end,
         duration_min=dwell, category=category,
-        # 영업시간은 카테고리 추정값 → 미검증 표시(P1: 하드페일 강등 근거)
-        hours_estimated=True,
+        hours_estimated=hours_estimated,
     )
     info = POIInfo(
         name=name, found=(confidence != "Low"), source=source,
         confidence=confidence,
         lat=lat, lng=lng,
-        open_start=hours.open_, open_end=hours.close_,
+        open_start=open_start, open_end=open_end,
         duration_min=dwell,
+        hours_estimated=hours_estimated,
+        graph_region=graph_region,
+        graph_nearby=graph_nearby,
     )
     return poi, info
 

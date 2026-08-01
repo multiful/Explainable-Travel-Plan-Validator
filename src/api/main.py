@@ -9,9 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from src.api.router import router
-
 # .env → os.environ 로드 (uvicorn 직접 실행 시 환경변수 자동 주입)
+# router import보다 먼저 실행해야 한다 — router.py는 모듈 로드 시점에
+# GraphRetriever.from_env() 등으로 즉시 환경변수를 읽는 싱글턴을 생성한다.
 _dotenv_path = Path(__file__).parent.parent.parent / ".env"
 if _dotenv_path.exists() and not os.environ.get("ANTHROPIC_API_KEY"):
     for line in _dotenv_path.read_text(encoding="utf-8").splitlines():
@@ -19,6 +19,8 @@ if _dotenv_path.exists() and not os.environ.get("ANTHROPIC_API_KEY"):
         if line and not line.startswith("#") and "=" in line:
             key, _, val = line.partition("=")
             os.environ.setdefault(key.strip(), val.strip())
+
+from src.api.router import router  # noqa: E402 — .env 로드 이후에 import해야 함
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
