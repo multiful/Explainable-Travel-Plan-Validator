@@ -96,3 +96,58 @@ def test_search_keyword_list_parses_all() -> None:
 def test_search_keyword_list_disabled_returns_empty() -> None:
     client = KakaoLocalClient(api_key="")
     assert client.search_keyword_list("금복식당") == []
+
+
+def _address_response() -> MagicMock:
+    m = MagicMock()
+    m.raise_for_status.return_value = None
+    m.json.return_value = {
+        "documents": [
+            {
+                "address_name": "제주특별자치도 제주시 한림읍 한림로 247",
+                "x": "126.2333989",
+                "y": "33.3885078",
+            }
+        ]
+    }
+    return m
+
+
+def test_geocode_address_parses_lat_lng() -> None:
+    client = KakaoLocalClient(api_key="dummy")
+    with patch("src.data.kakao_local.httpx.get", return_value=_address_response()) as g:
+        coords = client.geocode_address("제주특별자치도 제주시 한림읍 한림로 247")
+        assert g.called
+    assert coords == (33.3885078, 126.2333989)
+
+
+def test_geocode_address_disabled_without_key_returns_none() -> None:
+    client = KakaoLocalClient(api_key="")
+    assert client.geocode_address("아무 주소") is None
+
+
+def test_geocode_address_is_cached() -> None:
+    client = KakaoLocalClient(api_key="dummy")
+    with patch("src.data.kakao_local.httpx.get", return_value=_address_response()) as g:
+        client.geocode_address("제주특별자치도 제주시 한림읍 한림로 247")
+        client.geocode_address("제주특별자치도 제주시 한림읍 한림로 247")
+        assert g.call_count == 1
+    assert client.stats["hit"] == 1
+
+
+def test_geocode_address_empty_documents_returns_none() -> None:
+    client = KakaoLocalClient(api_key="dummy")
+    empty = MagicMock()
+    empty.raise_for_status.return_value = None
+    empty.json.return_value = {"documents": []}
+    with patch("src.data.kakao_local.httpx.get", return_value=empty):
+        assert client.geocode_address("존재하지않는주소") is None
+
+
+def test_geocode_address_http_error_falls_back_to_none() -> None:
+    import httpx
+
+    client = KakaoLocalClient(api_key="dummy")
+    with patch("src.data.kakao_local.httpx.get", side_effect=httpx.ConnectTimeout("x")):
+        assert client.geocode_address("제주특별자치도 제주시 한림읍 한림로 247") is None
+    assert client.stats["api_fail"] == 1

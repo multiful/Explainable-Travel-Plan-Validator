@@ -18,6 +18,7 @@ import httpx
 from src.data.models import KakaoPlace
 
 _KEYWORD_URL = "https://dapi.kakao.com/v2/local/search/keyword.json"
+_ADDRESS_URL = "https://dapi.kakao.com/v2/local/search/address.json"
 
 
 class KakaoLocalClient:
@@ -28,6 +29,7 @@ class KakaoLocalClient:
         self._timeout = timeout_sec
         self._cache: dict[str, KakaoPlace | None] = {}
         self._list_cache: dict[str, list[KakaoPlace]] = {}
+        self._geocode_cache: dict[str, tuple[float, float] | None] = {}
         self.stats: dict[str, int] = {"hit": 0, "miss": 0, "api_ok": 0, "api_fail": 0}
 
     @classmethod
@@ -119,3 +121,34 @@ class KakaoLocalClient:
 
         self._list_cache[ck] = out
         return out
+
+    def geocode_address(self, address: str) -> tuple[float, float] | None:
+        """도로명주소 → (위도, 경도). 결측 좌표 보정용. 실패 시 None."""
+        q = (address or "").strip()
+        if not q or not self.enabled:
+            return None
+        if q in self._geocode_cache:
+            self.stats["hit"] += 1
+            return self._geocode_cache[q]
+
+        self.stats["miss"] += 1
+        result: tuple[float, float] | None = None
+        try:
+            resp = httpx.get(
+                _ADDRESS_URL,
+                params={"query": q},
+                headers={"Authorization": f"KakaoAK {self._api_key}"},
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            docs = resp.json().get("documents", [])
+            if docs:
+                d = docs[0]
+                result = (float(d["y"]), float(d["x"]))
+            self.stats["api_ok"] += 1
+        except (httpx.HTTPError, KeyError, ValueError, TypeError):
+            self.stats["api_fail"] += 1
+            result = None
+
+        self._geocode_cache[q] = result
+        return result
