@@ -246,3 +246,29 @@ class TestWarningFields:
         warns = detector.detect(plan, pois, matrix)
         for w in warns:
             assert len(w.message) > 0
+
+
+# ---------------------------------------------------------------------------
+# day_index / poi_names threading
+# ---------------------------------------------------------------------------
+
+class TestDayIndex:
+    def test_day_index_defaults_to_none(self, detector):
+        pois = [make_poi(poi_id=str(i), name=f"P{i}", duration_min=60) for i in range(4)]
+        matrix = make_matrix({(0, 1): 100.0, (1, 2): 100.0, (2, 3): 100.0})
+        plan = make_plan([f"P{i}" for i in range(4)])
+        warns = detector.detect(plan, pois, matrix)
+        assert warns
+        for w in warns:
+            assert w.day_index is None
+            assert w.poi_names == []
+
+    def test_day_index_and_poi_names_set_when_passed(self, detector):
+        pois = [make_poi(poi_id=str(i), name=f"P{i}", duration_min=60) for i in range(4)]
+        matrix = make_matrix({(0, 1): 100.0, (1, 2): 100.0, (2, 3): 100.0})
+        plan = make_plan([f"P{i}" for i in range(4)])
+        warns = detector.detect(plan, pois, matrix, day_index=1)
+        assert warns
+        for w in warns:
+            assert w.day_index == 1
+            assert w.poi_names == ["P0", "P1", "P2", "P3"]

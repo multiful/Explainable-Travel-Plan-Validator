@@ -58,6 +58,7 @@ class ValidateRequest(BaseModel):
 class ValidateResponse(BaseModel):
     plan_id: str
     final_score: int
+    base_score: int = 0
     passed: bool
     data_reliability_score: int = 0
     hard_fails: list[dict]
@@ -67,6 +68,7 @@ class ValidateResponse(BaseModel):
     penalty_breakdown: dict[str, int]
     bonus_breakdown: dict[str, int]
     rewards: list[str]
+    alternatives: dict[str, list[dict]] = {}
     poi_info: list[POIInfo]
     repair_suggestions: Optional[dict] = None
     optimal_route: Optional[list[dict]] = None

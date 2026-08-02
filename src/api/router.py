@@ -1,6 +1,7 @@
 """FastAPI 라우터 — /validate, /places 엔드포인트."""
 from __future__ import annotations
 
+import asyncio
 import csv
 import json
 import re
@@ -740,7 +741,8 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
         date=req.date,
     )
 
-    result = _get_pipeline().run(
+    result = await asyncio.to_thread(
+        _get_pipeline().run,
         plan=plan,
         per_day_pois=per_day_pois,
         matrix={},
@@ -792,6 +794,7 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
     return ValidateResponse(
         plan_id=result.plan_id,
         final_score=result.final_score,
+        base_score=result.base_score,
         passed=(
             result.final_score >= 60
             and not [hf for hf in result.hard_fails if not getattr(hf, "estimated", False)]
@@ -804,6 +807,7 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
         penalty_breakdown=result.penalty_breakdown,
         bonus_breakdown=result.bonus_breakdown,
         rewards=result.rewards,
+        alternatives={k: [a.model_dump() for a in v] for k, v in result.alternatives.items()},
         poi_info=poi_info_list,
         repair_suggestions=result.repair or None,
         optimal_route=(

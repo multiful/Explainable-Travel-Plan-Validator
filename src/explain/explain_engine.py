@@ -20,6 +20,7 @@ from typing import Any
 
 from src.data.graph_retriever import GraphRetriever
 from src.data.models import (
+    AlternativePOI,
     ExplanationItem,
     HardFail,
     ItineraryPlan,
@@ -154,10 +155,12 @@ SYSTEM_PROMPT = """당신은 한국 여행 일정 QA 보고서 작성 전문가�
 
 [출력 형식]
 반드시 JSON 배열만 출력하세요. 추가 텍스트, 마크다운, 코드 블록 금지.
-입력의 item_type과 item_key는 그대로 유지하세요.
+입력의 item_type, item_key, day_index는 그대로 유지하세요 (day_index가 없으면 null).
 
 [품질 기준]
 - fact에 수치가 없으면 실패입니다. 입력 data에 포함된 측정값을 반드시 활용하세요.
+- data에 "일자" 필드가 있으면 fact 문장 맨 앞에 "N일차: " 형태로 반드시 포함하세요.
+- data에 "관련_장소"나 "지식그래프_근거"가 있으면 fact/suggestion에서 실제 장소명을 인용하세요.
 - hard_fail → risk는 항상 "CRITICAL"
 - warning → risk는 항상 "WARNING"
 - penalty → risk는 패널티 크기(≤5: WARNING, >5: CRITICAL)에 따라 결정
@@ -172,8 +175,8 @@ def _cache_key(
     final_score: int,
 ) -> str:
     payload = {
-        "hf": sorted([(h.fail_type, h.poi_name or "") for h in hard_fails]),
-        "w": sorted([w.warning_type for w in warnings]),
+        "hf": sorted([(h.fail_type, h.poi_name or "", h.day_index if h.day_index is not None else -1) for h in hard_fails]),
+        "w": sorted([(w.warning_type, w.day_index if w.day_index is not None else -1) for w in warnings]),
         "p": sorted(penalty_breakdown.items()),
         "score": final_score,
     }
@@ -199,6 +202,16 @@ def _graph_context(poi_name: str, graph: GraphRetriever | None) -> dict | None:
     return ctx
 
 
+def _find_alternatives(poi_name: str, graph: GraphRetriever | None) -> list[AlternativePOI]:
+    """지식그래프에서 POI명 검색 → 도보 근접 대안 POI 목록. 미매칭/미설정 시 빈 리스트."""
+    if not poi_name or graph is None or not graph.enabled:
+        return []
+    places = graph.search_places(poi_name, limit=1)
+    if not places:
+        return []
+    return graph.find_nearby(places[0].place_id, limit=3)
+
+
 def _build_user_prompt(
     hard_fails: list[HardFail],
     warnings: list[Warning],
@@ -218,19 +231,35 @@ def _build_user_prompt(
             "증거": hf.evidence,
             "신뢰도": hf.confidence,
         }
+        if hf.day_index is not None:
+            data["일자"] = f"{hf.day_index + 1}일차"
         gctx = _graph_context(hf.poi_name or "", graph)
         if gctx:
             data["지식그래프_근거"] = gctx
-        issues.append({"item_type": "hard_fail", "item_key": hf.fail_type, "data": data})
+        issues.append({
+            "item_type": "hard_fail",
+            "item_key": hf.fail_type,
+            "day_index": hf.day_index,
+            "data": data,
+        })
 
     for w in warnings:
+        data = {
+            "메시지": w.message,
+            "신뢰도": w.confidence,
+        }
+        if w.day_index is not None:
+            data["일자"] = f"{w.day_index + 1}일차"
+        if w.poi_names:
+            data["관련_장소"] = w.poi_names
+            gctx = _graph_context(w.poi_names[0], graph)
+            if gctx:
+                data["지식그래프_근거"] = gctx
         issues.append({
             "item_type": "warning",
             "item_key": w.warning_type,
-            "data": {
-                "메시지": w.message,
-                "신뢰도": w.confidence,
-            },
+            "day_index": w.day_index,
+            "data": data,
         })
 
     for key, penalty in penalty_breakdown.items():
@@ -284,7 +313,8 @@ def _build_user_prompt(
         {
             "item_type": "hard_fail",
             "item_key": "OPERATING_HOURS_CONFLICT",
-            "fact": "경복궁 도착 예정 18:17, 운영 종료 18:00 — 17분 초과",
+            "day_index": 0,
+            "fact": "1일차: 경복궁 도착 예정 18:17, 운영 종료 18:00 — 17분 초과",
             "rule": "Hard Fail: 운영시간 종료 후 방문은 물리적으로 불가능합니다.",
             "risk": "CRITICAL",
             "suggestion": "경복궁 방문을 오전 첫 코스로 앞당기세요.",
@@ -315,6 +345,7 @@ def _parse_llm_response(raw: str) -> list[ExplanationItem]:
             rule=str(obj.get("rule", "")),
             risk=obj.get("risk", "WARNING"),
             suggestion=str(obj.get("suggestion", "")),
+            day_index=obj.get("day_index"),
         ))
     return items
 
@@ -328,23 +359,27 @@ def _fallback(
     items: list[ExplanationItem] = []
 
     for hf in hard_fails:
+        day_prefix = f"{hf.day_index + 1}일차: " if hf.day_index is not None else ""
         items.append(ExplanationItem(
             item_type="hard_fail",
             item_key=hf.fail_type,
-            fact=f"[{hf.poi_name or '장소'}] {hf.message} (증거: {hf.evidence})",
+            fact=f"{day_prefix}[{hf.poi_name or '장소'}] {hf.message} (증거: {hf.evidence})",
             rule=_HARD_FAIL_RULES.get(hf.fail_type, hf.message),
             risk="CRITICAL",
             suggestion=_HARD_FAIL_SUGGESTIONS.get(hf.fail_type, "일정을 수정하세요."),
+            day_index=hf.day_index,
         ))
 
     for w in warnings:
+        day_prefix = f"{w.day_index + 1}일차: " if w.day_index is not None else ""
         items.append(ExplanationItem(
             item_type="warning",
             item_key=w.warning_type,
-            fact=w.message,
+            fact=f"{day_prefix}{w.message}",
             rule=_WARNING_RULES.get(w.warning_type, w.message),
             risk="WARNING",
             suggestion=_WARNING_SUGGESTIONS.get(w.warning_type, "일정을 조정하세요."),
+            day_index=w.day_index,
         ))
 
     for key, penalty in penalty_breakdown.items():
@@ -402,6 +437,17 @@ class ExplainEngine:
 
     def is_available(self) -> bool:
         return self._client is not None
+
+    def build_alternatives(self, hard_fails: list[HardFail]) -> dict[str, list[AlternativePOI]]:
+        """Hard Fail POI별 지식그래프 도보권 대안 — 결과보고서의 대체 제안 근거."""
+        result: dict[str, list[AlternativePOI]] = {}
+        for hf in hard_fails:
+            if not hf.poi_name or hf.poi_name in result:
+                continue
+            alts = _find_alternatives(hf.poi_name, self._graph)
+            if alts:
+                result[hf.poi_name] = alts
+        return result
 
     def generate(
         self,

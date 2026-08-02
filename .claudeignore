@@ -14,6 +14,7 @@ node_modules/
 # 원본 데이터/문서 (코드 아님, 용량만 큼)
 data/
 gun/data/
+*.pdf
 *.xlsx
 *.xls
 *.docx

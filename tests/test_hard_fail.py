@@ -210,3 +210,23 @@ class TestNormalPlan:
         plan = make_plan(["A", "B", "C", "D"])
         fails = detector.detect(plan, pois, matrix)
         assert fails == []
+
+
+# ---------------------------------------------------------------------------
+# day_index threading
+# ---------------------------------------------------------------------------
+
+class TestDayIndex:
+    def test_day_index_defaults_to_none(self, detector):
+        poi = make_poi(poi_id="1", name="A", open_start="09:00", open_end="18:00", duration_min=60)
+        plan = make_plan(["A"])
+        fails = detector.detect(plan, [poi], {}, start_minutes=19 * 60)
+        assert fails
+        assert fails[0].day_index is None
+
+    def test_day_index_set_when_passed(self, detector):
+        poi = make_poi(poi_id="1", name="A", open_start="09:00", open_end="18:00", duration_min=60)
+        plan = make_plan(["A"])
+        fails = detector.detect(plan, [poi], {}, start_minutes=19 * 60, day_index=2)
+        assert fails
+        assert all(f.day_index == 2 for f in fails)

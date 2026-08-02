@@ -465,9 +465,18 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .i-warn{background:oklch(98% 0.018 68);border-color:oklch(80% 0.12 68)}
 .issue-title{font-size:.83rem;font-weight:700;margin-bottom:.28rem;
   display:flex;align-items:center;gap:.32rem;flex-wrap:wrap}
+.issue-day{font-size:.68rem;font-weight:700;color:var(--n500);background:rgba(0,0,0,.05);
+  border-radius:5px;padding:.08rem .4rem;white-space:nowrap}
 .issue-body{font-size:.79rem;color:var(--n600);line-height:1.58;word-break:keep-all}
 .issue-evid{margin-top:.48rem;background:rgba(0,0,0,.04);border-radius:6px;
   padding:.42rem .62rem;font-size:.72rem;color:var(--n600);display:flex;gap:.45rem}
+.issue-alts{margin-top:.48rem}
+.issue-alts-label{font-size:.72rem;color:var(--n500);margin-bottom:.28rem}
+.issue-alt-chip{display:inline-flex;align-items:center;gap:.28rem;font-size:.74rem;
+  background:var(--card);border:1px solid var(--n200);border-radius:20px;
+  padding:.22rem .62rem;margin:0 .32rem .32rem 0}
+.issue-alt-chip b{font-weight:700}
+.issue-alt-dist{color:var(--n500)}
 
 /* Adjustments */
 .adj-row{display:flex;align-items:center;justify-content:space-between;
@@ -475,6 +484,9 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .adj-row:last-child{border-bottom:none}
 .adj-pen{color:var(--st-fail-fg);font-weight:700}
 .adj-bon{color:var(--mint);font-weight:700}
+.score-formula{font-size:.85rem;color:var(--n600);padding:.1rem 0 .6rem;
+  border-bottom:1px solid var(--n100);margin-bottom:.2rem}
+.score-formula strong{color:var(--n800)}
 
 /* Rewards */
 .reward{font-size:.81rem;color:var(--mint);padding:.38rem 0;
@@ -2798,10 +2810,14 @@ function renderResult(d) {
     html+='<div id="res-fails" class="rcard rcard-critical"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><h3>꼭 확인해야 할 것</h3><span class="rcard-count">'+d.hard_fails.length+'가지</span></div><div class="rcard-body">';
     d.hard_fails.forEach(function(f){
       var info=HLABELS[f.fail_type]||{title:_enumLabel(f.fail_type)};
+      var alts=(d.alternatives&&f.poi_name)?d.alternatives[f.poi_name]:null;
       html+='<div class="issue i-hard">'+
-        '<div class="issue-title">'+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
+        '<div class="issue-title">'+(f.day_index!=null?'<span class="issue-day">Day '+(f.day_index+1)+'</span> ':'')+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
         '<div class="issue-body">'+esc(f.message)+'</div>'+
         (f.evidence?'<div class="issue-evid"><span class="evid-dot"></span><span>'+esc(f.evidence)+'</span></div>':'')+
+        (alts&&alts.length?'<div class="issue-alts"><div class="issue-alts-label">대신 이런 곳은 어때요? (도보권)</div>'+
+          alts.map(function(a){return '<span class="issue-alt-chip"><b>'+esc(a.name)+'</b><span class="issue-alt-dist">'+a.distance_km+'km</span></span>';}).join('')+
+        '</div>':'')+
       '</div>';
     });
     html+='</div></div>';
@@ -2878,6 +2894,14 @@ function renderResult(d) {
   var hasBon=d.bonus_breakdown&&Object.keys(d.bonus_breakdown).length;
   if(hasPen||hasBon){
     html+='<div class="rcard"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 3v1m0 16v1M4.22 4.22l.71.71m14.14 14.14.71.71M3 12H4m16 0h1M4.22 19.78l.71-.71M18.36 5.64l.71-.71"/><circle cx="12" cy="12" r="4"/></svg></div><h3>점수 조정 내역</h3></div><div class="rcard-body">';
+    if(d.base_score!=null && d.base_score!==d.final_score){
+      var _penSum=hasPen?Object.values(d.penalty_breakdown).reduce(function(a,b){return a+b;},0):0;
+      var _bonSum=hasBon?Object.values(d.bonus_breakdown).reduce(function(a,b){return a+b;},0):0;
+      html+='<div class="score-formula">기본 <strong>'+d.base_score+'점</strong>'+
+        (_penSum?' <span class="adj-pen">−'+_penSum+'</span>':'')+
+        (_bonSum?' <span class="adj-bon">+'+_bonSum+'</span>':'')+
+        ' → 최종 <strong>'+d.final_score+'점</strong></div>';
+    }
     if(hasPen) Object.entries(d.penalty_breakdown).forEach(function(kv){
       var info=PLABELS[kv[0]]||{title:kv[0],tip:""};
       html+='<div class="adj-row"><span style="color:var(--n600)"><span class="tip" data-tip="'+esc(info.tip)+'">'+esc(info.title)+'</span></span><span class="adj-pen">−'+kv[1]+'점</span></div>';
@@ -2894,10 +2918,14 @@ function renderResult(d) {
     html+='<div id="res-fails" class="rcard rcard-critical"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><h3>꼭 확인해야 할 것</h3><span class="rcard-count">'+d.hard_fails.length+'가지</span></div><div class="rcard-body">';
     d.hard_fails.forEach(function(f){
       var info=HLABELS[f.fail_type]||{title:_enumLabel(f.fail_type)};
+      var alts=(d.alternatives&&f.poi_name)?d.alternatives[f.poi_name]:null;
       html+='<div class="issue i-hard">'+
-        '<div class="issue-title">'+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
+        '<div class="issue-title">'+(f.day_index!=null?'<span class="issue-day">Day '+(f.day_index+1)+'</span> ':'')+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
         '<div class="issue-body">'+esc(f.message)+'</div>'+
         (f.evidence?'<div class="issue-evid"><span class="evid-dot"></span><span>'+esc(f.evidence)+'</span></div>':'')+
+        (alts&&alts.length?'<div class="issue-alts"><div class="issue-alts-label">대신 이런 곳은 어때요? (도보권)</div>'+
+          alts.map(function(a){return '<span class="issue-alt-chip"><b>'+esc(a.name)+'</b><span class="issue-alt-dist">'+a.distance_km+'km</span></span>';}).join('')+
+        '</div>':'')+
       '</div>';
     });
     html+='</div></div>';
@@ -2909,7 +2937,7 @@ function renderResult(d) {
     d.warnings.forEach(function(w){
       var info=WLABELS[w.warning_type]||{title:_enumLabel(w.warning_type)};
       html+='<div class="issue i-warn">'+
-        '<div class="issue-title">'+esc(info.title)+'</div>'+
+        '<div class="issue-title">'+(w.day_index!=null?'<span class="issue-day">Day '+(w.day_index+1)+'</span> ':'')+esc(info.title)+'</div>'+
         '<div class="issue-body">'+esc(w.message)+'</div>'+
       '</div>';
     });
@@ -2961,9 +2989,11 @@ function renderResult(d) {
     d.explanations.forEach(function(ex,ei){
       var rc=ex.risk==="OK"?"risk-ok":ex.risk==="WARNING"?"risk-warn":"risk-crit";
       var rlabel=ex.risk==="OK"?"괜찮아요":ex.risk==="WARNING"?"주의":"문제있어요";
+      var _tmap={hard_fail:HLABELS,warning:WLABELS,penalty:PLABELS,bonus:BLABELS};
+      var _exLbl=(_tmap[ex.item_type]&&_tmap[ex.item_type][ex.item_key])||(ex.item_key==="summary"?{title:"종합 평가"}:{title:_enumLabel(ex.item_key)});
       html+='<div class="expl-item" id="ex'+ei+'">'+
         '<div class="expl-head" onclick="toggleEx('+ei+')">'+
-          '<span class="expl-key">'+esc(ex.item_key)+'</span>'+
+          '<span class="expl-key">'+(ex.day_index!=null?'<span class="issue-day">Day '+(ex.day_index+1)+'</span> ':'')+esc(_exLbl.title)+'</span>'+
           '<div style="display:flex;align-items:center;gap:.45rem">'+
             '<span class="expl-risk '+rc+'">'+rlabel+'</span>'+
             '<span class="expl-arr">▾</span>'+

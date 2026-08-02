@@ -1,9 +1,11 @@
 """Tests for ValidatorPipeline (TDD)."""
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
-from src.data.models import DayPlan, HardFail, ItineraryPlan, PlaceInput, POI, ValidationResult
+from src.data.models import AlternativePOI, DayPlan, HardFail, ItineraryPlan, PlaceInput, POI, ValidationResult
 from src.explain.pipeline import ValidatorPipeline, _to_vrptw_day
 from src.scoring.bonus_engine import BonusEngine, _PlaceCoord
 
@@ -138,6 +140,14 @@ class TestPipelineBasic:
         result = pipeline.run(plan=plan, per_day_pois=[[]], matrix={})
         assert result.final_score == 0
 
+    def test_base_score_populated(self, pipeline, sample_pois, sample_plan):
+        result = pipeline.run(
+            plan=sample_plan,
+            per_day_pois=[sample_pois],
+            matrix={},
+        )
+        assert 0 <= result.base_score <= 100
+
 
 # ---------------------------------------------------------------------------
 # ValidatorPipeline.run() — hard_fail cap
@@ -167,6 +177,45 @@ class TestPipelineHardFail:
             matrix={},
         )
         assert not result.hard_fails or result.final_score <= 59
+
+    def test_hard_fail_day_index_matches_offending_day(self, pipeline):
+        # Day 0 정상, Day 1에 시간대 충돌 POI 배치
+        day0 = [make_poi("1", 37.50, 127.00)]
+        night_only = POI(
+            poi_id="X", name="NightOnly",
+            lat=37.5, lng=127.0,
+            open_start="22:00", open_end="23:00",
+            duration_min=60, category="14",
+        )
+        day1 = [night_only]
+        plan = make_multi_day_plan([[p.name for p in day0], [night_only.name]])
+        result = pipeline.run(plan=plan, per_day_pois=[day0, day1], matrix={})
+        assert result.hard_fails
+        assert all(f.day_index == 1 for f in result.hard_fails)
+
+    def test_alternatives_populated_from_explain_engine(self):
+        mock_explain = MagicMock()
+        mock_explain.generate.return_value = []
+        mock_explain.build_alternatives.return_value = {
+            "NightOnly": [AlternativePOI(name="Alt", distance_km=0.3, category="14", lat=37.5, lng=127.0)]
+        }
+        pipeline = ValidatorPipeline(
+            bonus_engine=make_empty_bonus_engine(), explain_engine=mock_explain
+        )
+        night_only = POI(
+            poi_id="X", name="NightOnly", lat=37.5, lng=127.0,
+            open_start="22:00", open_end="23:00", duration_min=60, category="14",
+        )
+        plan = make_plan([night_only.name])
+        result = pipeline.run(plan=plan, per_day_pois=[[night_only]], matrix={})
+        assert result.hard_fails
+        mock_explain.build_alternatives.assert_called_once_with(result.hard_fails)
+        assert result.alternatives == mock_explain.build_alternatives.return_value
+
+    def test_alternatives_not_computed_without_hard_fails(self, pipeline, sample_pois, sample_plan):
+        result = pipeline.run(plan=sample_plan, per_day_pois=[sample_pois], matrix={})
+        if not result.hard_fails:
+            assert result.alternatives == {}
 
 
 # ---------------------------------------------------------------------------

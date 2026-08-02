@@ -105,6 +105,13 @@ class TestCacheKey:
         key = _cache_key([], [], {}, 80)
         assert isinstance(key, str) and len(key) == 32
 
+    def test_different_day_index_different_key(self):
+        hf_day0 = make_hard_fail()
+        hf_day0.day_index = 0
+        hf_day1 = make_hard_fail()
+        hf_day1.day_index = 1
+        assert _cache_key([hf_day0], [], {}, 45) != _cache_key([hf_day1], [], {}, 45)
+
 
 # ---------------------------------------------------------------------------
 # _graph_context
@@ -184,6 +191,32 @@ class TestBuildUserPrompt:
         prompt = _build_user_prompt([make_hard_fail()], [], {}, {}, None, make_plan(), 45)
         assert "지식그래프_근거" not in prompt
 
+    def test_day_index_included_for_hard_fail(self):
+        hf = make_hard_fail()
+        hf.day_index = 1
+        prompt = _build_user_prompt([hf], [], {}, {}, None, make_plan(), 45)
+        assert "2일차" in prompt
+
+    def test_day_index_included_for_warning(self):
+        w = make_warning()
+        w.day_index = 0
+        w.poi_names = ["경복궁", "남산공원"]
+        prompt = _build_user_prompt([], [w], {}, {}, None, make_plan(), 70)
+        assert "1일차" in prompt
+        assert "관련_장소" in prompt
+        assert "경복궁" in prompt
+
+    def test_no_day_index_omits_day_field(self):
+        prompt = _build_user_prompt([make_hard_fail()], [make_warning()], {}, {}, None, make_plan(), 45)
+        assert "일자" not in prompt.split("출력 예시")[0]
+
+    def test_warning_graph_evidence_uses_first_poi_name(self):
+        w = make_warning()
+        w.poi_names = ["성산일출봉", "다른곳"]
+        prompt = _build_user_prompt([], [w], {}, {}, None, make_plan(), 70, graph=make_graph_stub())
+        assert "지식그래프_근거" in prompt
+        assert "성산읍" in prompt
+
 
 # ---------------------------------------------------------------------------
 # _parse_llm_response
@@ -225,6 +258,22 @@ class TestParseLlmResponse:
         }])
         items = _parse_llm_response(raw)
         assert all(isinstance(i, ExplanationItem) for i in items)
+
+    def test_day_index_echoed_back(self):
+        raw = json.dumps([{
+            "item_type": "hard_fail", "item_key": "OPERATING_HOURS_CONFLICT", "day_index": 1,
+            "fact": "f", "rule": "r", "risk": "CRITICAL", "suggestion": "s",
+        }])
+        items = _parse_llm_response(raw)
+        assert items[0].day_index == 1
+
+    def test_missing_day_index_defaults_to_none(self):
+        raw = json.dumps([{
+            "item_type": "overall", "item_key": "summary",
+            "fact": "f", "rule": "r", "risk": "OK", "suggestion": "s",
+        }])
+        items = _parse_llm_response(raw)
+        assert items[0].day_index is None
 
 
 # ---------------------------------------------------------------------------
@@ -271,6 +320,28 @@ class TestFallback:
         items = _fallback([], [], {}, 75)
         overall = next(i for i in items if i.item_type == "overall")
         assert overall.risk == "OK"
+
+    def test_hard_fail_day_index_propagated_and_prefixed(self):
+        hf = make_hard_fail()
+        hf.day_index = 1
+        items = _fallback([hf], [], {}, 45)
+        hf_item = next(i for i in items if i.item_type == "hard_fail")
+        assert hf_item.day_index == 1
+        assert hf_item.fact.startswith("2일차: ")
+
+    def test_warning_day_index_propagated_and_prefixed(self):
+        w = make_warning()
+        w.day_index = 0
+        items = _fallback([], [w], {}, 70)
+        w_item = next(i for i in items if i.item_type == "warning")
+        assert w_item.day_index == 0
+        assert w_item.fact.startswith("1일차: ")
+
+    def test_no_day_index_no_prefix(self):
+        items = _fallback([make_hard_fail()], [], {}, 45)
+        hf_item = next(i for i in items if i.item_type == "hard_fail")
+        assert hf_item.day_index is None
+        assert not hf_item.fact.startswith("일차")
 
 
 # ---------------------------------------------------------------------------
@@ -427,3 +498,59 @@ class TestExplainEngineGraphDefault:
         monkeypatch.delenv("NEO4J_URI", raising=False)
         engine = ExplainEngine(api_key="", client=None)
         assert engine._graph.enabled is False
+
+
+# ---------------------------------------------------------------------------
+# ExplainEngine.build_alternatives — Hard Fail POI 지식그래프 대안 제안
+# ---------------------------------------------------------------------------
+
+class TestBuildAlternatives:
+    def test_no_hard_fails_returns_empty(self):
+        engine = ExplainEngine(api_key="", client=None, graph_retriever=make_graph_stub())
+        assert engine.build_alternatives([]) == {}
+
+    def test_disabled_graph_returns_empty(self):
+        engine = ExplainEngine(api_key="", client=None, graph_retriever=make_disabled_graph_stub())
+        hf = make_hard_fail()
+        hf.poi_name = "성산일출봉"
+        assert engine.build_alternatives([hf]) == {}
+
+    def test_hard_fail_without_poi_name_skipped(self):
+        engine = ExplainEngine(api_key="", client=None, graph_retriever=make_graph_stub())
+        hf = make_hard_fail()
+        hf.poi_name = None
+        assert engine.build_alternatives([hf]) == {}
+
+    def test_match_returns_alternatives_keyed_by_poi_name(self):
+        engine = ExplainEngine(api_key="", client=None, graph_retriever=make_graph_stub())
+        hf = make_hard_fail()
+        hf.poi_name = "성산일출봉"
+        result = engine.build_alternatives([hf])
+        assert "성산일출봉" in result
+        assert result["성산일출봉"][0].name == "우도"
+
+    def test_no_nearby_omits_poi(self):
+        engine = ExplainEngine(
+            api_key="", client=None, graph_retriever=make_graph_stub(with_nearby=False)
+        )
+        hf = make_hard_fail()
+        hf.poi_name = "성산일출봉"
+        assert engine.build_alternatives([hf]) == {}
+
+    def test_no_search_match_omits_poi(self):
+        graph = make_graph_stub()
+        graph.search_places.return_value = []
+        engine = ExplainEngine(api_key="", client=None, graph_retriever=graph)
+        hf = make_hard_fail()
+        hf.poi_name = "존재하지않는곳"
+        assert engine.build_alternatives([hf]) == {}
+
+    def test_duplicate_poi_name_only_looked_up_once(self):
+        graph = make_graph_stub()
+        engine = ExplainEngine(api_key="", client=None, graph_retriever=graph)
+        hf1 = make_hard_fail()
+        hf1.poi_name = "성산일출봉"
+        hf2 = make_hard_fail()
+        hf2.poi_name = "성산일출봉"
+        engine.build_alternatives([hf1, hf2])
+        assert graph.search_places.call_count == 1
