@@ -120,6 +120,16 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .scard-label{font-size:.69rem;font-weight:800;color:var(--n400);text-transform:uppercase;
   letter-spacing:.7px;margin-bottom:.8rem;display:flex;align-items:center;gap:.35rem}
 
+/* s1 input-mode tabs */
+.s1-tab-bar{display:flex;gap:.35rem;background:var(--n100);border-radius:calc(var(--r) + 5px);
+  padding:.3rem;margin-bottom:1rem}
+.s1-tab-bar button{flex:1;padding:.65rem;font-size:.83rem;font-weight:700;border:none;
+  border-radius:var(--r);background:none;cursor:pointer;color:var(--n500);
+  transition:background .15s,color .15s,box-shadow .15s}
+.s1-tab-bar button.active{color:var(--pri-d);background:var(--card);box-shadow:var(--sh-sm)}
+.s1-tab-panel{display:none}
+.s1-tab-panel.active{display:block}
+
 /* Region grid */
 .region-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.45rem}
 @media(max-width:500px){.region-grid{grid-template-columns:repeat(3,1fr)}}
@@ -181,6 +191,19 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
   cursor:pointer;box-shadow:0 4px 20px var(--pri-m);transition:background .2s,color .2s,border-color .2s,box-shadow .2s,transform .2s,opacity .2s;letter-spacing:.1px;margin-top:.3rem}
 .cta:hover{background:var(--pri-d);transform:translateY(-2px);box-shadow:0 8px 28px var(--pri-m)}
 .cta:active{transform:translateY(0)}
+.cta:disabled{opacity:.6;cursor:default;transform:none}
+
+/* Upload card */
+.upload-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;
+  padding:1.4rem 1rem;border:1.5px dashed var(--n300);border-radius:var(--r);cursor:pointer;
+  color:var(--n500);text-align:center;transition:border-color .15s,background .15s,color .15s}
+.upload-drop:hover,.upload-drop.drag{border-color:var(--pri);color:var(--pri-d);background:var(--pri-m)}
+.upload-drop span{font-size:.8rem;font-weight:600}
+.upload-divider{display:flex;align-items:center;gap:.6rem;margin:.7rem 0;font-size:.72rem;color:var(--n400)}
+.upload-divider::before,.upload-divider::after{content:"";flex:1;height:1px;background:var(--n200)}
+.upload-textarea{width:100%;padding:.7rem .8rem;border:1px solid var(--n200);border-radius:var(--r);
+  font:inherit;font-size:.85rem;color:var(--n700);background:var(--card);resize:vertical;line-height:1.5}
+.upload-textarea:focus{outline:none;border-color:var(--pri)}
 
 /* ━━━ Step 2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 #s2{background:var(--n100)}
@@ -1313,56 +1336,82 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
     </div>
   </div>
   <div class="s1-body">
-    <div class="scard">
-      <div class="scard-label">여행지 선택</div>
-      <div class="region-grid" id="region-grid"></div>
+    <div class="s1-tab-bar" role="tablist" aria-label="일정 입력 방식">
+      <button id="s1-tab-btn-upload" class="active" role="tab" aria-selected="true" aria-controls="s1-tab-upload" onclick="switchS1Tab('upload')">일정표 업로드</button>
+      <button id="s1-tab-btn-manual" role="tab" aria-selected="false" aria-controls="s1-tab-manual" onclick="switchS1Tab('manual')">카테고리 입력</button>
     </div>
-    <div class="scard">
-      <div class="scard-label">여행 날짜 · 출발 시간</div>
-      <div class="date-time-row">
-        <div class="cal-wrap">
-          <div class="time-label">여행 시작 날짜</div>
-          <div class="date-inp" id="date-display" onclick="toggleCalendar(event)" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" aria-label="여행 날짜 선택" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCalendar(event)}" style="display:flex;align-items:center;justify-content:space-between;user-select:none;cursor:pointer">
-            <span id="date-display-text">2026년 6월 1일 (월)</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;opacity:.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </div>
-          <div class="cal-popup" id="cal-popup">
-            <div class="cal-nav">
-              <button class="cal-nav-btn" onclick="moveCalMonth(-1);event.stopPropagation()" aria-label="이전 달">‹</button>
-              <span class="cal-month-label" id="cal-month-label" aria-live="polite"></span>
-              <button class="cal-nav-btn" onclick="moveCalMonth(1);event.stopPropagation()" aria-label="다음 달">›</button>
-            </div>
-            <div class="cal-weekdays">
-              <div class="cal-wd">일</div><div class="cal-wd">월</div><div class="cal-wd">화</div>
-              <div class="cal-wd">수</div><div class="cal-wd">목</div><div class="cal-wd">금</div>
-              <div class="cal-wd">토</div>
-            </div>
-            <div class="cal-grid" id="cal-grid"></div>
-          </div>
-        </div>
-        <div>
-          <label for="time-inp" class="time-label">출발 시간</label>
-          <input type="time" class="time-inp" id="time-inp" value="09:00"/>
-        </div>
+
+    <div class="s1-tab-panel active" id="s1-tab-upload" role="tabpanel" aria-labelledby="s1-tab-btn-upload">
+      <div class="scard">
+        <div class="scard-label">기존 일정표로 검증하기 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(추천)</span></div>
+        <p style="font-size:.78rem;color:var(--n500);margin:0 0 .75rem;line-height:1.6">
+          대한민국구석구석 AI 플래너 등에서 받은 일정 PDF·캡처 이미지를 올리거나, 추천 경로를 복사해서 붙여넣으면 바로 검증해드려요.
+        </p>
+        <label class="upload-drop" id="upload-drop" for="upload-file-inp">
+          <input type="file" id="upload-file-inp" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" style="display:none" onchange="onUploadFileChange(event)"/>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span id="upload-drop-label">PDF·PNG·JPG 파일을 끌어놓거나 클릭해서 선택</span>
+        </label>
+        <div class="upload-divider"><span>또는</span></div>
+        <textarea id="upload-text-inp" class="upload-textarea" rows="4" placeholder="추천받은 여행 코스를 복사해서 여기에 붙여넣으세요&#10;예) Day 1&#10;1 다려도 여행지&#10;2 바람벽에흰당나귀 카페 ..." oninput="onUploadTextInput()"></textarea>
+        <button class="cta" id="upload-analyze-btn" style="margin-top:.7rem" onclick="analyzeUpload()">일정 분석하기</button>
+        <p id="upload-status" style="font-size:.75rem;color:var(--n500);margin-top:.55rem;min-height:1em" aria-live="polite"></p>
       </div>
     </div>
-    <div class="scard">
-      <div class="scard-label">누구랑 가세요?</div>
-      <div class="party-grid" id="party-grid"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.85rem">
-        <span style="font-size:.8rem;font-weight:600;color:var(--n600)">몇 명이 가세요?</span>
-        <div class="stepper">
-          <button class="step-btn" id="size-minus" onclick="changeSize(-1)" aria-label="인원 줄이기">−</button>
-          <div class="step-val" id="size-val" aria-live="polite" aria-atomic="true">2명</div>
-          <button class="step-btn" id="size-plus" onclick="changeSize(1)" aria-label="인원 늘리기">+</button>
+
+    <div class="s1-tab-panel" id="s1-tab-manual" role="tabpanel" aria-labelledby="s1-tab-btn-manual">
+      <div class="scard">
+        <div class="scard-label">여행지 선택</div>
+        <div class="region-grid" id="region-grid"></div>
+      </div>
+      <div class="scard">
+        <div class="scard-label">여행 날짜 · 출발 시간</div>
+        <div class="date-time-row">
+          <div class="cal-wrap">
+            <div class="time-label">여행 시작 날짜</div>
+            <div class="date-inp" id="date-display" onclick="toggleCalendar(event)" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" aria-label="여행 날짜 선택" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCalendar(event)}" style="display:flex;align-items:center;justify-content:space-between;user-select:none;cursor:pointer">
+              <span id="date-display-text">2026년 6월 1일 (월)</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;opacity:.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="cal-popup" id="cal-popup">
+              <div class="cal-nav">
+                <button class="cal-nav-btn" onclick="moveCalMonth(-1);event.stopPropagation()" aria-label="이전 달">‹</button>
+                <span class="cal-month-label" id="cal-month-label" aria-live="polite"></span>
+                <button class="cal-nav-btn" onclick="moveCalMonth(1);event.stopPropagation()" aria-label="다음 달">›</button>
+              </div>
+              <div class="cal-weekdays">
+                <div class="cal-wd">일</div><div class="cal-wd">월</div><div class="cal-wd">화</div>
+                <div class="cal-wd">수</div><div class="cal-wd">목</div><div class="cal-wd">금</div>
+                <div class="cal-wd">토</div>
+              </div>
+              <div class="cal-grid" id="cal-grid"></div>
+            </div>
+          </div>
+          <div>
+            <label for="time-inp" class="time-label">출발 시간</label>
+            <input type="time" class="time-inp" id="time-inp" value="09:00"/>
+          </div>
         </div>
       </div>
+      <div class="scard">
+        <div class="scard-label">누구랑 가세요?</div>
+        <div class="party-grid" id="party-grid"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.85rem">
+          <span style="font-size:.8rem;font-weight:600;color:var(--n600)">몇 명이 가세요?</span>
+          <div class="stepper">
+            <button class="step-btn" id="size-minus" onclick="changeSize(-1)" aria-label="인원 줄이기">−</button>
+            <div class="step-val" id="size-val" aria-live="polite" aria-atomic="true">2명</div>
+            <button class="step-btn" id="size-plus" onclick="changeSize(1)" aria-label="인원 늘리기">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="scard">
+        <div class="scard-label">여행 스타일 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(선택)</span></div>
+        <div class="theme-grid" id="theme-grid"></div>
+      </div>
+      <button class="cta" onclick="goStep(2)">일정 검증하기 →</button>
     </div>
-    <div class="scard">
-      <div class="scard-label">여행 스타일 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(선택)</span></div>
-      <div class="theme-grid" id="theme-grid"></div>
-    </div>
-    <button class="cta" onclick="goStep(2)">일정 검증하기 →</button>
+
     <p style="text-align:center;font-size:.72rem;color:var(--n400);margin-top:.85rem;line-height:1.7">
       이용 시 <button onclick="openPrivacy()" style="background:none;border:none;cursor:pointer;color:var(--pri);font-size:.72rem;font-weight:600;text-decoration:underline">개인정보처리방침</button>에 동의하신 것으로 간주됩니다.
     </p>
@@ -1725,6 +1774,99 @@ function addNameToDay(nm) {
   days[selDay].push(nm);
   renderDays(); updateSummary();
   showToast(nm+" 추가됐어요");
+}
+
+/* ─── s1 입력 방식 탭 (업로드 / 카테고리 입력) ───────────────────────── */
+function switchS1Tab(tab) {
+  document.getElementById("s1-tab-upload").classList.toggle("active", tab === "upload");
+  document.getElementById("s1-tab-manual").classList.toggle("active", tab === "manual");
+  document.getElementById("s1-tab-btn-upload").classList.toggle("active", tab === "upload");
+  document.getElementById("s1-tab-btn-manual").classList.toggle("active", tab === "manual");
+  document.getElementById("s1-tab-btn-upload").setAttribute("aria-selected", tab === "upload");
+  document.getElementById("s1-tab-btn-manual").setAttribute("aria-selected", tab === "manual");
+}
+
+/* ─── 일정표 업로드 (PDF·이미지·텍스트 → 파싱) ──────────────────────── */
+var _uploadFile = null;
+
+function initUploadDrop() {
+  var dz = document.getElementById("upload-drop");
+  if (!dz) return;
+  ["dragover","dragenter"].forEach(function(evt){
+    dz.addEventListener(evt, function(e){ e.preventDefault(); dz.classList.add("drag"); });
+  });
+  ["dragleave","dragend"].forEach(function(evt){
+    dz.addEventListener(evt, function(e){ dz.classList.remove("drag"); });
+  });
+  dz.addEventListener("drop", function(e){
+    e.preventDefault(); dz.classList.remove("drag");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) setUploadFile(e.dataTransfer.files[0]);
+  });
+}
+
+function onUploadFileChange(e) {
+  if (e.target.files && e.target.files[0]) setUploadFile(e.target.files[0]);
+}
+
+function setUploadFile(f) {
+  _uploadFile = f;
+  document.getElementById("upload-drop-label").textContent = f.name+" 선택됨 (다른 파일을 올리려면 다시 클릭)";
+  document.getElementById("upload-text-inp").value = "";
+}
+
+function onUploadTextInput() {
+  if (document.getElementById("upload-text-inp").value.trim()) {
+    _uploadFile = null;
+    document.getElementById("upload-file-inp").value = "";
+    document.getElementById("upload-drop-label").textContent = "PDF·PNG·JPG 파일을 끌어놓거나 클릭해서 선택";
+  }
+}
+
+async function analyzeUpload() {
+  var textVal = document.getElementById("upload-text-inp").value.trim();
+  if (!_uploadFile && !textVal) { showToast("파일을 올리거나 일정 텍스트를 붙여넣어주세요!"); return; }
+
+  var btn = document.getElementById("upload-analyze-btn");
+  var status = document.getElementById("upload-status");
+  btn.disabled = true; btn.textContent = "분석하는 중...";
+  status.textContent = "";
+
+  try {
+    var res;
+    if (_uploadFile) {
+      var fd = new FormData();
+      fd.append("file", _uploadFile);
+      res = await fetch("/api/parse/document", {method:"POST", body:fd});
+    } else {
+      res = await fetch("/api/parse/text", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({text: textVal}),
+      });
+    }
+    if (!res.ok) {
+      var e = {}; try { e = await res.json(); } catch(_){}
+      throw new Error(e.detail || ("HTTP "+res.status));
+    }
+    var parsed = await res.json();
+    var newDays = (parsed.days||[]).map(function(d){
+      return (d.places||[]).map(function(p){
+        return {name: p.name, cat: p.category||"", note: p.address||""};
+      });
+    }).filter(function(d){ return d.length; });
+
+    if (!newDays.length) {
+      status.textContent = "일정에서 장소를 찾지 못했어요. 다른 파일이나 텍스트로 시도해보세요.";
+      return;
+    }
+    days = newDays; selDay = 0;
+    var cnt = newDays.reduce(function(s,d){return s+d.length;}, 0);
+    showToast(cnt+"개 장소를 인식했어요. 확인 후 검증해보세요!");
+    goStep(2);
+  } catch(err) {
+    status.textContent = "분석 중 오류가 생겼어요: "+err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "일정 분석하기";
+  }
 }
 
 /* ─── Step 1 Init ───────────────────────────────────────────────────── */
@@ -4050,6 +4192,7 @@ if ('serviceWorker' in navigator) {
 var _sharedLoaded = checkShareHash();
 var _hasSaved = _sharedLoaded ? false : loadSavedPlan();
 initS1();
+initUploadDrop();
 showSkeleton();
 loadPlaces();
 renderDays();

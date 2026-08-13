@@ -55,6 +55,24 @@ class ValidateRequest(BaseModel):
     start_time: str = "09:00"
 
 
+class ParseTextRequest(BaseModel):
+    text: str
+
+
+class ParsedPlace(BaseModel):
+    name: str
+    address: str = ""
+    category: str = "12"
+
+
+class ParsedDay(BaseModel):
+    places: list[ParsedPlace]
+
+
+class ParsedPlanResponse(BaseModel):
+    days: list[ParsedDay]
+
+
 class ValidateResponse(BaseModel):
     plan_id: str
     final_score: int

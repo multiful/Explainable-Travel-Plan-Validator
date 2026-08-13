@@ -80,5 +80,7 @@ def test_from_env_reads_variables(monkeypatch) -> None:
     with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()) as create:
         retriever = GraphRetriever.from_env()
 
-    create.assert_called_once_with("neo4j+s://x", auth=("u", "p"))
+    create.assert_called_once_with(
+        "neo4j+s://x", auth=("u", "p"), connection_timeout=5.0, max_transaction_retry_time=5.0
+    )
     assert retriever._database == "db"

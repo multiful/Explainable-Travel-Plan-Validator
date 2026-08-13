@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 
 from neo4j import GraphDatabase
-from neo4j.exceptions import Neo4jError
+from neo4j.exceptions import DriverError, Neo4jError
 
 from src.data.models import AlternativePOI, PlaceEvidence
 
@@ -43,7 +43,16 @@ class GraphRetriever:
 
     def __init__(self, uri: str, username: str, password: str, database: str = "neo4j") -> None:
         self._database = database
-        self._driver = GraphDatabase.driver(uri, auth=(username, password)) if uri else None
+        self._driver = (
+            GraphDatabase.driver(
+                uri,
+                auth=(username, password),
+                connection_timeout=5.0,
+                max_transaction_retry_time=5.0,
+            )
+            if uri
+            else None
+        )
 
     @classmethod
     def from_env(cls) -> GraphRetriever:
@@ -71,7 +80,7 @@ class GraphRetriever:
             result = self._driver.execute_query(
                 _SEARCH_CYPHER, q=q, limit=limit, database_=self._database
             )
-        except Neo4jError:
+        except (Neo4jError, DriverError):
             return []
         return [
             PlaceEvidence(
@@ -95,7 +104,7 @@ class GraphRetriever:
             result = self._driver.execute_query(
                 _NEARBY_CYPHER, place_id=place_id, limit=limit, database_=self._database
             )
-        except Neo4jError:
+        except (Neo4jError, DriverError):
             return []
         return [
             AlternativePOI(
