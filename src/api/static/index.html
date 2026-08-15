@@ -3249,7 +3249,7 @@ function renderResult(d) {
   }, 60);
   if(d.scores) requestAnimationFrame(function(){drawRadar(d.scores);});
   var mapPoisFinal = (d.poi_info||[]).filter(function(p){return p.lat&&p.lng&&p.lat!==37.5665;});
-  if (mapPoisFinal.length) requestAnimationFrame(function(){initMap(mapPoisFinal, d.optimal_route, d.congestion_warnings);});
+  if (mapPoisFinal.length) initMap(mapPoisFinal, d.optimal_route, d.congestion_warnings);
 }
 
 function animateScore(target) {
