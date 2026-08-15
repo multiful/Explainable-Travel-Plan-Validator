@@ -65,6 +65,17 @@ def test_find_nearby_parses_and_converts_distance() -> None:
     assert alts[0].distance_km == 0.25
 
 
+def test_repeated_failures_skip_driver_call_during_cooldown() -> None:
+    with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()):
+        retriever = GraphRetriever(uri="neo4j+s://x", username="u", password="p")
+        retriever._driver.execute_query.side_effect = Neo4jError("boom")
+
+        assert retriever.search_places("일출봉") == []
+        assert retriever.find_nearby("kakao_1") == []
+
+    assert retriever._driver.execute_query.call_count == 1
+
+
 def test_close_closes_driver() -> None:
     with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()):
         retriever = GraphRetriever(uri="neo4j+s://x", username="u", password="p")

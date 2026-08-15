@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from src.api.schemas import (
+    DayPlanWeb,
     ParsedPlanResponse,
     ParseTextRequest,
     PlaceItem,
@@ -598,7 +599,7 @@ def _lookup_place(name: str) -> dict | None:
     return None
 
 
-def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
+def _resolve_poi(name: str, idx: int, address: str = "") -> tuple[POI, POIInfo]:
     place = _lookup_place(name)
     has_coords = place is not None and place.get("has_coords", False)
     norm = _normalize(name)
@@ -632,10 +633,19 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
             category = "12"
             hint = _kakao_hint(kp.category_name)
         else:
-            confidence = "Low"
-            source = "fallback"
-            lat, lng = _DEFAULT_CENTER
-            category = "12"
+            # 카카오 키워드 검색도 실패 — 파싱된 주소가 있으면 지오코딩으로 최후 보강
+            # (4·3길 등 사업장이 아닌 장소는 키워드 검색에 잡히지 않는다).
+            geo = _KAKAO_LOCAL.geocode_address(address) if address else None
+            if geo is not None:
+                confidence = "Medium"
+                source = "geocode"
+                lat, lng = geo
+                category = "12"
+            else:
+                confidence = "Low"
+                source = "fallback"
+                lat, lng = _DEFAULT_CENTER
+                category = "12"
 
     # 운영시간: TourAPI 실측(jeju_hours.json) → jeju_places.csv 실측 영업시간 →
     # 카테고리·키워드 추정(hours_db) 순으로 폴백.
@@ -823,23 +833,44 @@ async def parse_document(file: UploadFile = File(...)) -> ParsedPlanResponse:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
 
+@router.post("/resolve-coords", response_model=list[POI])
+async def resolve_coords(req: DayPlanWeb) -> list[POI]:
+    """빌더(Step2) 지도용 좌표 조회. 검증 파이프라인(Hard Fail/스코어링/LLM 설명) 없이
+    좌표 해석만 수행해 빠르게 응답한다."""
+    resolved = await asyncio.gather(
+        *(
+            asyncio.to_thread(_resolve_poi, place.name, idx, place.address)
+            for idx, place in enumerate(req.places)
+        )
+    )
+    return [poi for poi, _info in resolved]
+
+
 @router.post("/validate", response_model=ValidateResponse)
 async def validate_plan(req: ValidateRequest) -> ValidateResponse:
     if not req.days:
         raise HTTPException(status_code=422, detail="days must not be empty")
 
-    per_day_pois: list[list[POI]] = []
-    poi_info_list: list[POIInfo] = []
-    global_idx = 0
+    # _resolve_poi는 Kakao/Neo4j 블로킹 I/O를 포함한다 — 장소별로 순차 실행하면
+    # 지연이 선형으로 누적되고 이벤트 루프까지 막힌다. to_thread로 동시 실행한다.
+    flat_places = [
+        (day_idx, place.name, place.address)
+        for day_idx, day in enumerate(req.days)
+        for place in day.places
+    ]
+    resolved = await asyncio.gather(
+        *(
+            asyncio.to_thread(_resolve_poi, name, idx, address)
+            for idx, (_, name, address) in enumerate(flat_places)
+        )
+    )
 
-    for day in req.days:
-        day_pois: list[POI] = []
-        for place in day.places:
-            poi, info = _resolve_poi(place.name, global_idx)
-            day_pois.append(poi)
-            poi_info_list.append(info)
-            global_idx += 1
-        per_day_pois.append(day_pois)
+    per_day_pois: list[list[POI]] = [[] for _ in req.days]
+    poi_info_list: list[POIInfo] = []
+    for (day_idx, _, _addr), (poi, info) in zip(flat_places, resolved, strict=True):
+        info = info.model_copy(update={"day_index": day_idx, "category": poi.category})
+        per_day_pois[day_idx].append(poi)
+        poi_info_list.append(info)
 
     plan = ItineraryPlan(
         days=[

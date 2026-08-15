@@ -2819,14 +2819,14 @@ async function runValidate() {
     if(!isNaN(d)&&!isNaN(p)){
       var existing=days[d][p];
       days[d][p]=(typeof existing==="object"&&existing!==null)
-        ?{name:inp.value,cat:existing.cat||""}:inp.value;
+        ?{name:inp.value,cat:existing.cat||"",note:existing.note||""}:inp.value;
     }
   });
   var fd = days.map(function(d){return d.filter(function(p){return pname(p).trim();});});
   if (fd.every(function(d){return !d.length;})) {showToast("장소를 하나 이상 입력해주세요!");return;}
 
   var payload = {
-    days: fd.map(function(places){return {places:places.map(function(p){return {name:pname(p)};})};}),
+    days: fd.map(function(places){return {places:places.map(function(p){return {name:pname(p), address:pnote(p)};})};}),
     party_size:cfg.partySize, party_type:cfg.partyType,
     date:cfg.date, start_time:cfg.startTime, travel_type:cfg.travelType||null
   };
@@ -2898,6 +2898,12 @@ function scoreDesc(s, passed) {
   if (s>=60) return "아쉬운 부분이 있지만 충분히 고칠 수 있어요. 아래 내용을 참고해서 다듬어보세요.";
   if (s>=45) return "개선이 필요한 부분이 꽤 있어요. 아래 제안들을 반영해서 일정을 다시 구성해보는 게 좋겠어요.";
   return "일정을 상당 부분 바꿔야 할 것 같아요. 걱정 마세요, 아래 내용대로 하나씩 고쳐봐요!";
+}
+
+function _dayColors() {
+  var rs = getComputedStyle(document.documentElement);
+  function tv(n){ return rs.getPropertyValue(n).trim(); }
+  return [tv("--pri"),tv("--tour"),tv("--mint"),tv("--event"),tv("--stay"),tv("--shop"),tv("--nature")];
 }
 
 function renderResult(d) {
@@ -3174,12 +3180,16 @@ function renderResult(d) {
   // Map
   var mapPois = (d.poi_info||[]).filter(function(p){return p.lat&&p.lng&&p.lat!==37.5665;});
   if (mapPois.length) {
+    var mapDayCount = mapPois.reduce(function(m,p){return Math.max(m, (p.day_index||0)+1);}, 1);
+    var mapDayColors = _dayColors();
+    var dayLegend = "";
+    for (var mdi = 0; mdi < mapDayCount; mdi++) {
+      dayLegend += '<span class="leg-item"><span class="leg-dot" style="background:'+mapDayColors[mdi%mapDayColors.length]+'"></span>'+(mdi+1)+'일차</span>';
+    }
     html += '<div class="map-card">' +
       '<div class="map-head"><h3>여행 동선 지도</h3></div>' +
       '<div id="travel-map"></div>' +
-      '<div class="map-legend">' +
-        '<span class="leg-item"><span class="leg-dot" style="background:#FF5733"></span>방문지</span>' +
-        '<span class="leg-item"><span style="border-bottom:2px solid #3B7AF5;width:18px;display:inline-block"></span>현재 순서</span>' +
+      '<div class="map-legend">' + dayLegend +
         (d.optimal_route ? '<span class="leg-item"><span style="border-bottom:2px dashed #00BFA5;width:18px;display:inline-block"></span>추천 순서</span>' : '') +
       '</div>' +
     '</div>';
@@ -3717,37 +3727,46 @@ function initMap(pois, optimalRoute, congestionWarnings) {
     maxZoom: 18,
   }).addTo(_leafletMap);
 
-  var _rs=getComputedStyle(document.documentElement);
-  function _tv(n){return _rs.getPropertyValue(n).trim();}
-  var DAY_COLORS=[_tv("--pri"),_tv("--tour"),_tv("--mint"),_tv("--event"),_tv("--stay"),_tv("--shop"),_tv("--nature")];
+  var DAY_COLORS = _dayColors();
 
-  // 마커 + 번호 (Day별 색상 구분)
-  var dayBoundaries = [];
-  if (optimalRoute && optimalRoute.length) {
-    var acc = 0;
-    optimalRoute.forEach(function(day) {
-      dayBoundaries.push(acc);
-      acc += (day && day.user_order ? day.user_order.length : 0);
-    });
-  }
-  pois.forEach(function(p, i) {
-    var dayIdx = 0;
-    for (var d = dayBoundaries.length-1; d >= 0; d--) { if (i >= dayBoundaries[d]) { dayIdx = d; break; } }
+  // 일차별 방문 순번 (같은 day_index 내에서 1부터)
+  var dayCounters = {};
+
+  // 마커 + 번호 + 카테고리 배지 (Day별 색상 구분)
+  pois.forEach(function(p) {
+    var dayIdx = p.day_index || 0;
     var color = DAY_COLORS[dayIdx % DAY_COLORS.length];
+    dayCounters[dayIdx] = (dayCounters[dayIdx] || 0) + 1;
+    var catInfo = CAT[p.category] || null;
+    var badge = catInfo ? '<div style="position:absolute;top:-6px;right:-6px;background:'+catInfo.color+
+      ';color:#fff;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;'+
+      'font-size:8px;font-weight:900;border:1.5px solid #fff">'+esc(catInfo.abbr)+'</div>' : '';
     var icon = L.divIcon({
       className: "",
-      html: '<div style="background:'+color+';color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.28)">'+(i+1)+'</div>',
+      html: '<div style="position:relative">'+
+        '<div style="background:'+color+';color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.28)">'+dayCounters[dayIdx]+'</div>'+
+        badge+
+      '</div>',
       iconSize: [28, 28],
       iconAnchor: [14, 14],
     });
     L.marker([p.lat, p.lng], {icon: icon})
       .addTo(_leafletMap)
-      .bindPopup("<strong>"+p.name+"</strong><br/>"+p.open_start+"~"+p.open_end+" | "+p.duration_min+"분", {maxWidth:200});
+      .bindPopup("<strong>"+esc(p.name)+"</strong><br/>"+(dayIdx+1)+"일차"+(catInfo ? " · "+esc(catInfo.label) : "")+
+                 "<br/>"+esc(p.open_start)+"~"+esc(p.open_end)+" | "+esc(String(p.duration_min))+"분", {maxWidth:200});
   });
 
-  // 현재 순서 경로선
+  // 현재 순서 경로선 — 일차별로 끊어서 색상 구분
   var coords = pois.map(function(p){return [p.lat,p.lng];});
-  L.polyline(coords, {color:"#3B7AF5", weight:2.5, opacity:.75}).addTo(_leafletMap);
+  var byDay = {};
+  pois.forEach(function(p){
+    var di = p.day_index || 0;
+    (byDay[di] = byDay[di] || []).push([p.lat, p.lng]);
+  });
+  Object.keys(byDay).forEach(function(di){
+    var color = DAY_COLORS[di % DAY_COLORS.length];
+    L.polyline(byDay[di], {color: color, weight:2.5, opacity:.75}).addTo(_leafletMap);
+  });
 
   // 최적 경로선 (점선)
   if (optimalRoute && optimalRoute.length) {
@@ -3793,25 +3812,26 @@ function initMap(pois, optimalRoute, congestionWarnings) {
     });
   }
 
-  // 범례
-  var legend = L.control({position: "bottomright"});
-  legend.onAdd = function(){
-    var div = L.DomUtil.create("div");
-    div.style.cssText = "background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;"+
-      "font-size:11px;line-height:1.7;box-shadow:0 1px 6px rgba(0,0,0,.2);color:#222";
-    var rows = '<div><span style="display:inline-block;width:18px;border-top:3px solid #3B7AF5;'+
-               'vertical-align:middle"></span> 현재 동선</div>';
-    if (optimalRoute && optimalRoute.length) {
-      rows += '<div><span style="display:inline-block;width:18px;border-top:3px dashed #00BFA5;'+
-              'vertical-align:middle"></span> 최적 동선</div>';
-    }
-    if (congCount) {
-      rows += '<div><span style="vertical-align:middle">⚠</span> 과밀 지점 ('+congCount+')</div>';
-    }
-    div.innerHTML = rows;
-    return div;
-  };
-  legend.addTo(_leafletMap);
+  // 범례 (일차별 색상은 지도 하단 map-legend에서 표시 — 여기선 최적 동선/과밀만)
+  if ((optimalRoute && optimalRoute.length) || congCount) {
+    var legend = L.control({position: "bottomright"});
+    legend.onAdd = function(){
+      var div = L.DomUtil.create("div");
+      div.style.cssText = "background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;"+
+        "font-size:11px;line-height:1.7;box-shadow:0 1px 6px rgba(0,0,0,.2);color:#222";
+      var rows = "";
+      if (optimalRoute && optimalRoute.length) {
+        rows += '<div><span style="display:inline-block;width:18px;border-top:3px dashed #00BFA5;'+
+                'vertical-align:middle"></span> 최적 동선</div>';
+      }
+      if (congCount) {
+        rows += '<div><span style="vertical-align:middle">⚠</span> 과밀 지점 ('+congCount+')</div>';
+      }
+      div.innerHTML = rows;
+      return div;
+    };
+    legend.addTo(_leafletMap);
+  }
 
   // 지도 범위 자동 맞춤
   if (coords.length > 1) {

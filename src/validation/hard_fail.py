@@ -191,5 +191,5 @@ class HardFailDetector:
 
     @staticmethod
     def _min_to_time(minutes: float) -> str:
-        m = int(minutes)
+        m = int(minutes) % 1440  # 24시간 시계로 정규화 (누적 이동시간이 하루를 넘어도 유효한 시각으로 표시)
         return f"{m // 60:02d}:{m % 60:02d}"

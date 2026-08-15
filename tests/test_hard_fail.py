@@ -3,9 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.data.models import DayPlan, ItineraryPlan, PlaceInput, POI
-from src.validation.hard_fail import DEFAULT_START_MINUTES, HardFailDetector
-
+from src.data.models import POI, DayPlan, ItineraryPlan, PlaceInput
+from src.validation.hard_fail import HardFailDetector
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -81,6 +80,9 @@ class TestHelpers:
 
     def test_min_to_time_midnight(self):
         assert HardFailDetector._min_to_time(0) == "00:00"
+
+    def test_min_to_time_wraps_past_24h(self):
+        assert HardFailDetector._min_to_time(52 * 60 + 48) == "04:48"
 
 
 # ---------------------------------------------------------------------------

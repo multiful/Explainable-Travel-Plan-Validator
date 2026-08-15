@@ -16,8 +16,9 @@ import re
 from dataclasses import dataclass, field
 
 from src.data.dwell_db import MANUAL_OVERRIDES as _DWELL_OVERRIDES
-from src.data.models import HardFail, ItineraryPlan, POI
+from src.data.models import POI, HardFail, ItineraryPlan
 from src.data.party_config import get_party_profile
+from src.data.restaurant_catalog import RestaurantCatalog
 from src.utils.geo import build_dist_cache, get_travel_min, haversine_km
 from src.validation.hard_fail import HardFailDetector
 
@@ -60,6 +61,7 @@ class DeletionSuggestion:
     candidate_name: str
     travel_saved_km: float
     reason: str
+    nearby_restaurants: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -79,8 +81,9 @@ class RepairResult:
 class RepairEngine:
     """Minimal Interference 교정 엔진. External I/O 없음."""
 
-    def __init__(self) -> None:
+    def __init__(self, restaurant_catalog: RestaurantCatalog | None = None) -> None:
         self._hard_fail = HardFailDetector()
+        self._restaurants = restaurant_catalog or RestaurantCatalog.from_default()
 
     def repair(
         self,
@@ -238,14 +241,23 @@ class RepairEngine:
         if best_idx < 0 or max_savings <= 0:
             return None
 
-        name = pois[best_idx].name
+        deleted = pois[best_idx]
+        nearby = self._restaurants.nearby(deleted.lat, deleted.lng, exclude_name=deleted.name)
+        reason = (
+            f"'{deleted.name}'이(가) 동선상 지리적 이상치입니다. "
+            f"이 장소를 제외하면 불필요한 이동 {max_savings:.1f}km가 절감됩니다. "
+            "나머지 장소는 그대로 유지됩니다."
+        )
+        if nearby:
+            reason += (
+                " 대신 근처 음식점 " + ", ".join(f"{a.name}({a.distance_km}km)" for a in nearby) + "을(를) 추천합니다."
+            )
+        else:
+            reason += " 반경 2km 내 대체 가능한 음식점을 찾지 못했습니다."
         return DeletionSuggestion(
             day_index=day_idx,
-            candidate_name=name,
+            candidate_name=deleted.name,
             travel_saved_km=round(max_savings, 1),
-            reason=(
-                f"'{name}'이(가) 동선상 지리적 이상치입니다. "
-                f"이 장소를 제외하면 불필요한 이동 {max_savings:.1f}km가 절감됩니다. "
-                "나머지 장소는 그대로 유지됩니다."
-            ),
+            reason=reason,
+            nearby_restaurants=[a.model_dump() for a in nearby],
         )

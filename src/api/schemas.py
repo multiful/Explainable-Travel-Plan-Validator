@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 class PlaceInputWeb(BaseModel):
     name: str
+    address: str = ""
 
 
 class DayPlanWeb(BaseModel):
@@ -27,6 +28,8 @@ class POIInfo(BaseModel):
     hours_estimated: bool = True
     graph_region: str = ""
     graph_nearby: list[str] = []
+    category: str = ""
+    day_index: int = 0
 
 
 class PlaceItem(BaseModel):
