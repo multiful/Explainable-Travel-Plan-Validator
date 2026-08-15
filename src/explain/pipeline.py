@@ -126,6 +126,7 @@ class ValidatorPipeline:
                 pois=day_pois,
                 matrix=matrix,
                 origin_poi=prev_last_accom,
+                day_index=day_idx,
             )
             hard_fails.extend(fails)
             # 마지막 숙소 POI 추출 (다음 날 origin으로)
@@ -137,10 +138,10 @@ class ValidatorPipeline:
         # 나머지(DENSE_SCHEDULE, PHYSICAL_STRAIN, INEFFICIENT_ROUTE, AREA_REVISIT)는
         # 일자별로 개별 호출해 threshold를 하루 기준에 맞게 적용
         warnings: list = []
-        for day_pois in per_day_pois:
+        for day_idx, day_pois in enumerate(per_day_pois):
             if not day_pois:
                 continue
-            day_warns = self._warning.detect(plan=plan, pois=day_pois, matrix=matrix)
+            day_warns = self._warning.detect(plan=plan, pois=day_pois, matrix=matrix, day_index=day_idx)
             warnings.extend(w for w in day_warns if w.warning_type != "PURPOSE_MISMATCH")
 
         warnings.extend(self._warning._check_purpose_mismatch(plan, all_pois))
@@ -265,14 +266,19 @@ class ValidatorPipeline:
             final_score=adjusted,
         )
 
+        # ── 12. Hard Fail POI 대안 (지식그래프 도보권 대안, 미설정/미매칭 시 빈 dict) ──
+        alternatives = self._explain.build_alternatives(hard_fails) if hard_fails else {}
+
         return ValidationResult(
             plan_id=plan.plan_id,
             final_score=adjusted,
+            base_score=base_score,
             hard_fails=hard_fails,
             warnings=warnings,
             scores=scores,
             explanations=explanations,
             rewards=rewards,
+            alternatives=alternatives,
             penalty_breakdown=penalty_breakdown,
             bonus_breakdown=bonus_breakdown,
             repair=repair_data,

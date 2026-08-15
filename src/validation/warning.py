@@ -53,6 +53,7 @@ class WarningDetector:
         plan: ItineraryPlan,
         pois: list[POI],
         matrix: dict,
+        day_index: int | None = None,
     ) -> list[Warning]:
         """Warning 목록 반환. 없으면 빈 리스트."""
         dist_cache = build_dist_cache(pois)
@@ -62,6 +63,11 @@ class WarningDetector:
         warns.extend(self._check_physical_strain(plan, pois, dist_cache))
         warns.extend(self._check_purpose_mismatch(plan, pois))
         warns.extend(self._check_area_revisit(pois))
+        if day_index is not None:
+            poi_names = [p.name for p in pois]
+            for w in warns:
+                w.day_index = day_index
+                w.poi_names = poi_names
         return warns
 
     def _check_dense_schedule(
@@ -225,6 +231,8 @@ class WarningDetector:
                         "전날 피로가 이월되어 컨디션이 저하될 수 있습니다."
                     ),
                     confidence="Medium",
+                    day_index=i,
+                    poi_names=[p.name for p in per_day_pois[i]] if i < len(per_day_pois) else [],
                 )]
 
         return []

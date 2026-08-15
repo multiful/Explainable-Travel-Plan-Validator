@@ -1,10 +1,14 @@
 """RepairEngine 유닛 테스트."""
 from __future__ import annotations
 
-import pytest
+from src.data.models import POI, DayPlan, HardFail, ItineraryPlan, PlaceInput
+from src.data.restaurant_catalog import RestaurantCatalog
+from src.explain.repair import RepairEngine as _RepairEngineClass
 
-from src.data.models import DayPlan, HardFail, ItineraryPlan, PlaceInput, POI
-from src.explain.repair import RepairEngine, _MAX_PERM_N
+
+def RepairEngine(restaurant_catalog: RestaurantCatalog | None = None) -> _RepairEngineClass:
+    """테스트 전용 팩토리 — 빈 카탈로그를 기본값으로 써서 실제 CSV I/O를 피한다."""
+    return _RepairEngineClass(restaurant_catalog=restaurant_catalog or RestaurantCatalog([]))
 
 
 def _poi(
@@ -108,6 +112,24 @@ class TestDeletionSuggestion:
         result = engine.repair(plan, [_outlier_pois()], {}, hard_fails=[_fail()])
         assert result.deletions
         assert "D" in result.deletions[0].reason
+
+    def test_deletion_recommends_nearby_restaurant_when_available(self):
+        catalog = RestaurantCatalog([{"name": "이상치식당", "lat": 38.505, "lng": 127.005}])
+        engine = RepairEngine(restaurant_catalog=catalog)
+        plan = _plan(["A", "B", "C", "D", "E", "F", "G", "H"])
+        result = engine.repair(plan, [_outlier_pois()], {}, hard_fails=[_fail()])
+        assert result.deletions
+        assert result.deletions[0].nearby_restaurants
+        assert result.deletions[0].nearby_restaurants[0]["name"] == "이상치식당"
+        assert "이상치식당" in result.deletions[0].reason
+
+    def test_deletion_explains_when_no_restaurant_nearby(self):
+        engine = RepairEngine(restaurant_catalog=RestaurantCatalog([]))
+        plan = _plan(["A", "B", "C", "D", "E", "F", "G", "H"])
+        result = engine.repair(plan, [_outlier_pois()], {}, hard_fails=[_fail()])
+        assert result.deletions
+        assert result.deletions[0].nearby_restaurants == []
+        assert "찾지 못했습니다" in result.deletions[0].reason
 
 
 # ---------------------------------------------------------------------------

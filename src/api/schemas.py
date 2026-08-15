@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 class PlaceInputWeb(BaseModel):
     name: str
+    address: str = ""
 
 
 class DayPlanWeb(BaseModel):
@@ -27,6 +28,8 @@ class POIInfo(BaseModel):
     hours_estimated: bool = True
     graph_region: str = ""
     graph_nearby: list[str] = []
+    category: str = ""
+    day_index: int = 0
 
 
 class PlaceItem(BaseModel):
@@ -55,9 +58,28 @@ class ValidateRequest(BaseModel):
     start_time: str = "09:00"
 
 
+class ParseTextRequest(BaseModel):
+    text: str
+
+
+class ParsedPlace(BaseModel):
+    name: str
+    address: str = ""
+    category: str = "12"
+
+
+class ParsedDay(BaseModel):
+    places: list[ParsedPlace]
+
+
+class ParsedPlanResponse(BaseModel):
+    days: list[ParsedDay]
+
+
 class ValidateResponse(BaseModel):
     plan_id: str
     final_score: int
+    base_score: int = 0
     passed: bool
     data_reliability_score: int = 0
     hard_fails: list[dict]
@@ -67,6 +89,7 @@ class ValidateResponse(BaseModel):
     penalty_breakdown: dict[str, int]
     bonus_breakdown: dict[str, int]
     rewards: list[str]
+    alternatives: dict[str, list[dict]] = {}
     poi_info: list[POIInfo]
     repair_suggestions: Optional[dict] = None
     optimal_route: Optional[list[dict]] = None

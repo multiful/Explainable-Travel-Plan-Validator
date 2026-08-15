@@ -57,6 +57,8 @@ class HardFail(BaseModel):
     # 추정(미검증) 영업시간에 근거한 충돌이면 True.
     # True 인 항목은 점수 캡(≤59)·passed 판정에서 제외하고 '확인 필요' 수준으로 다룬다.
     estimated: bool = False
+    # 몇 일차에서 발생했는지 (0-based). 여러 날에 걸친 검증에서만 채워짐.
+    day_index: int | None = None
 
 
 class Warning(BaseModel):
@@ -70,6 +72,10 @@ class Warning(BaseModel):
     ]
     message: str
     confidence: str
+    # 몇 일차에서 발생했는지 (0-based). 여행 전체/cross-day 경고는 None.
+    day_index: int | None = None
+    # 해당 일자에 포함된 장소명 — UI 표시 + LLM 설명 그라운딩용.
+    poi_names: list[str] = Field(default_factory=list)
 
 
 class Scores(BaseModel):
@@ -218,6 +224,7 @@ class ItineraryPlan(BaseModel):
 class ValidationResult(BaseModel):
     plan_id: str
     final_score: int
+    base_score: int = 0
     hard_fails: list[HardFail]
     warnings: list[Warning]
     scores: Scores | None = None
@@ -359,6 +366,7 @@ class ExplanationItem(BaseModel):
     rule: str
     risk: Literal["OK", "WARNING", "CRITICAL"]
     suggestion: str
+    day_index: int | None = None
 
 
 class DayRouteComparison(BaseModel):

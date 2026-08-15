@@ -12,11 +12,14 @@ CLAUDE.md 규칙:
 from __future__ import annotations
 
 import os
+import time
 
 from neo4j import GraphDatabase
-from neo4j.exceptions import Neo4jError
+from neo4j.exceptions import DriverError, Neo4jError
 
 from src.data.models import AlternativePOI, PlaceEvidence
+
+_UNREACHABLE_COOLDOWN_SEC = 60.0
 
 _SEARCH_CYPHER = """
 MATCH (p:Place)
@@ -43,7 +46,17 @@ class GraphRetriever:
 
     def __init__(self, uri: str, username: str, password: str, database: str = "neo4j") -> None:
         self._database = database
-        self._driver = GraphDatabase.driver(uri, auth=(username, password)) if uri else None
+        self._driver = (
+            GraphDatabase.driver(
+                uri,
+                auth=(username, password),
+                connection_timeout=5.0,
+                max_transaction_retry_time=5.0,
+            )
+            if uri
+            else None
+        )
+        self._unreachable_until = 0.0
 
     @classmethod
     def from_env(cls) -> GraphRetriever:
@@ -58,6 +71,13 @@ class GraphRetriever:
     def enabled(self) -> bool:
         return self._driver is not None
 
+    def _callable(self) -> bool:
+        """호출 가능 여부. 최근 연결 실패 시 쿨다운 동안 재시도 백오프 비용 없이 즉시 빈 결과로 넘긴다."""
+        return self.enabled and time.monotonic() >= self._unreachable_until
+
+    def _mark_unreachable(self) -> None:
+        self._unreachable_until = time.monotonic() + _UNREACHABLE_COOLDOWN_SEC
+
     def close(self) -> None:
         if self._driver is not None:
             self._driver.close()
@@ -65,13 +85,14 @@ class GraphRetriever:
     def search_places(self, query: str, limit: int = 5) -> list[PlaceEvidence]:
         """장소명 부분일치 검색 — Region 컨텍스트 포함."""
         q = (query or "").strip()
-        if not q or not self.enabled:
+        if not q or not self._callable():
             return []
         try:
             result = self._driver.execute_query(
                 _SEARCH_CYPHER, q=q, limit=limit, database_=self._database
             )
-        except Neo4jError:
+        except (Neo4jError, DriverError):
+            self._mark_unreachable()
             return []
         return [
             PlaceEvidence(
@@ -89,13 +110,14 @@ class GraphRetriever:
 
     def find_nearby(self, place_id: str, limit: int = 5) -> list[AlternativePOI]:
         """NEAR_BY 그래프에서 도보 근접 대체 후보 조회 (거리순)."""
-        if not place_id or not self.enabled:
+        if not place_id or not self._callable():
             return []
         try:
             result = self._driver.execute_query(
                 _NEARBY_CYPHER, place_id=place_id, limit=limit, database_=self._database
             )
-        except Neo4jError:
+        except (Neo4jError, DriverError):
+            self._mark_unreachable()
             return []
         return [
             AlternativePOI(

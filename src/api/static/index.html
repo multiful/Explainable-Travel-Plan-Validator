@@ -120,6 +120,16 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .scard-label{font-size:.69rem;font-weight:800;color:var(--n400);text-transform:uppercase;
   letter-spacing:.7px;margin-bottom:.8rem;display:flex;align-items:center;gap:.35rem}
 
+/* s1 input-mode tabs */
+.s1-tab-bar{display:flex;gap:.35rem;background:var(--n100);border-radius:calc(var(--r) + 5px);
+  padding:.3rem;margin-bottom:1rem}
+.s1-tab-bar button{flex:1;padding:.65rem;font-size:.83rem;font-weight:700;border:none;
+  border-radius:var(--r);background:none;cursor:pointer;color:var(--n500);
+  transition:background .15s,color .15s,box-shadow .15s}
+.s1-tab-bar button.active{color:var(--pri-d);background:var(--card);box-shadow:var(--sh-sm)}
+.s1-tab-panel{display:none}
+.s1-tab-panel.active{display:block}
+
 /* Region grid */
 .region-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.45rem}
 @media(max-width:500px){.region-grid{grid-template-columns:repeat(3,1fr)}}
@@ -181,6 +191,19 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
   cursor:pointer;box-shadow:0 4px 20px var(--pri-m);transition:background .2s,color .2s,border-color .2s,box-shadow .2s,transform .2s,opacity .2s;letter-spacing:.1px;margin-top:.3rem}
 .cta:hover{background:var(--pri-d);transform:translateY(-2px);box-shadow:0 8px 28px var(--pri-m)}
 .cta:active{transform:translateY(0)}
+.cta:disabled{opacity:.6;cursor:default;transform:none}
+
+/* Upload card */
+.upload-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;
+  padding:1.4rem 1rem;border:1.5px dashed var(--n300);border-radius:var(--r);cursor:pointer;
+  color:var(--n500);text-align:center;transition:border-color .15s,background .15s,color .15s}
+.upload-drop:hover,.upload-drop.drag{border-color:var(--pri);color:var(--pri-d);background:var(--pri-m)}
+.upload-drop span{font-size:.8rem;font-weight:600}
+.upload-divider{display:flex;align-items:center;gap:.6rem;margin:.7rem 0;font-size:.72rem;color:var(--n400)}
+.upload-divider::before,.upload-divider::after{content:"";flex:1;height:1px;background:var(--n200)}
+.upload-textarea{width:100%;padding:.7rem .8rem;border:1px solid var(--n200);border-radius:var(--r);
+  font:inherit;font-size:.85rem;color:var(--n700);background:var(--card);resize:vertical;line-height:1.5}
+.upload-textarea:focus{outline:none;border-color:var(--pri)}
 
 /* ━━━ Step 2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 #s2{background:var(--n100)}
@@ -465,9 +488,18 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .i-warn{background:oklch(98% 0.018 68);border-color:oklch(80% 0.12 68)}
 .issue-title{font-size:.83rem;font-weight:700;margin-bottom:.28rem;
   display:flex;align-items:center;gap:.32rem;flex-wrap:wrap}
+.issue-day{font-size:.68rem;font-weight:700;color:var(--n500);background:rgba(0,0,0,.05);
+  border-radius:5px;padding:.08rem .4rem;white-space:nowrap}
 .issue-body{font-size:.79rem;color:var(--n600);line-height:1.58;word-break:keep-all}
 .issue-evid{margin-top:.48rem;background:rgba(0,0,0,.04);border-radius:6px;
   padding:.42rem .62rem;font-size:.72rem;color:var(--n600);display:flex;gap:.45rem}
+.issue-alts{margin-top:.48rem}
+.issue-alts-label{font-size:.72rem;color:var(--n500);margin-bottom:.28rem}
+.issue-alt-chip{display:inline-flex;align-items:center;gap:.28rem;font-size:.74rem;
+  background:var(--card);border:1px solid var(--n200);border-radius:20px;
+  padding:.22rem .62rem;margin:0 .32rem .32rem 0}
+.issue-alt-chip b{font-weight:700}
+.issue-alt-dist{color:var(--n500)}
 
 /* Adjustments */
 .adj-row{display:flex;align-items:center;justify-content:space-between;
@@ -475,6 +507,9 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .adj-row:last-child{border-bottom:none}
 .adj-pen{color:var(--st-fail-fg);font-weight:700}
 .adj-bon{color:var(--mint);font-weight:700}
+.score-formula{font-size:.85rem;color:var(--n600);padding:.1rem 0 .6rem;
+  border-bottom:1px solid var(--n100);margin-bottom:.2rem}
+.score-formula strong{color:var(--n800)}
 
 /* Rewards */
 .reward{font-size:.81rem;color:var(--mint);padding:.38rem 0;
@@ -1301,56 +1336,82 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
     </div>
   </div>
   <div class="s1-body">
-    <div class="scard">
-      <div class="scard-label">여행지 선택</div>
-      <div class="region-grid" id="region-grid"></div>
+    <div class="s1-tab-bar" role="tablist" aria-label="일정 입력 방식">
+      <button id="s1-tab-btn-upload" class="active" role="tab" aria-selected="true" aria-controls="s1-tab-upload" onclick="switchS1Tab('upload')">일정표 업로드</button>
+      <button id="s1-tab-btn-manual" role="tab" aria-selected="false" aria-controls="s1-tab-manual" onclick="switchS1Tab('manual')">카테고리 입력</button>
     </div>
-    <div class="scard">
-      <div class="scard-label">여행 날짜 · 출발 시간</div>
-      <div class="date-time-row">
-        <div class="cal-wrap">
-          <div class="time-label">여행 시작 날짜</div>
-          <div class="date-inp" id="date-display" onclick="toggleCalendar(event)" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" aria-label="여행 날짜 선택" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCalendar(event)}" style="display:flex;align-items:center;justify-content:space-between;user-select:none;cursor:pointer">
-            <span id="date-display-text">2026년 6월 1일 (월)</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;opacity:.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </div>
-          <div class="cal-popup" id="cal-popup">
-            <div class="cal-nav">
-              <button class="cal-nav-btn" onclick="moveCalMonth(-1);event.stopPropagation()" aria-label="이전 달">‹</button>
-              <span class="cal-month-label" id="cal-month-label" aria-live="polite"></span>
-              <button class="cal-nav-btn" onclick="moveCalMonth(1);event.stopPropagation()" aria-label="다음 달">›</button>
-            </div>
-            <div class="cal-weekdays">
-              <div class="cal-wd">일</div><div class="cal-wd">월</div><div class="cal-wd">화</div>
-              <div class="cal-wd">수</div><div class="cal-wd">목</div><div class="cal-wd">금</div>
-              <div class="cal-wd">토</div>
-            </div>
-            <div class="cal-grid" id="cal-grid"></div>
-          </div>
-        </div>
-        <div>
-          <label for="time-inp" class="time-label">출발 시간</label>
-          <input type="time" class="time-inp" id="time-inp" value="09:00"/>
-        </div>
+
+    <div class="s1-tab-panel active" id="s1-tab-upload" role="tabpanel" aria-labelledby="s1-tab-btn-upload">
+      <div class="scard">
+        <div class="scard-label">기존 일정표로 검증하기 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(추천)</span></div>
+        <p style="font-size:.78rem;color:var(--n500);margin:0 0 .75rem;line-height:1.6">
+          대한민국구석구석 AI 플래너 등에서 받은 일정 PDF·캡처 이미지를 올리거나, 추천 경로를 복사해서 붙여넣으면 바로 검증해드려요.
+        </p>
+        <label class="upload-drop" id="upload-drop" for="upload-file-inp">
+          <input type="file" id="upload-file-inp" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" style="display:none" onchange="onUploadFileChange(event)"/>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="26" height="26" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span id="upload-drop-label">PDF·PNG·JPG 파일을 끌어놓거나 클릭해서 선택</span>
+        </label>
+        <div class="upload-divider"><span>또는</span></div>
+        <textarea id="upload-text-inp" class="upload-textarea" rows="4" placeholder="추천받은 여행 코스를 복사해서 여기에 붙여넣으세요&#10;예) Day 1&#10;1 다려도 여행지&#10;2 바람벽에흰당나귀 카페 ..." oninput="onUploadTextInput()"></textarea>
+        <button class="cta" id="upload-analyze-btn" style="margin-top:.7rem" onclick="analyzeUpload()">일정 분석하기</button>
+        <p id="upload-status" style="font-size:.75rem;color:var(--n500);margin-top:.55rem;min-height:1em" aria-live="polite"></p>
       </div>
     </div>
-    <div class="scard">
-      <div class="scard-label">누구랑 가세요?</div>
-      <div class="party-grid" id="party-grid"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.85rem">
-        <span style="font-size:.8rem;font-weight:600;color:var(--n600)">몇 명이 가세요?</span>
-        <div class="stepper">
-          <button class="step-btn" id="size-minus" onclick="changeSize(-1)" aria-label="인원 줄이기">−</button>
-          <div class="step-val" id="size-val" aria-live="polite" aria-atomic="true">2명</div>
-          <button class="step-btn" id="size-plus" onclick="changeSize(1)" aria-label="인원 늘리기">+</button>
+
+    <div class="s1-tab-panel" id="s1-tab-manual" role="tabpanel" aria-labelledby="s1-tab-btn-manual">
+      <div class="scard">
+        <div class="scard-label">여행지 선택</div>
+        <div class="region-grid" id="region-grid"></div>
+      </div>
+      <div class="scard">
+        <div class="scard-label">여행 날짜 · 출발 시간</div>
+        <div class="date-time-row">
+          <div class="cal-wrap">
+            <div class="time-label">여행 시작 날짜</div>
+            <div class="date-inp" id="date-display" onclick="toggleCalendar(event)" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" aria-label="여행 날짜 선택" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCalendar(event)}" style="display:flex;align-items:center;justify-content:space-between;user-select:none;cursor:pointer">
+              <span id="date-display-text">2026년 6월 1일 (월)</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="flex-shrink:0;opacity:.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="cal-popup" id="cal-popup">
+              <div class="cal-nav">
+                <button class="cal-nav-btn" onclick="moveCalMonth(-1);event.stopPropagation()" aria-label="이전 달">‹</button>
+                <span class="cal-month-label" id="cal-month-label" aria-live="polite"></span>
+                <button class="cal-nav-btn" onclick="moveCalMonth(1);event.stopPropagation()" aria-label="다음 달">›</button>
+              </div>
+              <div class="cal-weekdays">
+                <div class="cal-wd">일</div><div class="cal-wd">월</div><div class="cal-wd">화</div>
+                <div class="cal-wd">수</div><div class="cal-wd">목</div><div class="cal-wd">금</div>
+                <div class="cal-wd">토</div>
+              </div>
+              <div class="cal-grid" id="cal-grid"></div>
+            </div>
+          </div>
+          <div>
+            <label for="time-inp" class="time-label">출발 시간</label>
+            <input type="time" class="time-inp" id="time-inp" value="09:00"/>
+          </div>
         </div>
       </div>
+      <div class="scard">
+        <div class="scard-label">누구랑 가세요?</div>
+        <div class="party-grid" id="party-grid"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.85rem">
+          <span style="font-size:.8rem;font-weight:600;color:var(--n600)">몇 명이 가세요?</span>
+          <div class="stepper">
+            <button class="step-btn" id="size-minus" onclick="changeSize(-1)" aria-label="인원 줄이기">−</button>
+            <div class="step-val" id="size-val" aria-live="polite" aria-atomic="true">2명</div>
+            <button class="step-btn" id="size-plus" onclick="changeSize(1)" aria-label="인원 늘리기">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="scard">
+        <div class="scard-label">여행 스타일 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(선택)</span></div>
+        <div class="theme-grid" id="theme-grid"></div>
+      </div>
+      <button class="cta" onclick="goStep(2)">일정 검증하기 →</button>
     </div>
-    <div class="scard">
-      <div class="scard-label">여행 스타일 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(선택)</span></div>
-      <div class="theme-grid" id="theme-grid"></div>
-    </div>
-    <button class="cta" onclick="goStep(2)">일정 검증하기 →</button>
+
     <p style="text-align:center;font-size:.72rem;color:var(--n400);margin-top:.85rem;line-height:1.7">
       이용 시 <button onclick="openPrivacy()" style="background:none;border:none;cursor:pointer;color:var(--pri);font-size:.72rem;font-weight:600;text-decoration:underline">개인정보처리방침</button>에 동의하신 것으로 간주됩니다.
     </p>
@@ -1713,6 +1774,99 @@ function addNameToDay(nm) {
   days[selDay].push(nm);
   renderDays(); updateSummary();
   showToast(nm+" 추가됐어요");
+}
+
+/* ─── s1 입력 방식 탭 (업로드 / 카테고리 입력) ───────────────────────── */
+function switchS1Tab(tab) {
+  document.getElementById("s1-tab-upload").classList.toggle("active", tab === "upload");
+  document.getElementById("s1-tab-manual").classList.toggle("active", tab === "manual");
+  document.getElementById("s1-tab-btn-upload").classList.toggle("active", tab === "upload");
+  document.getElementById("s1-tab-btn-manual").classList.toggle("active", tab === "manual");
+  document.getElementById("s1-tab-btn-upload").setAttribute("aria-selected", tab === "upload");
+  document.getElementById("s1-tab-btn-manual").setAttribute("aria-selected", tab === "manual");
+}
+
+/* ─── 일정표 업로드 (PDF·이미지·텍스트 → 파싱) ──────────────────────── */
+var _uploadFile = null;
+
+function initUploadDrop() {
+  var dz = document.getElementById("upload-drop");
+  if (!dz) return;
+  ["dragover","dragenter"].forEach(function(evt){
+    dz.addEventListener(evt, function(e){ e.preventDefault(); dz.classList.add("drag"); });
+  });
+  ["dragleave","dragend"].forEach(function(evt){
+    dz.addEventListener(evt, function(e){ dz.classList.remove("drag"); });
+  });
+  dz.addEventListener("drop", function(e){
+    e.preventDefault(); dz.classList.remove("drag");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) setUploadFile(e.dataTransfer.files[0]);
+  });
+}
+
+function onUploadFileChange(e) {
+  if (e.target.files && e.target.files[0]) setUploadFile(e.target.files[0]);
+}
+
+function setUploadFile(f) {
+  _uploadFile = f;
+  document.getElementById("upload-drop-label").textContent = f.name+" 선택됨 (다른 파일을 올리려면 다시 클릭)";
+  document.getElementById("upload-text-inp").value = "";
+}
+
+function onUploadTextInput() {
+  if (document.getElementById("upload-text-inp").value.trim()) {
+    _uploadFile = null;
+    document.getElementById("upload-file-inp").value = "";
+    document.getElementById("upload-drop-label").textContent = "PDF·PNG·JPG 파일을 끌어놓거나 클릭해서 선택";
+  }
+}
+
+async function analyzeUpload() {
+  var textVal = document.getElementById("upload-text-inp").value.trim();
+  if (!_uploadFile && !textVal) { showToast("파일을 올리거나 일정 텍스트를 붙여넣어주세요!"); return; }
+
+  var btn = document.getElementById("upload-analyze-btn");
+  var status = document.getElementById("upload-status");
+  btn.disabled = true; btn.textContent = "분석하는 중...";
+  status.textContent = "";
+
+  try {
+    var res;
+    if (_uploadFile) {
+      var fd = new FormData();
+      fd.append("file", _uploadFile);
+      res = await fetch("/api/parse/document", {method:"POST", body:fd});
+    } else {
+      res = await fetch("/api/parse/text", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({text: textVal}),
+      });
+    }
+    if (!res.ok) {
+      var e = {}; try { e = await res.json(); } catch(_){}
+      throw new Error(e.detail || ("HTTP "+res.status));
+    }
+    var parsed = await res.json();
+    var newDays = (parsed.days||[]).map(function(d){
+      return (d.places||[]).map(function(p){
+        return {name: p.name, cat: p.category||"", note: p.address||""};
+      });
+    }).filter(function(d){ return d.length; });
+
+    if (!newDays.length) {
+      status.textContent = "일정에서 장소를 찾지 못했어요. 다른 파일이나 텍스트로 시도해보세요.";
+      return;
+    }
+    days = newDays; selDay = 0;
+    var cnt = newDays.reduce(function(s,d){return s+d.length;}, 0);
+    showToast(cnt+"개 장소를 인식했어요. 확인 후 검증해보세요!");
+    goStep(2);
+  } catch(err) {
+    status.textContent = "분석 중 오류가 생겼어요: "+err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "일정 분석하기";
+  }
 }
 
 /* ─── Step 1 Init ───────────────────────────────────────────────────── */
@@ -2665,14 +2819,14 @@ async function runValidate() {
     if(!isNaN(d)&&!isNaN(p)){
       var existing=days[d][p];
       days[d][p]=(typeof existing==="object"&&existing!==null)
-        ?{name:inp.value,cat:existing.cat||""}:inp.value;
+        ?{name:inp.value,cat:existing.cat||"",note:existing.note||""}:inp.value;
     }
   });
   var fd = days.map(function(d){return d.filter(function(p){return pname(p).trim();});});
   if (fd.every(function(d){return !d.length;})) {showToast("장소를 하나 이상 입력해주세요!");return;}
 
   var payload = {
-    days: fd.map(function(places){return {places:places.map(function(p){return {name:pname(p)};})};}),
+    days: fd.map(function(places){return {places:places.map(function(p){return {name:pname(p), address:pnote(p)};})};}),
     party_size:cfg.partySize, party_type:cfg.partyType,
     date:cfg.date, start_time:cfg.startTime, travel_type:cfg.travelType||null
   };
@@ -2746,6 +2900,12 @@ function scoreDesc(s, passed) {
   return "일정을 상당 부분 바꿔야 할 것 같아요. 걱정 마세요, 아래 내용대로 하나씩 고쳐봐요!";
 }
 
+function _dayColors() {
+  var rs = getComputedStyle(document.documentElement);
+  function tv(n){ return rs.getPropertyValue(n).trim(); }
+  return [tv("--pri"),tv("--tour"),tv("--mint"),tv("--event"),tv("--stay"),tv("--shop"),tv("--nature")];
+}
+
 function renderResult(d) {
   var s = d.final_score;
   var scoreClass = d.passed?"pass":s>=60?"warn":"fail";
@@ -2798,10 +2958,14 @@ function renderResult(d) {
     html+='<div id="res-fails" class="rcard rcard-critical"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><h3>꼭 확인해야 할 것</h3><span class="rcard-count">'+d.hard_fails.length+'가지</span></div><div class="rcard-body">';
     d.hard_fails.forEach(function(f){
       var info=HLABELS[f.fail_type]||{title:_enumLabel(f.fail_type)};
+      var alts=(d.alternatives&&f.poi_name)?d.alternatives[f.poi_name]:null;
       html+='<div class="issue i-hard">'+
-        '<div class="issue-title">'+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
+        '<div class="issue-title">'+(f.day_index!=null?'<span class="issue-day">Day '+(f.day_index+1)+'</span> ':'')+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
         '<div class="issue-body">'+esc(f.message)+'</div>'+
         (f.evidence?'<div class="issue-evid"><span class="evid-dot"></span><span>'+esc(f.evidence)+'</span></div>':'')+
+        (alts&&alts.length?'<div class="issue-alts"><div class="issue-alts-label">대신 이런 곳은 어때요? (도보권)</div>'+
+          alts.map(function(a){return '<span class="issue-alt-chip"><b>'+esc(a.name)+'</b><span class="issue-alt-dist">'+a.distance_km+'km</span></span>';}).join('')+
+        '</div>':'')+
       '</div>';
     });
     html+='</div></div>';
@@ -2878,6 +3042,14 @@ function renderResult(d) {
   var hasBon=d.bonus_breakdown&&Object.keys(d.bonus_breakdown).length;
   if(hasPen||hasBon){
     html+='<div class="rcard"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 3v1m0 16v1M4.22 4.22l.71.71m14.14 14.14.71.71M3 12H4m16 0h1M4.22 19.78l.71-.71M18.36 5.64l.71-.71"/><circle cx="12" cy="12" r="4"/></svg></div><h3>점수 조정 내역</h3></div><div class="rcard-body">';
+    if(d.base_score!=null && d.base_score!==d.final_score){
+      var _penSum=hasPen?Object.values(d.penalty_breakdown).reduce(function(a,b){return a+b;},0):0;
+      var _bonSum=hasBon?Object.values(d.bonus_breakdown).reduce(function(a,b){return a+b;},0):0;
+      html+='<div class="score-formula">기본 <strong>'+d.base_score+'점</strong>'+
+        (_penSum?' <span class="adj-pen">−'+_penSum+'</span>':'')+
+        (_bonSum?' <span class="adj-bon">+'+_bonSum+'</span>':'')+
+        ' → 최종 <strong>'+d.final_score+'점</strong></div>';
+    }
     if(hasPen) Object.entries(d.penalty_breakdown).forEach(function(kv){
       var info=PLABELS[kv[0]]||{title:kv[0],tip:""};
       html+='<div class="adj-row"><span style="color:var(--n600)"><span class="tip" data-tip="'+esc(info.tip)+'">'+esc(info.title)+'</span></span><span class="adj-pen">−'+kv[1]+'점</span></div>';
@@ -2894,10 +3066,14 @@ function renderResult(d) {
     html+='<div id="res-fails" class="rcard rcard-critical"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div><h3>꼭 확인해야 할 것</h3><span class="rcard-count">'+d.hard_fails.length+'가지</span></div><div class="rcard-body">';
     d.hard_fails.forEach(function(f){
       var info=HLABELS[f.fail_type]||{title:_enumLabel(f.fail_type)};
+      var alts=(d.alternatives&&f.poi_name)?d.alternatives[f.poi_name]:null;
       html+='<div class="issue i-hard">'+
-        '<div class="issue-title">'+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
+        '<div class="issue-title">'+(f.day_index!=null?'<span class="issue-day">Day '+(f.day_index+1)+'</span> ':'')+esc(info.title)+(f.poi_name?' - <strong>'+esc(f.poi_name)+'</strong>':'')+'</div>'+
         '<div class="issue-body">'+esc(f.message)+'</div>'+
         (f.evidence?'<div class="issue-evid"><span class="evid-dot"></span><span>'+esc(f.evidence)+'</span></div>':'')+
+        (alts&&alts.length?'<div class="issue-alts"><div class="issue-alts-label">대신 이런 곳은 어때요? (도보권)</div>'+
+          alts.map(function(a){return '<span class="issue-alt-chip"><b>'+esc(a.name)+'</b><span class="issue-alt-dist">'+a.distance_km+'km</span></span>';}).join('')+
+        '</div>':'')+
       '</div>';
     });
     html+='</div></div>';
@@ -2909,7 +3085,7 @@ function renderResult(d) {
     d.warnings.forEach(function(w){
       var info=WLABELS[w.warning_type]||{title:_enumLabel(w.warning_type)};
       html+='<div class="issue i-warn">'+
-        '<div class="issue-title">'+esc(info.title)+'</div>'+
+        '<div class="issue-title">'+(w.day_index!=null?'<span class="issue-day">Day '+(w.day_index+1)+'</span> ':'')+esc(info.title)+'</div>'+
         '<div class="issue-body">'+esc(w.message)+'</div>'+
       '</div>';
     });
@@ -2961,9 +3137,11 @@ function renderResult(d) {
     d.explanations.forEach(function(ex,ei){
       var rc=ex.risk==="OK"?"risk-ok":ex.risk==="WARNING"?"risk-warn":"risk-crit";
       var rlabel=ex.risk==="OK"?"괜찮아요":ex.risk==="WARNING"?"주의":"문제있어요";
+      var _tmap={hard_fail:HLABELS,warning:WLABELS,penalty:PLABELS,bonus:BLABELS};
+      var _exLbl=(_tmap[ex.item_type]&&_tmap[ex.item_type][ex.item_key])||(ex.item_key==="summary"?{title:"종합 평가"}:{title:_enumLabel(ex.item_key)});
       html+='<div class="expl-item" id="ex'+ei+'">'+
         '<div class="expl-head" onclick="toggleEx('+ei+')">'+
-          '<span class="expl-key">'+esc(ex.item_key)+'</span>'+
+          '<span class="expl-key">'+(ex.day_index!=null?'<span class="issue-day">Day '+(ex.day_index+1)+'</span> ':'')+esc(_exLbl.title)+'</span>'+
           '<div style="display:flex;align-items:center;gap:.45rem">'+
             '<span class="expl-risk '+rc+'">'+rlabel+'</span>'+
             '<span class="expl-arr">▾</span>'+
@@ -3002,12 +3180,16 @@ function renderResult(d) {
   // Map
   var mapPois = (d.poi_info||[]).filter(function(p){return p.lat&&p.lng&&p.lat!==37.5665;});
   if (mapPois.length) {
+    var mapDayCount = mapPois.reduce(function(m,p){return Math.max(m, (p.day_index||0)+1);}, 1);
+    var mapDayColors = _dayColors();
+    var dayLegend = "";
+    for (var mdi = 0; mdi < mapDayCount; mdi++) {
+      dayLegend += '<span class="leg-item"><span class="leg-dot" style="background:'+mapDayColors[mdi%mapDayColors.length]+'"></span>'+(mdi+1)+'일차</span>';
+    }
     html += '<div class="map-card">' +
       '<div class="map-head"><h3>여행 동선 지도</h3></div>' +
       '<div id="travel-map"></div>' +
-      '<div class="map-legend">' +
-        '<span class="leg-item"><span class="leg-dot" style="background:#FF5733"></span>방문지</span>' +
-        '<span class="leg-item"><span style="border-bottom:2px solid #3B7AF5;width:18px;display:inline-block"></span>현재 순서</span>' +
+      '<div class="map-legend">' + dayLegend +
         (d.optimal_route ? '<span class="leg-item"><span style="border-bottom:2px dashed #00BFA5;width:18px;display:inline-block"></span>추천 순서</span>' : '') +
       '</div>' +
     '</div>';
@@ -3545,37 +3727,46 @@ function initMap(pois, optimalRoute, congestionWarnings) {
     maxZoom: 18,
   }).addTo(_leafletMap);
 
-  var _rs=getComputedStyle(document.documentElement);
-  function _tv(n){return _rs.getPropertyValue(n).trim();}
-  var DAY_COLORS=[_tv("--pri"),_tv("--tour"),_tv("--mint"),_tv("--event"),_tv("--stay"),_tv("--shop"),_tv("--nature")];
+  var DAY_COLORS = _dayColors();
 
-  // 마커 + 번호 (Day별 색상 구분)
-  var dayBoundaries = [];
-  if (optimalRoute && optimalRoute.length) {
-    var acc = 0;
-    optimalRoute.forEach(function(day) {
-      dayBoundaries.push(acc);
-      acc += (day && day.user_order ? day.user_order.length : 0);
-    });
-  }
-  pois.forEach(function(p, i) {
-    var dayIdx = 0;
-    for (var d = dayBoundaries.length-1; d >= 0; d--) { if (i >= dayBoundaries[d]) { dayIdx = d; break; } }
+  // 일차별 방문 순번 (같은 day_index 내에서 1부터)
+  var dayCounters = {};
+
+  // 마커 + 번호 + 카테고리 배지 (Day별 색상 구분)
+  pois.forEach(function(p) {
+    var dayIdx = p.day_index || 0;
     var color = DAY_COLORS[dayIdx % DAY_COLORS.length];
+    dayCounters[dayIdx] = (dayCounters[dayIdx] || 0) + 1;
+    var catInfo = CAT[p.category] || null;
+    var badge = catInfo ? '<div style="position:absolute;top:-6px;right:-6px;background:'+catInfo.color+
+      ';color:#fff;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;'+
+      'font-size:8px;font-weight:900;border:1.5px solid #fff">'+esc(catInfo.abbr)+'</div>' : '';
     var icon = L.divIcon({
       className: "",
-      html: '<div style="background:'+color+';color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.28)">'+(i+1)+'</div>',
+      html: '<div style="position:relative">'+
+        '<div style="background:'+color+';color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.28)">'+dayCounters[dayIdx]+'</div>'+
+        badge+
+      '</div>',
       iconSize: [28, 28],
       iconAnchor: [14, 14],
     });
     L.marker([p.lat, p.lng], {icon: icon})
       .addTo(_leafletMap)
-      .bindPopup("<strong>"+p.name+"</strong><br/>"+p.open_start+"~"+p.open_end+" | "+p.duration_min+"분", {maxWidth:200});
+      .bindPopup("<strong>"+esc(p.name)+"</strong><br/>"+(dayIdx+1)+"일차"+(catInfo ? " · "+esc(catInfo.label) : "")+
+                 "<br/>"+esc(p.open_start)+"~"+esc(p.open_end)+" | "+esc(String(p.duration_min))+"분", {maxWidth:200});
   });
 
-  // 현재 순서 경로선
+  // 현재 순서 경로선 — 일차별로 끊어서 색상 구분
   var coords = pois.map(function(p){return [p.lat,p.lng];});
-  L.polyline(coords, {color:"#3B7AF5", weight:2.5, opacity:.75}).addTo(_leafletMap);
+  var byDay = {};
+  pois.forEach(function(p){
+    var di = p.day_index || 0;
+    (byDay[di] = byDay[di] || []).push([p.lat, p.lng]);
+  });
+  Object.keys(byDay).forEach(function(di){
+    var color = DAY_COLORS[di % DAY_COLORS.length];
+    L.polyline(byDay[di], {color: color, weight:2.5, opacity:.75}).addTo(_leafletMap);
+  });
 
   // 최적 경로선 (점선)
   if (optimalRoute && optimalRoute.length) {
@@ -3621,25 +3812,26 @@ function initMap(pois, optimalRoute, congestionWarnings) {
     });
   }
 
-  // 범례
-  var legend = L.control({position: "bottomright"});
-  legend.onAdd = function(){
-    var div = L.DomUtil.create("div");
-    div.style.cssText = "background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;"+
-      "font-size:11px;line-height:1.7;box-shadow:0 1px 6px rgba(0,0,0,.2);color:#222";
-    var rows = '<div><span style="display:inline-block;width:18px;border-top:3px solid #3B7AF5;'+
-               'vertical-align:middle"></span> 현재 동선</div>';
-    if (optimalRoute && optimalRoute.length) {
-      rows += '<div><span style="display:inline-block;width:18px;border-top:3px dashed #00BFA5;'+
-              'vertical-align:middle"></span> 최적 동선</div>';
-    }
-    if (congCount) {
-      rows += '<div><span style="vertical-align:middle">⚠</span> 과밀 지점 ('+congCount+')</div>';
-    }
-    div.innerHTML = rows;
-    return div;
-  };
-  legend.addTo(_leafletMap);
+  // 범례 (일차별 색상은 지도 하단 map-legend에서 표시 — 여기선 최적 동선/과밀만)
+  if ((optimalRoute && optimalRoute.length) || congCount) {
+    var legend = L.control({position: "bottomright"});
+    legend.onAdd = function(){
+      var div = L.DomUtil.create("div");
+      div.style.cssText = "background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;"+
+        "font-size:11px;line-height:1.7;box-shadow:0 1px 6px rgba(0,0,0,.2);color:#222";
+      var rows = "";
+      if (optimalRoute && optimalRoute.length) {
+        rows += '<div><span style="display:inline-block;width:18px;border-top:3px dashed #00BFA5;'+
+                'vertical-align:middle"></span> 최적 동선</div>';
+      }
+      if (congCount) {
+        rows += '<div><span style="vertical-align:middle">⚠</span> 과밀 지점 ('+congCount+')</div>';
+      }
+      div.innerHTML = rows;
+      return div;
+    };
+    legend.addTo(_leafletMap);
+  }
 
   // 지도 범위 자동 맞춤
   if (coords.length > 1) {
@@ -4020,6 +4212,7 @@ if ('serviceWorker' in navigator) {
 var _sharedLoaded = checkShareHash();
 var _hasSaved = _sharedLoaded ? false : loadSavedPlan();
 initS1();
+initUploadDrop();
 showSkeleton();
 loadPlaces();
 renderDays();

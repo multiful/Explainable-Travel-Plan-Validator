@@ -28,6 +28,7 @@ class HardFailDetector:
         matrix: dict,
         start_minutes: int = DEFAULT_START_MINUTES,
         origin_poi: POI | None = None,
+        day_index: int | None = None,
     ) -> list[HardFail]:
         """Hard Fail 목록 반환. 없으면 빈 리스트."""
         # origin_poi 가 있으면 pois 앞에 가상 출발 인덱스(-1)로 붙여 처리
@@ -39,6 +40,9 @@ class HardFailDetector:
         fails.extend(self._check_operating_hours(effective_pois, matrix, start_minutes, offset, dist_cache))
         fails.extend(self._check_travel_impossible(effective_pois, matrix, start_minutes, offset, dist_cache))
         fails.extend(self._check_schedule_infeasible(effective_pois, matrix, offset, dist_cache))
+        if day_index is not None:
+            for f in fails:
+                f.day_index = day_index
         return fails
 
     def _check_operating_hours(
@@ -187,5 +191,5 @@ class HardFailDetector:
 
     @staticmethod
     def _min_to_time(minutes: float) -> str:
-        m = int(minutes)
+        m = int(minutes) % 1440  # 24시간 시계로 정규화 (누적 이동시간이 하루를 넘어도 유효한 시각으로 표시)
         return f"{m // 60:02d}:{m % 60:02d}"

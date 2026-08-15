@@ -1,14 +1,18 @@
 """FastAPI 라우터 — /validate, /places 엔드포인트."""
 from __future__ import annotations
 
+import asyncio
 import csv
 import json
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from src.api.schemas import (
+    DayPlanWeb,
+    ParsedPlanResponse,
+    ParseTextRequest,
     PlaceItem,
     PlacesResponse,
     POIInfo,
@@ -19,8 +23,9 @@ from src.data.dwell_db import MANUAL_OVERRIDES as _DWELL_OVERRIDES
 from src.data.graph_retriever import GraphRetriever
 from src.data.hours_db import resolve_hours
 from src.data.kakao_local import KakaoLocalClient
-from src.data.models import DayPlan, ItineraryPlan, PlaceInput, POI
+from src.data.models import POI, DayPlan, ItineraryPlan, PlaceInput
 from src.explain.pipeline import ValidatorPipeline
+from src.explain.plan_extractor import PlanExtractionError, PlanExtractor
 
 router = APIRouter()
 
@@ -30,6 +35,16 @@ _KAKAO_LOCAL = KakaoLocalClient.from_env()
 
 # Neo4j 지식그래프 — 지역/도보권 대안 근거. NEO4J_URI 미설정 시 enabled=False로 조용히 폴백.
 _GRAPH = GraphRetriever.from_env()
+
+# 일정표 업로드(PDF·이미지·복사 텍스트) 파싱 — Claude Vision + 쿼리 리라이팅.
+_EXTRACTOR = PlanExtractor.from_env()
+_MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15MB
+_ALLOWED_DOC_TYPES = {
+    "application/pdf": "application/pdf",
+    "image/png": "image/png",
+    "image/jpeg": "image/jpeg",
+    "image/jpg": "image/jpeg",
+}
 
 
 def _kakao_hint(category_name: str) -> str | None:
@@ -255,6 +270,56 @@ def _guess_dwell(name: str) -> int:
 def _addr_to_region(addr: str) -> str:
     first = addr.strip().split()[0] if addr.strip() else ""
     return _SIDO_MAP.get(first, first[:2] if first else "")
+
+
+# data/jeju_places.csv (대한민국구석구석 제주특별자치도 통합, 25,377건) 대분류코드 → 앱 카테고리 코드
+_JEJU_CAT_MAP: dict[str, str] = {
+    "FD": "39", "AC": "32", "SH": "38", "VE": "14", "LS": "28", "EX": "12", "HS": "14",
+}
+
+
+def _parse_jeju_hours(raw: str) -> tuple[str, str] | None:
+    """'09:00~18:00 (매표마감 17:00)' 같은 원문에서 첫 HH:MM~HH:MM 구간만 뽑아낸다."""
+    s = (raw or "").strip()
+    if not s:
+        return None
+    if "24시간" in s:
+        return "00:00", "23:59"
+    m = re.search(r'(\d{1,2}:\d{2})\s*~\s*(\d{1,2}:\d{2})', s)
+    return (m.group(1), m.group(2)) if m else None
+
+
+def _build_jeju_place_index() -> dict[str, dict]:
+    """data/jeju_places.csv — 실측 좌표·영업시간을 가진 제주 전역 25,377건 통합 DB."""
+    index: dict[str, dict] = {}
+    path = _DATA_DIR / "jeju_places.csv"
+    if not path.exists():
+        return index
+    with open(path, encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            name = (row.get("상호명") or "").strip()
+            if not name:
+                continue
+            key = _normalize(name)
+            if key in index:
+                continue
+            try:
+                lat, lng = float(row["위도"]), float(row["경도"])
+            except (ValueError, TypeError, KeyError):
+                continue
+            entry = {
+                "name": name, "lat": lat, "lng": lng, "region": "제주",
+                "cat": _JEJU_CAT_MAP.get(row.get("대분류코드", ""), "12"),
+                "cat_name": row.get("대분류명", "관광지"),
+                "addr": (row.get("도로명주소") or "").strip(),
+                "has_coords": True,
+                "source": "jeju_csv",
+            }
+            hrs = _parse_jeju_hours(row.get("영업시간", ""))
+            if hrs:
+                entry["open_start"], entry["open_end"] = hrs
+            index[key] = entry
+    return index
 
 
 def _build_coord_index() -> dict[str, dict]:
@@ -492,9 +557,22 @@ def _build_monthly_congestion() -> dict[str, dict[int, float]]:
 
 
 # ── 모듈 로드 시 1회 빌드 ──────────────────────────────────────────────────
+_JEJU_CSV_INDEX: dict[str, dict] = _build_jeju_place_index()
 _COORD_INDEX: dict[str, dict] = _build_coord_index()
+for _k, _v in _JEJU_CSV_INDEX.items():
+    _COORD_INDEX.setdefault(_k, _v)  # pois.csv/naver_metadata/카탈로그 미매칭 시에만 보강
 _PLACE_LIST: list[dict] = _build_place_list(_COORD_INDEX)
 _FULL_PLACE_LIST: list[dict] = _build_full_place_list(_COORD_INDEX)
+_seen_full = {_normalize(p["name"]) for p in _FULL_PLACE_LIST}
+_FULL_PLACE_LIST += [
+    {
+        "name": e["name"], "lat": e["lat"], "lng": e["lng"],
+        "region": e["region"], "cat": e["cat"], "cat_name": e["cat_name"],
+        "annual_max": 0.0, "has_coords": True,
+        "firstimage": "", "addr": e.get("addr", ""), "tags": [],
+    }
+    for k, e in _JEJU_CSV_INDEX.items() if k not in _seen_full
+]
 _MONTHLY_CONG: dict[str, dict[int, float]] = _build_monthly_congestion()
 # 이름 정규화 → place dict 역방향 인덱스
 _PLACE_NORM_INDEX: dict[str, dict] = {_normalize(p["name"]): p for p in _PLACE_LIST}
@@ -503,18 +581,25 @@ _COORD_CATALOG_NORM: frozenset[str] = frozenset(_normalize(k) for k in _COORD_CA
 
 
 def _lookup_place(name: str) -> dict | None:
-    """이름으로 place dict 조회. 정확 → 부분 순으로 시도."""
+    """이름으로 place dict 조회. 정확 → 부분 순으로 시도.
+    congestion 기반 인기 장소(_PLACE_NORM_INDEX) 우선, 없으면 제주 통합 DB(_JEJU_CSV_INDEX)."""
     norm = _normalize(name)
     if norm in _PLACE_NORM_INDEX:
         return _PLACE_NORM_INDEX[norm]
+    if norm in _JEJU_CSV_INDEX:
+        return _JEJU_CSV_INDEX[norm]
     if len(norm) >= 4:
         for k, v in _PLACE_NORM_INDEX.items():
             if norm in k or k in norm:
                 return v
+        # jeju_places.csv는 "해녀"·"카페" 같은 짧은 상호가 많아 후보 쪽도 4자 이상만 허용
+        for k, v in _JEJU_CSV_INDEX.items():
+            if len(k) >= 4 and (norm in k or k in norm):
+                return v
     return None
 
 
-def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
+def _resolve_poi(name: str, idx: int, address: str = "") -> tuple[POI, POIInfo]:
     place = _lookup_place(name)
     has_coords = place is not None and place.get("has_coords", False)
     norm = _normalize(name)
@@ -533,7 +618,7 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
         category = _COORD_CATALOG[next(k for k in _COORD_CATALOG if _normalize(k) == norm)]["cat"]
     elif has_coords:
         confidence = "Medium"
-        source = "pois"
+        source = place.get("source", "pois")
         lat, lng = place["lat"], place["lng"]
         category = place["cat"]
         contentid = str(place.get("contentid") or "")
@@ -548,14 +633,25 @@ def _resolve_poi(name: str, idx: int) -> tuple[POI, POIInfo]:
             category = "12"
             hint = _kakao_hint(kp.category_name)
         else:
-            confidence = "Low"
-            source = "fallback"
-            lat, lng = _DEFAULT_CENTER
-            category = "12"
+            # 카카오 키워드 검색도 실패 — 파싱된 주소가 있으면 지오코딩으로 최후 보강
+            # (4·3길 등 사업장이 아닌 장소는 키워드 검색에 잡히지 않는다).
+            geo = _KAKAO_LOCAL.geocode_address(address) if address else None
+            if geo is not None:
+                confidence = "Medium"
+                source = "geocode"
+                lat, lng = geo
+                category = "12"
+            else:
+                confidence = "Low"
+                source = "fallback"
+                lat, lng = _DEFAULT_CENTER
+                category = "12"
 
-    # 운영시간: TourAPI 실측(jeju_hours.json, scripts/fetch_jeju_hours.py로 미리 조회)이
-    # 있으면 그걸 쓰고, 없으면 카테고리·키워드 추정(hours_db)으로 폴백.
+    # 운영시간: TourAPI 실측(jeju_hours.json) → jeju_places.csv 실측 영업시간 →
+    # 카테고리·키워드 추정(hours_db) 순으로 폴백.
     real_hours = _JEJU_HOURS.get(contentid) if contentid else None
+    if not real_hours and place and place.get("open_start"):
+        real_hours = {"open": place["open_start"], "close": place["open_end"]}
     if real_hours:
         open_start, open_end = real_hours["open"], real_hours["close"]
         hours_estimated = False
@@ -711,23 +807,70 @@ async def list_regions() -> dict:
     return {"regions": [{"name": k, "count": v} for k, v in sorted(counts.items(), key=lambda x: -x[1])]}
 
 
+@router.post("/parse/text", response_model=ParsedPlanResponse)
+async def parse_text(req: ParseTextRequest) -> ParsedPlanResponse:
+    """추천 경로를 복사한 텍스트 → 쿼리 리라이팅으로 day/place 구조 추출."""
+    try:
+        return await asyncio.to_thread(_EXTRACTOR.extract_from_text, req.text)
+    except PlanExtractionError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+
+@router.post("/parse/document", response_model=ParsedPlanResponse)
+async def parse_document(file: UploadFile = File(...)) -> ParsedPlanResponse:
+    """AI 플래너 결과 PDF·스크린샷(PNG/JPG) → Claude Vision으로 day/place 구조 추출."""
+    media_type = _ALLOWED_DOC_TYPES.get((file.content_type or "").lower())
+    if media_type is None:
+        raise HTTPException(status_code=415, detail="PDF, PNG, JPG 파일만 지원합니다.")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=422, detail="빈 파일입니다.")
+    if len(data) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="파일이 너무 큽니다 (최대 15MB).")
+    try:
+        return await asyncio.to_thread(_EXTRACTOR.extract_from_document, data, media_type)
+    except PlanExtractionError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+
+@router.post("/resolve-coords", response_model=list[POI])
+async def resolve_coords(req: DayPlanWeb) -> list[POI]:
+    """빌더(Step2) 지도용 좌표 조회. 검증 파이프라인(Hard Fail/스코어링/LLM 설명) 없이
+    좌표 해석만 수행해 빠르게 응답한다."""
+    resolved = await asyncio.gather(
+        *(
+            asyncio.to_thread(_resolve_poi, place.name, idx, place.address)
+            for idx, place in enumerate(req.places)
+        )
+    )
+    return [poi for poi, _info in resolved]
+
+
 @router.post("/validate", response_model=ValidateResponse)
 async def validate_plan(req: ValidateRequest) -> ValidateResponse:
     if not req.days:
         raise HTTPException(status_code=422, detail="days must not be empty")
 
-    per_day_pois: list[list[POI]] = []
-    poi_info_list: list[POIInfo] = []
-    global_idx = 0
+    # _resolve_poi는 Kakao/Neo4j 블로킹 I/O를 포함한다 — 장소별로 순차 실행하면
+    # 지연이 선형으로 누적되고 이벤트 루프까지 막힌다. to_thread로 동시 실행한다.
+    flat_places = [
+        (day_idx, place.name, place.address)
+        for day_idx, day in enumerate(req.days)
+        for place in day.places
+    ]
+    resolved = await asyncio.gather(
+        *(
+            asyncio.to_thread(_resolve_poi, name, idx, address)
+            for idx, (_, name, address) in enumerate(flat_places)
+        )
+    )
 
-    for day in req.days:
-        day_pois: list[POI] = []
-        for place in day.places:
-            poi, info = _resolve_poi(place.name, global_idx)
-            day_pois.append(poi)
-            poi_info_list.append(info)
-            global_idx += 1
-        per_day_pois.append(day_pois)
+    per_day_pois: list[list[POI]] = [[] for _ in req.days]
+    poi_info_list: list[POIInfo] = []
+    for (day_idx, _, _addr), (poi, info) in zip(flat_places, resolved, strict=True):
+        info = info.model_copy(update={"day_index": day_idx, "category": poi.category})
+        per_day_pois[day_idx].append(poi)
+        poi_info_list.append(info)
 
     plan = ItineraryPlan(
         days=[
@@ -740,7 +883,8 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
         date=req.date,
     )
 
-    result = _get_pipeline().run(
+    result = await asyncio.to_thread(
+        _get_pipeline().run,
         plan=plan,
         per_day_pois=per_day_pois,
         matrix={},
@@ -792,6 +936,7 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
     return ValidateResponse(
         plan_id=result.plan_id,
         final_score=result.final_score,
+        base_score=result.base_score,
         passed=(
             result.final_score >= 60
             and not [hf for hf in result.hard_fails if not getattr(hf, "estimated", False)]
@@ -804,6 +949,7 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
         penalty_breakdown=result.penalty_breakdown,
         bonus_breakdown=result.bonus_breakdown,
         rewards=result.rewards,
+        alternatives={k: [a.model_dump() for a in v] for k, v in result.alternatives.items()},
         poi_info=poi_info_list,
         repair_suggestions=result.repair or None,
         optimal_route=(
