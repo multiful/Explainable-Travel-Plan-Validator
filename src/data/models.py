@@ -253,7 +253,7 @@ class ValidationResult(BaseModel):
 
 class Settings(BaseSettings):
     anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-4-6"
+    claude_model: str = "claude-haiku-4-5"
     tour_api_key: str = ""
     kakao_rest_api_key: str = ""
     kakao_mobility_key: str = ""

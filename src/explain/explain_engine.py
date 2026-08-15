@@ -35,7 +35,7 @@ except ImportError:
     _ANTHROPIC_AVAILABLE = False
 
 # ── LLM 설정 ──────────────────────────────────────────────────────────────
-DEFAULT_MODEL: str = "claude-sonnet-4-6"
+DEFAULT_MODEL: str = "claude-haiku-4-5"
 DEFAULT_TIMEOUT_SEC: float = 20.0
 DEFAULT_MAX_TOKENS: int = 2500
 
