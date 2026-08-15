@@ -39,7 +39,7 @@ PENALTY_RISK: int = 10
 PENALTY_CRIT: int = 20
 
 # ── LLM 설정 ─────────────────────────────────────────────────────────
-DEFAULT_MODEL: str = "claude-sonnet-4-6"
+DEFAULT_MODEL: str = "claude-haiku-4-5"
 DEFAULT_TIMEOUT_SEC: float = 10.0
 DEFAULT_MAX_TOKENS: int = 500
 

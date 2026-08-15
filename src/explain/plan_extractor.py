@@ -24,7 +24,7 @@ try:
 except ImportError:
     _ANTHROPIC_AVAILABLE = False
 
-DEFAULT_MODEL: str = "claude-sonnet-4-6"
+DEFAULT_MODEL: str = "claude-haiku-4-5"
 DEFAULT_TIMEOUT_SEC: float = 45.0
 DEFAULT_MAX_TOKENS: int = 4000
 
@@ -148,7 +148,11 @@ class PlanExtractor:
                 "type": block_type,
                 "source": {"type": "base64", "media_type": media_type, "data": b64},
             },
-            {"type": "text", "text": _USER_PREFIX_DOC},
+            {
+                "type": "text",
+                "text": _USER_PREFIX_DOC,
+                "cache_control": {"type": "ephemeral"},
+            },
         ]
         return self._call(content)
 
