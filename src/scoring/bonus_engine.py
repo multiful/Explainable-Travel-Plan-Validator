@@ -10,6 +10,7 @@ from src.utils.geo import haversine_km
 
 WELLNESS_BONUS_PER_PLACE: int = 3
 ACCESSIBILITY_BONUS_PER_PLACE: int = 5
+PET_FRIENDLY_BONUS_PER_PLACE: int = 2
 BONUS_CAP: int = 20
 
 ACCESSIBLE_PARTY_TYPES: frozenset[str] = frozenset({"아기동반", "어르신동반", "가족"})
@@ -22,9 +23,11 @@ MATCH_RADIUS_KM: float = 0.3
 class BonusResult:
     wellness_bonus: int
     accessibility_bonus: int
+    pet_friendly_bonus: int
     total_bonus: int
     wellness_matched: list[str]        # 매칭된 POI 이름 목록
     accessibility_matched: list[str]   # 매칭된 POI 이름 목록
+    pet_friendly_matched: list[str]    # 매칭된 POI 이름 목록
 
 
 @dataclass(frozen=True)
@@ -80,14 +83,18 @@ class BonusEngine:
         self,
         pois: list[POI],
         party_type: str,
+        pet_friendly_enabled: bool = False,
     ) -> BonusResult:
         """POI 목록에서 가산점 계산.
 
         - 웰니스 장소: 모든 party_type에 적용.
         - 무장애 장소: ACCESSIBLE_PARTY_TYPES에만 적용.
+        - 반려동물 동반: 사용자가 카테고리를 켠 경우(pet_friendly_enabled)만 적용.
+          미매칭이어도 감점은 없다 — 가산점 전용.
         """
         wellness_matched: list[str] = []
         accessibility_matched: list[str] = []
+        pet_friendly_matched: list[str] = []
 
         for poi in pois:
             if _nearest_km(poi, self._wellness) <= MATCH_RADIUS_KM:
@@ -97,6 +104,8 @@ class BonusEngine:
                 and _nearest_km(poi, self._barrier_free) <= MATCH_RADIUS_KM
             ):
                 accessibility_matched.append(poi.name)
+            if pet_friendly_enabled and poi.pet_friendly:
+                pet_friendly_matched.append(poi.name)
 
         wellness_bonus = min(
             len(wellness_matched) * WELLNESS_BONUS_PER_PLACE, BONUS_CAP
@@ -104,14 +113,21 @@ class BonusEngine:
         accessibility_bonus = min(
             len(accessibility_matched) * ACCESSIBILITY_BONUS_PER_PLACE, BONUS_CAP
         )
-        total_bonus = min(wellness_bonus + accessibility_bonus, BONUS_CAP)
+        pet_friendly_bonus = min(
+            len(pet_friendly_matched) * PET_FRIENDLY_BONUS_PER_PLACE, BONUS_CAP
+        )
+        total_bonus = min(
+            wellness_bonus + accessibility_bonus + pet_friendly_bonus, BONUS_CAP
+        )
 
         return BonusResult(
             wellness_bonus=wellness_bonus,
             accessibility_bonus=accessibility_bonus,
+            pet_friendly_bonus=pet_friendly_bonus,
             total_bonus=total_bonus,
             wellness_matched=wellness_matched,
             accessibility_matched=accessibility_matched,
+            pet_friendly_matched=pet_friendly_matched,
         )
 
 

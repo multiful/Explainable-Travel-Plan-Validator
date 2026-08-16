@@ -12,18 +12,22 @@ from src.scoring.bonus_engine import (
     ACCESSIBLE_PARTY_TYPES,
     ACCESSIBILITY_BONUS_PER_PLACE,
     BONUS_CAP,
+    PET_FRIENDLY_BONUS_PER_PLACE,
     WELLNESS_BONUS_PER_PLACE,
     BonusEngine,
     _PlaceCoord,
 )
 
 
-def make_poi(poi_id: str = "1", lat: float = 37.5, lng: float = 127.0) -> POI:
+def make_poi(
+    poi_id: str = "1", lat: float = 37.5, lng: float = 127.0, pet_friendly: bool = False,
+) -> POI:
     return POI(
         poi_id=poi_id, name=f"POI_{poi_id}",
         lat=lat, lng=lng,
         open_start="09:00", open_end="18:00",
         duration_min=60,
+        pet_friendly=pet_friendly,
     )
 
 
@@ -109,6 +113,43 @@ class TestAccessibilityBonus:
         pois = [make_poi(str(i), 37.5 + i * 0.01, 127.0) for i in range(20)]
         result = engine.compute(pois, party_type="아기동반")
         assert result.accessibility_bonus <= BONUS_CAP
+
+
+# ---------------------------------------------------------------------------
+# BonusEngine.compute() — pet-friendly bonus (가산점만, 감점 없음)
+# ---------------------------------------------------------------------------
+
+class TestPetFriendlyBonus:
+    def test_disabled_gives_zero_even_if_matched(self):
+        engine = make_engine()
+        pois = [make_poi("1", 37.5, 127.0, pet_friendly=True)]
+        result = engine.compute(pois, party_type="친구", pet_friendly_enabled=False)
+        assert result.pet_friendly_bonus == 0
+
+    def test_enabled_and_flagged_gives_bonus(self):
+        engine = make_engine()
+        pois = [make_poi("1", 37.5, 127.0, pet_friendly=True)]
+        result = engine.compute(pois, party_type="친구", pet_friendly_enabled=True)
+        assert result.pet_friendly_bonus == PET_FRIENDLY_BONUS_PER_PLACE
+
+    def test_enabled_but_not_flagged_no_bonus_no_penalty(self):
+        engine = make_engine()
+        pois = [make_poi("1", 37.5, 127.0, pet_friendly=False)]
+        result = engine.compute(pois, party_type="친구", pet_friendly_enabled=True)
+        assert result.pet_friendly_bonus == 0
+        assert result.total_bonus == 0
+
+    def test_pet_friendly_bonus_capped(self):
+        pois = [make_poi(str(i), pet_friendly=True) for i in range(20)]
+        engine = make_engine()
+        result = engine.compute(pois, party_type="친구", pet_friendly_enabled=True)
+        assert result.pet_friendly_bonus <= BONUS_CAP
+
+    def test_pet_friendly_matched_names_populated(self):
+        engine = make_engine()
+        pois = [make_poi("1", pet_friendly=True), make_poi("2", pet_friendly=False)]
+        result = engine.compute(pois, party_type="친구", pet_friendly_enabled=True)
+        assert result.pet_friendly_matched == ["POI_1"]
 
 
 # ---------------------------------------------------------------------------

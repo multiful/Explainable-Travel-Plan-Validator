@@ -254,6 +254,33 @@ class TestPipelineBreakdown:
         assert "accessibility" in result.bonus_breakdown
         assert result.bonus_breakdown["accessibility"] > 0
 
+    def test_pet_friendly_bonus_when_enabled(self, pipeline):
+        poi = make_poi("1", 37.5, 127.0).model_copy(update={"pet_friendly": True})
+        plan = make_plan([poi.name])
+        result = pipeline.run(
+            plan=plan, per_day_pois=[[poi]], matrix={}, pet_friendly_enabled=True
+        )
+        assert "pet_friendly" in result.bonus_breakdown
+        assert result.bonus_breakdown["pet_friendly"] > 0
+
+    def test_pet_friendly_bonus_absent_when_disabled(self, pipeline):
+        poi = make_poi("1", 37.5, 127.0).model_copy(update={"pet_friendly": True})
+        plan = make_plan([poi.name])
+        result = pipeline.run(
+            plan=plan, per_day_pois=[[poi]], matrix={}, pet_friendly_enabled=False
+        )
+        assert "pet_friendly" not in result.bonus_breakdown
+
+    def test_wellness_matched_exposed_on_result(self):
+        wellness = [_PlaceCoord(lat=37.5, lng=127.0)]
+        engine = BonusEngine(wellness_coords=wellness, barrier_free_coords=[])
+        pipeline = ValidatorPipeline(bonus_engine=engine)
+
+        pois = [make_poi("1", 37.5, 127.0)]
+        plan = make_plan([p.name for p in pois])
+        result = pipeline.run(plan=plan, per_day_pois=[pois], matrix={})
+        assert pois[0].name in result.wellness_matched
+
 
 # ---------------------------------------------------------------------------
 # ValidatorPipeline.run() — multi-day
@@ -349,3 +376,35 @@ class TestPipelineVRPTW:
         result = pipeline.run(plan=plan, per_day_pois=[pois], matrix={})
         # 단일 POI는 efficiency gap 미정의 → vrptw 패널티 없어야 함
         assert result.penalty_breakdown.get("vrptw_efficiency", 0) == 0
+
+
+# ---------------------------------------------------------------------------
+# ValidatorPipeline.run() — Repair 제안 예상 점수 변화 (지도 UX 개선)
+# ---------------------------------------------------------------------------
+
+class TestPipelineRepairGainEstimation:
+    def test_deletion_suggestion_carries_gain_and_resolves_flag(self, pipeline):
+        """지리적 이상치이자 Hard Fail 유발 POI를 삭제하면 점수가 오르고 문제가 해소돼야 한다."""
+        a = make_poi("A", 37.50, 127.00)
+        b = make_poi("B", 37.51, 127.01)
+        night_only = POI(
+            poi_id="X", name="NightOnly", lat=38.50, lng=127.00,
+            open_start="22:00", open_end="23:00", duration_min=60, category="14",
+        )
+        pois = [a, b, night_only]
+        plan = make_plan([p.name for p in pois])
+        result = pipeline.run(plan=plan, per_day_pois=[pois], matrix={})
+
+        assert result.hard_fails
+        deletions = result.repair.get("deletions", [])
+        assert deletions
+        target = next((d for d in deletions if d["candidate_name"] == night_only.name), None)
+        assert target is not None
+        assert target["resolves_hard_fail"] is True
+        assert target["estimated_score_gain"] > 0
+
+    def test_no_repair_no_gain_fields_needed(self, pipeline, sample_pois, sample_plan):
+        """Hard Fail이 없으면 repair 자체가 비어 있어야 한다 (기존 동작 유지)."""
+        result = pipeline.run(plan=sample_plan, per_day_pois=[sample_pois], matrix={})
+        if not result.hard_fails:
+            assert result.repair == {}

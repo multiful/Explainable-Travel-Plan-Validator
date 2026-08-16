@@ -550,10 +550,18 @@ header{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--hh);
 .rep-item{background:var(--mint-l);border-radius:var(--r-sm);padding:.68rem .88rem;
   margin-bottom:.48rem;border:1.5px solid rgba(0,191,165,.22)}
 .rep-type{font-size:.65rem;font-weight:800;color:var(--mint);
-  letter-spacing:.5px;text-transform:uppercase;margin-bottom:.28rem}
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:.28rem;
+  display:flex;align-items:center;justify-content:space-between;gap:.4rem}
 .rep-body{font-size:.81rem;color:var(--n700);line-height:1.55}
 .rep-arr-place{font-weight:700;color:var(--navy)}
 .rep-arr-arrow{color:var(--n400);font-size:.72rem}
+.rep-gain{font-size:.68rem;font-weight:800;color:var(--mint);background:#fff;
+  border:1.5px solid var(--mint);border-radius:999px;padding:.08rem .48rem;white-space:nowrap}
+.rep-resolved{font-size:.68rem;font-weight:700;color:var(--mint);margin-top:.32rem;
+  display:flex;align-items:center;gap:.3rem}
+.rep-maplink{font-size:.72rem;font-weight:700;color:var(--navy);background:none;
+  border:none;padding:0;margin-top:.34rem;cursor:pointer;text-decoration:underline;
+  display:inline-block}
 
 /* Route compare */
 .route-compare{display:grid;grid-template-columns:1fr 1fr;gap:.55rem}
@@ -1404,6 +1412,12 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
             <button class="step-btn" id="size-plus" onclick="changeSize(1)" aria-label="인원 늘리기">+</button>
           </div>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.85rem">
+          <span style="font-size:.8rem;font-weight:600;color:var(--n600)">반려동물과 함께 가세요?</span>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.78rem;color:var(--n600)">
+            <input type="checkbox" id="pet-friendly-chk" onchange="cfg.petFriendly=this.checked"/> 반려동물 동반
+          </label>
+        </div>
       </div>
       <div class="scard">
         <div class="scard-label">여행 스타일 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(선택)</span></div>
@@ -1681,7 +1695,7 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
 
 <script>
 /* ─── State ─────────────────────────────────────────────────────────── */
-var cfg = { region:"제주", date:"2026-06-01", startTime:"09:00", partyType:"친구", partySize:2, travelType:"" };
+var cfg = { region:"제주", date:"2026-06-01", startTime:"09:00", partyType:"친구", partySize:2, travelType:"", petFriendly:false };
 var days = [["성산일출봉","섭지코지","우도"],["한라산","사려니숲길"]];
 var selDay = 0;
 var allPlaces = [], filteredCache = [];
@@ -1757,6 +1771,8 @@ var BLABELS = {
     tip:"힐링·치유에 좋은 관광지가 포함돼 있어요"},
   accessibility:{title:"무장애 여행 가능!",
     tip:"거동이 불편하셔도 편하게 다닐 수 있는 코스예요"},
+  pet_friendly:{title:"반려동물 동반 가능!",
+    tip:"반려동물과 함께 갈 수 있는 장소가 포함돼 있어요"},
 };
 var SLABELS = {
   efficiency:  {label:"이동 효율",   tip:"얼마나 효율적으로 움직이는지예요. 이동시간 낭비가 적을수록 높아요"},
@@ -1957,6 +1973,7 @@ function initS1() {
   if (ddt) ddt.textContent = formatCalDisplay(cfg.date);
   document.getElementById("time-inp").value = cfg.startTime;
   document.getElementById("time-inp").addEventListener("change", function(){cfg.startTime=this.value;});
+  document.getElementById("pet-friendly-chk").checked = !!cfg.petFriendly;
   updateSizeDisplay();
 }
 
@@ -2828,7 +2845,8 @@ async function runValidate() {
   var payload = {
     days: fd.map(function(places){return {places:places.map(function(p){return {name:pname(p), address:pnote(p)};})};}),
     party_size:cfg.partySize, party_type:cfg.partyType,
-    date:cfg.date, start_time:cfg.startTime, travel_type:cfg.travelType||null
+    date:cfg.date, start_time:cfg.startTime, travel_type:cfg.travelType||null,
+    pet_friendly:!!cfg.petFriendly
   };
   var btn = document.getElementById("val-btn");
   btn.disabled=true; btn.textContent="살펴보는 중...";
@@ -3099,33 +3117,62 @@ function renderResult(d) {
     html+='</div></div>';
   }
 
+  // Map — 점수·이유와 함께 핵심 정보이므로 개선 제안 바로 위, 상단부에 배치
+  var mapPois = (d.poi_info||[]).filter(function(p){return p.lat&&p.lng&&p.lat!==37.5665;});
+  if (mapPois.length) {
+    var mapDayCount = mapPois.reduce(function(m,p){return Math.max(m, (p.day_index||0)+1);}, 1);
+    var mapDayColors = _dayColors();
+    var dayLegend = "";
+    for (var mdi = 0; mdi < mapDayCount; mdi++) {
+      dayLegend += '<span class="leg-item"><span class="leg-dot" style="background:'+mapDayColors[mdi%mapDayColors.length]+'"></span>'+(mdi+1)+'일차</span>';
+    }
+    html += '<div class="map-card">' +
+      '<div class="map-head"><h3>여행 동선 지도</h3>' +
+      (d.hard_fails&&d.hard_fails.length?'<span class="rep-gain" style="border-color:var(--st-fail-fg);color:var(--st-fail-fg)">✕ 문제 지점 '+d.hard_fails.length+'곳</span>':'') +
+      '</div>' +
+      '<div id="travel-map"></div>' +
+      '<div class="map-legend">' + dayLegend +
+        (d.optimal_route ? '<span class="leg-item"><span style="border-bottom:2px dashed #00BFA5;width:18px;display:inline-block"></span>추천 순서</span>' : '') +
+        (d.hard_fails&&d.hard_fails.length ? '<span class="leg-item">✕ 문제 지점</span>' : '') +
+      '</div>' +
+    '</div>';
+  }
+
   // Repair
   var rep=d.repair_suggestions;
   if(rep&&!isRepEmpty(rep)){
     html+='<div id="res-repair" class="rcard"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><h3>이렇게 바꿔보면 어떨까요?</h3></div><div class="rcard-body">';
     (rep.reorders||[]).forEach(function(ro){
+      var firstPoi=(ro.suggested_order||[])[0];
       html+='<div class="rep-item">'+
-        '<div class="rep-type">순서 변경 제안 · Day '+(ro.day_index+1)+'</div>'+
+        '<div class="rep-type"><span>순서 변경 제안 · Day '+(ro.day_index+1)+'</span>'+repGainPill(ro)+'</div>'+
         '<div class="rep-body">이 순서로 가면 이동이 훨씬 편해요:<br/>'+
         (ro.suggested_order||[]).map(function(n,i,a){
           return '<span class="rep-arr-place">'+esc(n)+'</span>'+(i<a.length-1?' <span class="rep-arr-arrow">→</span> ':'');
         }).join("")+'</div>'+
         (ro.reason?'<div class="rep-reason">'+esc(ro.reason)+'</div>':'')+
+        repResolvedRow(ro)+
+        (firstPoi?'<button class="rep-maplink" onclick="focusMapPoi(\''+esc(firstPoi).replace(/'/g,"\\'")+'\')">지도에서 보기 →</button>':'')+
       '</div>';
     });
     (rep.time_tunes||[]).forEach(function(tt){
       var adjs=Object.entries(tt.adjustments||{}).map(function(kv){return esc(kv[0])+(kv[1]>0?" +"+kv[1]:" "+kv[1])+"분";}).join(", ");
+      var firstPoi=Object.keys(tt.adjustments||{})[0];
       html+='<div class="rep-item">'+
-        '<div class="rep-type">체류시간 조정 제안 · Day '+(tt.day_index+1)+'</div>'+
+        '<div class="rep-type"><span>체류시간 조정 제안 · Day '+(tt.day_index+1)+'</span>'+repGainPill(tt)+'</div>'+
         '<div class="rep-body">'+(adjs?adjs+" 조정하면 ":"")+(tt.saved_minutes?Math.round(tt.saved_minutes)+"분 여유가 생겨요":"여유가 생겨요")+'</div>'+
         (tt.reason?'<div class="rep-reason">'+esc(tt.reason)+'</div>':'')+
+        repResolvedRow(tt)+
+        (firstPoi?'<button class="rep-maplink" onclick="focusMapPoi(\''+esc(firstPoi).replace(/'/g,"\\'")+'\')">지도에서 보기 →</button>':'')+
       '</div>';
     });
     (rep.deletions||[]).forEach(function(dl){
       html+='<div class="rep-item">'+
-        '<div class="rep-type">방문지 조정 제안 · Day '+(dl.day_index+1)+'</div>'+
+        '<div class="rep-type"><span>방문지 조정 제안 · Day '+(dl.day_index+1)+'</span>'+repGainPill(dl)+'</div>'+
         '<div class="rep-body"><strong>'+esc(dl.candidate_name)+'</strong>을(를) 빼면 이동이 '+Math.round(dl.travel_saved_km||0)+'km 줄어들어요</div>'+
         (dl.reason?'<div class="rep-reason">'+esc(dl.reason)+'</div>':'')+
+        repResolvedRow(dl)+
+        '<button class="rep-maplink" onclick="focusMapPoi(\''+esc(dl.candidate_name).replace(/'/g,"\\'")+'\')">지도에서 보기 →</button>'+
       '</div>';
     });
     html+='</div></div>';
@@ -3177,24 +3224,6 @@ function renderResult(d) {
     html+='</div></div>';
   }
 
-  // Map
-  var mapPois = (d.poi_info||[]).filter(function(p){return p.lat&&p.lng&&p.lat!==37.5665;});
-  if (mapPois.length) {
-    var mapDayCount = mapPois.reduce(function(m,p){return Math.max(m, (p.day_index||0)+1);}, 1);
-    var mapDayColors = _dayColors();
-    var dayLegend = "";
-    for (var mdi = 0; mdi < mapDayCount; mdi++) {
-      dayLegend += '<span class="leg-item"><span class="leg-dot" style="background:'+mapDayColors[mdi%mapDayColors.length]+'"></span>'+(mdi+1)+'일차</span>';
-    }
-    html += '<div class="map-card">' +
-      '<div class="map-head"><h3>여행 동선 지도</h3></div>' +
-      '<div id="travel-map"></div>' +
-      '<div class="map-legend">' + dayLegend +
-        (d.optimal_route ? '<span class="leg-item"><span style="border-bottom:2px dashed #00BFA5;width:18px;display:inline-block"></span>추천 순서</span>' : '') +
-      '</div>' +
-    '</div>';
-  }
-
   // POI table
   if(d.poi_info&&d.poi_info.length){
     html+='<div class="rcard"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div><h3>장소별 상세 정보</h3></div>'+
@@ -3206,7 +3235,9 @@ function renderResult(d) {
       var cl=p.confidence==="High"?"확실":p.confidence==="Medium"?"보통":"불확실";
       var graphLine=p.graph_region?'<div style="font-size:.66rem;color:var(--n400);margin-top:.15rem">'+esc(p.graph_region)+(p.graph_nearby&&p.graph_nearby.length?' · 도보권 대안 '+p.graph_nearby.length+'곳':'')+'</div>':'';
       var hoursTag=p.hours_estimated?' <span class="conf cm" style="margin-left:.25rem">추정</span>':'';
-      html+='<tr><td><strong>'+esc(p.name)+'</strong>'+graphLine+'</td>'+
+      var placeBadges=(p.wellness?' <span class="conf" style="background:var(--wellness-l);color:var(--wellness);margin-left:.25rem">웰니스 장소</span>':'')+
+        (p.pet_friendly?' <span class="conf" style="background:#eef2ff;color:#4338ca;margin-left:.25rem">반려동물 동반</span>':'');
+      html+='<tr><td><strong>'+esc(p.name)+'</strong>'+placeBadges+graphLine+'</td>'+
         '<td style="font-size:.73rem;color:var(--n500)">'+esc(p.open_start)+'~'+esc(p.open_end)+hoursTag+'</td>'+
         '<td>'+p.duration_min+'분</td>'+
         '<td><span class="conf '+cc+'">'+cl+'</span></td></tr>';
@@ -3249,7 +3280,7 @@ function renderResult(d) {
   }, 60);
   if(d.scores) requestAnimationFrame(function(){drawRadar(d.scores);});
   var mapPoisFinal = (d.poi_info||[]).filter(function(p){return p.lat&&p.lng&&p.lat!==37.5665;});
-  if (mapPoisFinal.length) initMap(mapPoisFinal, d.optimal_route, d.congestion_warnings);
+  if (mapPoisFinal.length) initMap(mapPoisFinal, d.optimal_route, d.congestion_warnings, d.hard_fails);
 }
 
 function animateScore(target) {
@@ -3268,6 +3299,15 @@ function animateScore(target) {
 
 function toggleEx(i){document.getElementById("ex"+i).classList.toggle("open");}
 function isRepEmpty(r){return(!r.reorders||!r.reorders.length)&&(!r.time_tunes||!r.time_tunes.length)&&(!r.deletions||!r.deletions.length);}
+function repGainPill(sug){
+  var g=sug.estimated_score_gain;
+  if(!g) return "";
+  return '<span class="rep-gain">'+(g>0?"+":"")+g+'점 예상</span>';
+}
+function repResolvedRow(sug){
+  if(!sug.resolves_hard_fail) return "";
+  return '<div class="rep-resolved">✓ 이 문제를 해결해요</div>';
+}
 
 /* ─── Radar ─────────────────────────────────────────────────────────── */
 function drawRadar(sc){
@@ -3694,6 +3734,18 @@ function switchMobileTab(tab) {
 var _leafletMap = null;
 var _leafletReady = false;
 var _leafletLoading = false;
+var _leafletMarkersByName = {};
+
+function focusMapPoi(name) {
+  var mapCard = document.querySelector(".map-card");
+  if (mapCard) mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
+  var marker = _leafletMarkersByName[name];
+  if (!marker || !_leafletMap) return;
+  setTimeout(function () {
+    _leafletMap.flyTo(marker.getLatLng(), 15, { duration: 0.6 });
+    marker.openPopup();
+  }, 350);
+}
 
 function loadLeaflet(cb) {
   if (typeof L !== "undefined") { cb(); return; }
@@ -3711,13 +3763,14 @@ function loadLeaflet(cb) {
   document.head.appendChild(js);
 }
 
-function initMap(pois, optimalRoute, congestionWarnings) {
+function initMap(pois, optimalRoute, congestionWarnings, hardFails) {
   loadLeaflet(function(){
   var mapEl = document.getElementById("travel-map");
   if (!mapEl) return;
 
   // 이전 지도 인스턴스 제거
   if (_leafletMap) { _leafletMap.remove(); _leafletMap = null; }
+  _leafletMarkersByName = {};
 
   var center = [pois[0].lat, pois[0].lng];
   _leafletMap = L.map("travel-map", { zoomControl: true }).setView(center, 12);
@@ -3750,10 +3803,11 @@ function initMap(pois, optimalRoute, congestionWarnings) {
       iconSize: [28, 28],
       iconAnchor: [14, 14],
     });
-    L.marker([p.lat, p.lng], {icon: icon})
+    var marker = L.marker([p.lat, p.lng], {icon: icon})
       .addTo(_leafletMap)
       .bindPopup("<strong>"+esc(p.name)+"</strong><br/>"+(dayIdx+1)+"일차"+(catInfo ? " · "+esc(catInfo.label) : "")+
                  "<br/>"+esc(p.open_start)+"~"+esc(p.open_end)+" | "+esc(String(p.duration_min))+"분", {maxWidth:200});
+    _leafletMarkersByName[p.name] = marker;
   });
 
   // 현재 순서 경로선 — 일차별로 끊어서 색상 구분
@@ -3812,8 +3866,31 @@ function initMap(pois, optimalRoute, congestionWarnings) {
     });
   }
 
-  // 범례 (일차별 색상은 지도 하단 map-legend에서 표시 — 여기선 최적 동선/과밀만)
-  if ((optimalRoute && optimalRoute.length) || congCount) {
+  // 문제 지점 표시 (hard_fails 의 poi_name 을 좌표에 매칭 — 과밀과 구분되는 진한 빨강 ✕)
+  var failCount = 0;
+  if (hardFails && hardFails.length) {
+    var byNameF = {};
+    pois.forEach(function(p){ byNameF[p.name] = p; });
+    hardFails.forEach(function(hf){
+      var poi = hf.poi_name ? byNameF[hf.poi_name] : null;
+      if (!poi) return;
+      var ficon = L.divIcon({
+        className: "",
+        html: '<div style="width:34px;height:34px;border-radius:50%;border:3px solid #DC2626;'+
+              'background:#DC262622;display:flex;align-items:center;justify-content:center;'+
+              'font-size:15px;font-weight:900;color:#DC2626;box-shadow:0 0 0 4px #DC26261a">✕</div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+      });
+      L.marker([poi.lat, poi.lng], {icon: ficon, zIndexOffset: 1100})
+        .addTo(_leafletMap)
+        .bindPopup("<strong>"+esc(poi.name)+"</strong><br/>"+esc(hf.message||"문제가 있는 장소예요"), {maxWidth:220});
+      failCount++;
+    });
+  }
+
+  // 범례 (일차별 색상은 지도 하단 map-legend에서 표시 — 여기선 최적 동선/과밀/문제지점만)
+  if ((optimalRoute && optimalRoute.length) || congCount || failCount) {
     var legend = L.control({position: "bottomright"});
     legend.onAdd = function(){
       var div = L.DomUtil.create("div");
@@ -3826,6 +3903,9 @@ function initMap(pois, optimalRoute, congestionWarnings) {
       }
       if (congCount) {
         rows += '<div><span style="vertical-align:middle">⚠</span> 과밀 지점 ('+congCount+')</div>';
+      }
+      if (failCount) {
+        rows += '<div><span style="vertical-align:middle;color:#DC2626;font-weight:900">✕</span> 문제 지점 ('+failCount+')</div>';
       }
       div.innerHTML = rows;
       return div;
