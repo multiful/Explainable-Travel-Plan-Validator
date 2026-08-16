@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from src.data.models import POI, DayPlan, HardFail, ItineraryPlan, PlaceInput
 from src.data.restaurant_catalog import RestaurantCatalog
+from src.explain.repair import DeletionSuggestion, RepairResult
 from src.explain.repair import RepairEngine as _RepairEngineClass
 
 
@@ -189,3 +190,32 @@ class TestResultModel:
         plan = _plan(["A", "B", "C", "D", "E", "F", "G", "H"])
         result = engine.repair(plan, [_outlier_pois()], {}, hard_fails=[_fail()])
         assert not result.is_empty
+
+
+# ---------------------------------------------------------------------------
+# total_estimated_gain — 서로 다른 날짜의 제안은 합산, 같은 날짜의 대안은 최댓값만
+# ---------------------------------------------------------------------------
+
+class TestTotalEstimatedGain:
+    def test_sums_across_different_days(self):
+        result = RepairResult(deletions=[
+            DeletionSuggestion(day_index=0, candidate_name="A", travel_saved_km=1.0, reason="", estimated_score_gain=10),
+            DeletionSuggestion(day_index=1, candidate_name="B", travel_saved_km=1.0, reason="", estimated_score_gain=5),
+        ])
+        assert result.total_estimated_gain == 15
+
+    def test_takes_max_of_alternatives_on_same_day(self):
+        result = RepairResult(deletions=[
+            DeletionSuggestion(day_index=0, candidate_name="A", travel_saved_km=1.0, reason="", estimated_score_gain=10),
+            DeletionSuggestion(day_index=0, candidate_name="B", travel_saved_km=1.0, reason="", estimated_score_gain=15),
+        ])
+        assert result.total_estimated_gain == 15
+
+    def test_zero_when_empty(self):
+        assert RepairResult().total_estimated_gain == 0
+
+    def test_included_in_to_dict(self):
+        result = RepairResult(deletions=[
+            DeletionSuggestion(day_index=0, candidate_name="A", travel_saved_km=1.0, reason="", estimated_score_gain=10),
+        ])
+        assert result.to_dict()["total_estimated_gain"] == 10

@@ -80,8 +80,22 @@ class RepairResult:
     def is_empty(self) -> bool:
         return not (self.reorders or self.time_tunes or self.deletions)
 
+    @property
+    def total_estimated_gain(self) -> int:
+        """모든 제안을 적용했을 때 예상 총 점수 상승분.
+
+        같은 날짜의 제안들은 서로 대안(하나만 적용)이므로 최댓값만 취하고,
+        서로 다른 날짜의 제안은 독립적이므로 합산한다.
+        """
+        per_day: dict[int, int] = {}
+        for sug in (*self.reorders, *self.time_tunes, *self.deletions):
+            per_day[sug.day_index] = max(per_day.get(sug.day_index, 0), sug.estimated_score_gain)
+        return sum(per_day.values())
+
     def to_dict(self) -> dict:
-        return dataclasses.asdict(self)
+        d = dataclasses.asdict(self)
+        d["total_estimated_gain"] = self.total_estimated_gain
+        return d
 
 
 class RepairEngine:
