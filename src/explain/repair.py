@@ -45,6 +45,8 @@ class ReorderSuggestion:
     day_index: int
     suggested_order: list[str]
     reason: str
+    estimated_score_gain: int = 0
+    resolves_hard_fail: bool = False
 
 
 @dataclass
@@ -53,6 +55,8 @@ class TimeTuneSuggestion:
     adjustments: dict[str, int]  # poi_name → 조정 후 duration_min
     saved_minutes: int
     reason: str
+    estimated_score_gain: int = 0
+    resolves_hard_fail: bool = False
 
 
 @dataclass
@@ -62,6 +66,8 @@ class DeletionSuggestion:
     travel_saved_km: float
     reason: str
     nearby_restaurants: list[dict] = field(default_factory=list)
+    estimated_score_gain: int = 0
+    resolves_hard_fail: bool = False
 
 
 @dataclass
