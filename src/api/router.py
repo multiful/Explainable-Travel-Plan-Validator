@@ -7,6 +7,7 @@ import json
 import re
 from pathlib import Path
 
+import openpyxl
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from src.api.schemas import (
@@ -290,35 +291,50 @@ def _parse_jeju_hours(raw: str) -> tuple[str, str] | None:
 
 
 def _build_jeju_place_index() -> dict[str, dict]:
-    """data/jeju_places.csv — 실측 좌표·영업시간을 가진 제주 전역 25,377건 통합 DB."""
+    """data/제주특별자치도_통합_TourAPI병합.xlsx — 실측 좌표를 가진 제주 전역 26,679건 통합 DB.
+    기존 jeju_places.csv(25,377건)에 TourAPI 실측 영업시간·contentid를 매칭 병합한 최신본
+    (2,153건 매칭, 1,302건 신규 추가). 영업시간은 TourAPI 실측값을 원문(영업시간)보다 우선한다."""
     index: dict[str, dict] = {}
-    path = _DATA_DIR / "jeju_places.csv"
+    path = _DATA_DIR / "제주특별자치도_통합_TourAPI병합.xlsx"
     if not path.exists():
         return index
-    with open(path, encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            name = (row.get("상호명") or "").strip()
-            if not name:
-                continue
-            key = _normalize(name)
-            if key in index:
-                continue
-            try:
-                lat, lng = float(row["위도"]), float(row["경도"])
-            except (ValueError, TypeError, KeyError):
-                continue
-            entry = {
-                "name": name, "lat": lat, "lng": lng, "region": "제주",
-                "cat": _JEJU_CAT_MAP.get(row.get("대분류코드", ""), "12"),
-                "cat_name": row.get("대분류명", "관광지"),
-                "addr": (row.get("도로명주소") or "").strip(),
-                "has_coords": True,
-                "source": "jeju_csv",
-            }
-            hrs = _parse_jeju_hours(row.get("영업시간", ""))
-            if hrs:
-                entry["open_start"], entry["open_end"] = hrs
-            index[key] = entry
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    ws = wb.active
+    rows = ws.iter_rows(values_only=True)
+    header = [str(h or "").strip() for h in next(rows)]
+    for values in rows:
+        row = dict(zip(header, values, strict=True))
+        name = str(row.get("상호명") or "").strip()
+        if not name:
+            continue
+        key = _normalize(name)
+        if key in index:
+            continue
+        try:
+            lat, lng = float(row["위도"]), float(row["경도"])
+        except (ValueError, TypeError, KeyError):
+            continue
+        entry = {
+            "name": name, "lat": lat, "lng": lng, "region": "제주",
+            "cat": _JEJU_CAT_MAP.get(str(row.get("대분류코드") or ""), "12"),
+            "cat_name": row.get("대분류명") or "관광지",
+            "addr": str(row.get("도로명주소") or "").strip(),
+            "has_coords": True,
+            "source": "jeju_csv",
+        }
+        contentid = row.get("TourAPI_contentid")
+        if contentid not in (None, ""):
+            entry["contentid"] = str(int(contentid))
+        hrs = (
+            _parse_jeju_hours(str(row.get("TourAPI_영업시간") or ""))
+            or _parse_jeju_hours(str(row.get("영업시간") or ""))
+        )
+        if hrs:
+            entry["open_start"], entry["open_end"] = hrs
+        if str(row.get("반려동물동반") or "").strip().upper() == "Y":
+            entry["pet_friendly"] = True
+        index[key] = entry
+    wb.close()
     return index
 
 
@@ -660,6 +676,7 @@ def _resolve_poi(name: str, idx: int, address: str = "") -> tuple[POI, POIInfo]:
         open_start, open_end = hours.open_, hours.close_
         hours_estimated = True
     dwell = _guess_dwell(name)
+    pet_friendly = bool(place.get("pet_friendly")) if place else False
 
     # 지식그래프 근거 — 지역·도보권 대안. 그래프 미설정/미매칭 시 조용히 생략.
     graph_region, graph_nearby = "", []
@@ -675,6 +692,7 @@ def _resolve_poi(name: str, idx: int, address: str = "") -> tuple[POI, POIInfo]:
         open_start=open_start, open_end=open_end,
         duration_min=dwell, category=category,
         hours_estimated=hours_estimated,
+        pet_friendly=pet_friendly,
     )
     info = POIInfo(
         name=name, found=(confidence != "Low"), source=source,
@@ -685,6 +703,7 @@ def _resolve_poi(name: str, idx: int, address: str = "") -> tuple[POI, POIInfo]:
         hours_estimated=hours_estimated,
         graph_region=graph_region,
         graph_nearby=graph_nearby,
+        pet_friendly=pet_friendly,
     )
     return poi, info
 
@@ -888,7 +907,15 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
         plan=plan,
         per_day_pois=per_day_pois,
         matrix={},
+        pet_friendly_enabled=req.pet_friendly,
     )
+
+    if result.wellness_matched:
+        wellness_names = set(result.wellness_matched)
+        poi_info_list = [
+            info.model_copy(update={"wellness": True}) if info.name in wellness_names else info
+            for info in poi_info_list
+        ]
 
     data_reliability_score = _calc_reliability_score(poi_info_list)
 

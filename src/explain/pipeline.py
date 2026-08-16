@@ -103,6 +103,7 @@ class ValidatorPipeline:
         matrix: dict,
         sigungu_codes_per_day: list[list[str]] | None = None,
         user_prefs: UserPreferences | None = None,
+        pet_friendly_enabled: bool = False,
     ) -> ValidationResult:
         """파이프라인 실행 → ValidationResult 반환.
 
@@ -112,6 +113,7 @@ class ValidatorPipeline:
             matrix: 이동 시간 행렬 (인덱스 기반, 없으면 빈 dict)
             sigungu_codes_per_day: 일자별 시군구 코드 (ClusterDispersion M1/M3용)
             user_prefs: LLM 테마 판정용 UserPreferences (None이면 스킵)
+            pet_friendly_enabled: 사용자가 "반려동물 동반" 카테고리를 켰는지 여부
         """
         all_pois: list[POI] = [poi for day in per_day_pois for poi in day]
 
@@ -206,7 +208,10 @@ class ValidatorPipeline:
             theme_penalty = ta_report.penalty
 
         # ── 7. BonusEngine 가산점 ───────────────────────────────────────
-        bonus_result = self._bonus.compute(pois=all_pois, party_type=plan.party_type)
+        bonus_result = self._bonus.compute(
+            pois=all_pois, party_type=plan.party_type,
+            pet_friendly_enabled=pet_friendly_enabled,
+        )
         total_bonus = bonus_result.total_bonus
 
         # ── 8. 최종 점수 조립 ───────────────────────────────────────────
@@ -242,6 +247,8 @@ class ValidatorPipeline:
             bonus_breakdown["wellness"] = bonus_result.wellness_bonus
         if bonus_result.accessibility_bonus:
             bonus_breakdown["accessibility"] = bonus_result.accessibility_bonus
+        if bonus_result.pet_friendly_bonus:
+            bonus_breakdown["pet_friendly"] = bonus_result.pet_friendly_bonus
 
         # ── 10. Repair Engine (Hard Fail 발생 시만 실행) ─────────────────
         repair_data: dict = {}
@@ -281,6 +288,7 @@ class ValidatorPipeline:
             alternatives=alternatives,
             penalty_breakdown=penalty_breakdown,
             bonus_breakdown=bonus_breakdown,
+            wellness_matched=bonus_result.wellness_matched,
             repair=repair_data,
             vrptw_optimal_route=vrptw_optimal_route,
             vrptw_efficiency_gap=vrptw_efficiency_gap,

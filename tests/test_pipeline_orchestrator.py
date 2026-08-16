@@ -254,6 +254,33 @@ class TestPipelineBreakdown:
         assert "accessibility" in result.bonus_breakdown
         assert result.bonus_breakdown["accessibility"] > 0
 
+    def test_pet_friendly_bonus_when_enabled(self, pipeline):
+        poi = make_poi("1", 37.5, 127.0).model_copy(update={"pet_friendly": True})
+        plan = make_plan([poi.name])
+        result = pipeline.run(
+            plan=plan, per_day_pois=[[poi]], matrix={}, pet_friendly_enabled=True
+        )
+        assert "pet_friendly" in result.bonus_breakdown
+        assert result.bonus_breakdown["pet_friendly"] > 0
+
+    def test_pet_friendly_bonus_absent_when_disabled(self, pipeline):
+        poi = make_poi("1", 37.5, 127.0).model_copy(update={"pet_friendly": True})
+        plan = make_plan([poi.name])
+        result = pipeline.run(
+            plan=plan, per_day_pois=[[poi]], matrix={}, pet_friendly_enabled=False
+        )
+        assert "pet_friendly" not in result.bonus_breakdown
+
+    def test_wellness_matched_exposed_on_result(self):
+        wellness = [_PlaceCoord(lat=37.5, lng=127.0)]
+        engine = BonusEngine(wellness_coords=wellness, barrier_free_coords=[])
+        pipeline = ValidatorPipeline(bonus_engine=engine)
+
+        pois = [make_poi("1", 37.5, 127.0)]
+        plan = make_plan([p.name for p in pois])
+        result = pipeline.run(plan=plan, per_day_pois=[pois], matrix={})
+        assert pois[0].name in result.wellness_matched
+
 
 # ---------------------------------------------------------------------------
 # ValidatorPipeline.run() — multi-day

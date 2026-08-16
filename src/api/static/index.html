@@ -1404,6 +1404,12 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
             <button class="step-btn" id="size-plus" onclick="changeSize(1)" aria-label="인원 늘리기">+</button>
           </div>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.85rem">
+          <span style="font-size:.8rem;font-weight:600;color:var(--n600)">반려동물과 함께 가세요?</span>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.78rem;color:var(--n600)">
+            <input type="checkbox" id="pet-friendly-chk" onchange="cfg.petFriendly=this.checked"/> 반려동물 동반
+          </label>
+        </div>
       </div>
       <div class="scard">
         <div class="scard-label">여행 스타일 <span style="font-size:.67rem;font-weight:500;color:var(--n400)">(선택)</span></div>
@@ -1681,7 +1687,7 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
 
 <script>
 /* ─── State ─────────────────────────────────────────────────────────── */
-var cfg = { region:"제주", date:"2026-06-01", startTime:"09:00", partyType:"친구", partySize:2, travelType:"" };
+var cfg = { region:"제주", date:"2026-06-01", startTime:"09:00", partyType:"친구", partySize:2, travelType:"", petFriendly:false };
 var days = [["성산일출봉","섭지코지","우도"],["한라산","사려니숲길"]];
 var selDay = 0;
 var allPlaces = [], filteredCache = [];
@@ -1757,6 +1763,8 @@ var BLABELS = {
     tip:"힐링·치유에 좋은 관광지가 포함돼 있어요"},
   accessibility:{title:"무장애 여행 가능!",
     tip:"거동이 불편하셔도 편하게 다닐 수 있는 코스예요"},
+  pet_friendly:{title:"반려동물 동반 가능!",
+    tip:"반려동물과 함께 갈 수 있는 장소가 포함돼 있어요"},
 };
 var SLABELS = {
   efficiency:  {label:"이동 효율",   tip:"얼마나 효율적으로 움직이는지예요. 이동시간 낭비가 적을수록 높아요"},
@@ -1957,6 +1965,7 @@ function initS1() {
   if (ddt) ddt.textContent = formatCalDisplay(cfg.date);
   document.getElementById("time-inp").value = cfg.startTime;
   document.getElementById("time-inp").addEventListener("change", function(){cfg.startTime=this.value;});
+  document.getElementById("pet-friendly-chk").checked = !!cfg.petFriendly;
   updateSizeDisplay();
 }
 
@@ -2828,7 +2837,8 @@ async function runValidate() {
   var payload = {
     days: fd.map(function(places){return {places:places.map(function(p){return {name:pname(p), address:pnote(p)};})};}),
     party_size:cfg.partySize, party_type:cfg.partyType,
-    date:cfg.date, start_time:cfg.startTime, travel_type:cfg.travelType||null
+    date:cfg.date, start_time:cfg.startTime, travel_type:cfg.travelType||null,
+    pet_friendly:!!cfg.petFriendly
   };
   var btn = document.getElementById("val-btn");
   btn.disabled=true; btn.textContent="살펴보는 중...";
@@ -3206,7 +3216,9 @@ function renderResult(d) {
       var cl=p.confidence==="High"?"확실":p.confidence==="Medium"?"보통":"불확실";
       var graphLine=p.graph_region?'<div style="font-size:.66rem;color:var(--n400);margin-top:.15rem">'+esc(p.graph_region)+(p.graph_nearby&&p.graph_nearby.length?' · 도보권 대안 '+p.graph_nearby.length+'곳':'')+'</div>':'';
       var hoursTag=p.hours_estimated?' <span class="conf cm" style="margin-left:.25rem">추정</span>':'';
-      html+='<tr><td><strong>'+esc(p.name)+'</strong>'+graphLine+'</td>'+
+      var placeBadges=(p.wellness?' <span class="conf" style="background:var(--wellness-l);color:var(--wellness);margin-left:.25rem">웰니스 장소</span>':'')+
+        (p.pet_friendly?' <span class="conf" style="background:#eef2ff;color:#4338ca;margin-left:.25rem">반려동물 동반</span>':'');
+      html+='<tr><td><strong>'+esc(p.name)+'</strong>'+placeBadges+graphLine+'</td>'+
         '<td style="font-size:.73rem;color:var(--n500)">'+esc(p.open_start)+'~'+esc(p.open_end)+hoursTag+'</td>'+
         '<td>'+p.duration_min+'분</td>'+
         '<td><span class="conf '+cc+'">'+cl+'</span></td></tr>';

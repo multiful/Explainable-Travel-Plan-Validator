@@ -30,6 +30,8 @@ class POIInfo(BaseModel):
     graph_nearby: list[str] = []
     category: str = ""
     day_index: int = 0
+    wellness: bool = False
+    pet_friendly: bool = False
 
 
 class PlaceItem(BaseModel):
@@ -56,6 +58,7 @@ class ValidateRequest(BaseModel):
     travel_type: Optional[Literal["cultural", "nature", "shopping", "food", "adventure"]] = None
     date: str = "2026-05-10"
     start_time: str = "09:00"
+    pet_friendly: bool = False
 
 
 class ParseTextRequest(BaseModel):

@@ -114,6 +114,7 @@ class POI(BaseModel):
     # 영업시간이 실측/검증값이 아니라 카테고리 추정값이면 True.
     # 기본 False(기존 동작 유지) — 라우터에서 해석한 POI 만 True 로 설정한다.
     hours_estimated: bool = False
+    pet_friendly: bool = False
 
     @field_validator("poi_id")
     @classmethod
@@ -233,6 +234,7 @@ class ValidationResult(BaseModel):
     alternatives: dict[str, list[AlternativePOI]] = {}
     penalty_breakdown: dict[str, int] = Field(default_factory=dict)
     bonus_breakdown: dict[str, int] = Field(default_factory=dict)
+    wellness_matched: list[str] = Field(default_factory=list)
     repair: dict = Field(default_factory=dict)
     vrptw_optimal_route: list[DayRouteComparison] | None = None
     vrptw_efficiency_gap: float | None = None
