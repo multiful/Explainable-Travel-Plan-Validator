@@ -1,4 +1,5 @@
 """PlanExtractor 테스트 (실제 Claude API 호출 X — 모두 mock)."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -47,10 +48,14 @@ def test_extract_from_text_empty_raises() -> None:
 def test_extract_from_text_without_client_falls_back_to_heuristic() -> None:
     extractor = PlanExtractor(client=None, api_key="")
 
-    resp = extractor.extract_from_text("Day 1\n1 다려도 여행지\n2 바람벽에흰당나귀 카페\n\nDay 2\n월정리해변")
+    resp = extractor.extract_from_text(
+        "Day 1\n1 다려도 여행지\n2 바람벽에흰당나귀 카페\n\nDay 2\n월정리해변"
+    )
 
     assert [p.name for d in resp.days for p in d.places] == [
-        "다려도", "바람벽에흰당나귀", "월정리해변",
+        "다려도",
+        "바람벽에흰당나귀",
+        "월정리해변",
     ]
     assert len(resp.days) == 2
 
@@ -101,3 +106,14 @@ def test_api_call_failure_raises_extraction_error() -> None:
 
     with pytest.raises(PlanExtractionError):
         extractor.extract_from_text("아무 텍스트")
+
+
+def test_system_prompt_uses_prompt_caching() -> None:
+    """system 프롬프트는 매 호출 동일하므로 ephemeral 캐싱 대상이어야 함(지연/토큰 절감)."""
+    client = _client_returning('{"days":[]}')
+    extractor = PlanExtractor(client=client)
+
+    extractor.extract_from_text("아무 텍스트")
+
+    system = client.messages.create.call_args.kwargs["system"]
+    assert system[0]["cache_control"] == {"type": "ephemeral"}

@@ -18,6 +18,7 @@
   adjusted = clamp(adjusted, 0, 100)
   if hard_fails: adjusted = min(adjusted, 59)
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -43,11 +44,12 @@ from src.scoring.theme_alignment import POIWithCategory, ThemeAlignmentJudge
 from src.scoring.travel_ratio import evaluate_travel_ratio
 from src.validation.hard_fail import HardFailDetector
 from src.validation.scoring import ScoreCalculator
-from src.validation.vrptw_engine import VRPTWEngine
+from src.validation.vrptw_engine import TimeMatrix, VRPTWEngine
 from src.validation.warning import WarningDetector
 
-_DEFAULT_WELLNESS_PATH = Path("data/wellness_places.json")
-_DEFAULT_BARRIER_FREE_PATH = Path("data/barrier_free_places.json")
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_WELLNESS_PATH = _PROJECT_ROOT / "data" / "wellness_places.json"
+_DEFAULT_BARRIER_FREE_PATH = _PROJECT_ROOT / "data" / "barrier_free_places.json"
 
 
 def _to_vrptw_day(pois: list[POI]) -> VRPTWDay:
@@ -82,6 +84,7 @@ def _to_poi_with_category(pois: list[POI], order_offset: int = 0) -> list[POIWit
 @dataclasses.dataclass
 class _ScoreBundle:
     """1·3·3b·4·5·6·7·8단계(점수 계산)만의 결과. Warning·Repair·Explain 미포함."""
+
     adjusted: int
     base_score: int
     scores: Scores
@@ -124,6 +127,7 @@ class ValidatorPipeline:
         sigungu_codes_per_day: list[list[str]] | None = None,
         user_prefs: UserPreferences | None = None,
         pet_friendly_enabled: bool = False,
+        time_matrix: TimeMatrix | None = None,
     ) -> ValidationResult:
         """파이프라인 실행 → ValidationResult 반환.
 
@@ -137,8 +141,13 @@ class ValidatorPipeline:
         """
         all_pois: list[POI] = [poi for day in per_day_pois for poi in day]
         bundle = self._score(
-            plan, per_day_pois, matrix,
-            sigungu_codes_per_day, user_prefs, pet_friendly_enabled,
+            plan,
+            per_day_pois,
+            matrix,
+            sigungu_codes_per_day,
+            user_prefs,
+            pet_friendly_enabled,
+            time_matrix,
         )
 
         # ── 2. Warning 탐지 (per-day) ────────────────────────────────────
@@ -149,15 +158,15 @@ class ValidatorPipeline:
         for day_idx, day_pois in enumerate(per_day_pois):
             if not day_pois:
                 continue
-            day_warns = self._warning.detect(plan=plan, pois=day_pois, matrix=matrix, day_index=day_idx)
+            day_warns = self._warning.detect(
+                plan=plan, pois=day_pois, matrix=matrix, day_index=day_idx
+            )
             warnings.extend(w for w in day_warns if w.warning_type != "PURPOSE_MISMATCH")
 
         warnings.extend(self._warning._check_purpose_mismatch(plan, all_pois))
 
         # CUMULATIVE_FATIGUE — cross-day 분석 (2일 이상 일정에서만 의미 있음)
-        warnings.extend(
-            self._warning.check_cumulative_fatigue(plan, per_day_pois, matrix)
-        )
+        warnings.extend(self._warning.check_cumulative_fatigue(plan, per_day_pois, matrix))
 
         rewards = generate_rewards(
             scores=bundle.scores,
@@ -196,7 +205,12 @@ class ValidatorPipeline:
             )
             if not repair_result.is_empty:
                 repair_result = self._estimate_repair_gains(
-                    plan, per_day_pois, matrix, pet_friendly_enabled, repair_result,
+                    plan,
+                    per_day_pois,
+                    matrix,
+                    pet_friendly_enabled,
+                    repair_result,
+                    time_matrix=time_matrix,
                 )
                 repair_data = repair_result.to_dict()
 
@@ -212,7 +226,9 @@ class ValidatorPipeline:
         )
 
         # ── 12. Hard Fail POI 대안 (지식그래프 도보권 대안, 미설정/미매칭 시 빈 dict) ──
-        alternatives = self._explain.build_alternatives(bundle.hard_fails) if bundle.hard_fails else {}
+        alternatives = (
+            self._explain.build_alternatives(bundle.hard_fails) if bundle.hard_fails else {}
+        )
 
         return ValidationResult(
             plan_id=plan.plan_id,
@@ -240,6 +256,7 @@ class ValidatorPipeline:
         sigungu_codes_per_day: list[list[str]] | None,
         user_prefs: UserPreferences | None,
         pet_friendly_enabled: bool,
+        time_matrix: TimeMatrix | None = None,
     ) -> _ScoreBundle:
         """1·3·3b·4·5·6·7·8단계만 실행해 점수를 계산한다 (Warning·Repair·Explain 제외).
 
@@ -267,12 +284,18 @@ class ValidatorPipeline:
         # ── 3. ScoreCalculator → base_score ────────────────────────────
         if all_pois:
             scores, base_score = self._scorer.compute(
-                plan=plan, pois=all_pois, matrix=matrix, hard_fails=hard_fails,
+                plan=plan,
+                pois=all_pois,
+                matrix=matrix,
+                hard_fails=hard_fails,
             )
         else:
             scores = Scores(
-                efficiency=0.0, feasibility=0.0,
-                purpose_fit=0.0, flow=0.0, area_intensity=0.0,
+                efficiency=0.0,
+                feasibility=0.0,
+                purpose_fit=0.0,
+                flow=0.0,
+                area_intensity=0.0,
             )
             base_score = 0
 
@@ -283,7 +306,9 @@ class ValidatorPipeline:
         vrptw_penalty = 0
 
         if vrptw_days:
-            _vrptw_result = VRPTWEngine().validate(VRPTWRequest(days=vrptw_days))
+            _vrptw_result = VRPTWEngine(matrix=time_matrix).validate(
+                VRPTWRequest(days=vrptw_days, start_time=plan.start_time)
+            )
             vrptw_optimal_route = _vrptw_result.optimal_route
             vrptw_efficiency_gap = _vrptw_result.efficiency_gap
             if vrptw_efficiency_gap is not None:
@@ -304,7 +329,7 @@ class ValidatorPipeline:
         travel_ratio_penalty = 0
         overall_travel_ratio = 0.0
         if vrptw_days:
-            tr_report = evaluate_travel_ratio(vrptw_days)
+            tr_report = evaluate_travel_ratio(vrptw_days, matrix=time_matrix)
             travel_ratio_penalty = tr_report.total_penalty
             overall_travel_ratio = tr_report.overall_ratio
 
@@ -317,7 +342,8 @@ class ValidatorPipeline:
 
         # ── 7. BonusEngine 가산점 ───────────────────────────────────────
         bonus_result = self._bonus.compute(
-            pois=all_pois, party_type=plan.party_type,
+            pois=all_pois,
+            party_type=plan.party_type,
             pet_friendly_enabled=pet_friendly_enabled,
         )
 
@@ -353,6 +379,7 @@ class ValidatorPipeline:
         matrix: dict,
         pet_friendly_enabled: bool,
         repair_result: RepairResult,
+        time_matrix: TimeMatrix | None = None,
     ) -> RepairResult:
         """교정 제안별 예상 점수 변화(`estimated_score_gain`)와 문제 해소 여부(`resolves_hard_fail`)를 채운다.
 
@@ -363,18 +390,26 @@ class ValidatorPipeline:
         정밀도가 필요해지면 실제 sigungu_codes_per_day·user_prefs를 그대로 전달하도록 확장한다.
         """
         baseline = self._score(
-            plan, per_day_pois, matrix,
-            sigungu_codes_per_day=None, user_prefs=None,
+            plan,
+            per_day_pois,
+            matrix,
+            sigungu_codes_per_day=None,
+            user_prefs=None,
             pet_friendly_enabled=pet_friendly_enabled,
+            time_matrix=time_matrix,
         )
 
         def simulate(day_idx: int, modified_day: list[POI]) -> tuple[int, bool]:
             sim_days = list(per_day_pois)
             sim_days[day_idx] = modified_day
             bundle = self._score(
-                plan, sim_days, matrix,
-                sigungu_codes_per_day=None, user_prefs=None,
+                plan,
+                sim_days,
+                matrix,
+                sigungu_codes_per_day=None,
+                user_prefs=None,
                 pet_friendly_enabled=pet_friendly_enabled,
+                time_matrix=time_matrix,
             )
             resolved = not any(hf.day_index == day_idx for hf in bundle.capping_fails)
             return bundle.adjusted - baseline.adjusted, resolved
@@ -384,28 +419,41 @@ class ValidatorPipeline:
             by_name = {p.name: p for p in per_day_pois[ro.day_index]}
             modified = [by_name[n] for n in ro.suggested_order if n in by_name]
             gain, resolved = simulate(ro.day_index, modified)
-            reorders.append(dataclasses.replace(
-                ro, estimated_score_gain=gain, resolves_hard_fail=resolved,
-            ))
+            reorders.append(
+                dataclasses.replace(
+                    ro,
+                    estimated_score_gain=gain,
+                    resolves_hard_fail=resolved,
+                )
+            )
 
         time_tunes = []
         for tt in repair_result.time_tunes:
             modified = [
                 p.model_copy(update={"duration_min": tt.adjustments[p.name]})
-                if p.name in tt.adjustments else p
+                if p.name in tt.adjustments
+                else p
                 for p in per_day_pois[tt.day_index]
             ]
             gain, resolved = simulate(tt.day_index, modified)
-            time_tunes.append(dataclasses.replace(
-                tt, estimated_score_gain=gain, resolves_hard_fail=resolved,
-            ))
+            time_tunes.append(
+                dataclasses.replace(
+                    tt,
+                    estimated_score_gain=gain,
+                    resolves_hard_fail=resolved,
+                )
+            )
 
         deletions = []
         for dl in repair_result.deletions:
             modified = [p for p in per_day_pois[dl.day_index] if p.name != dl.candidate_name]
             gain, resolved = simulate(dl.day_index, modified)
-            deletions.append(dataclasses.replace(
-                dl, estimated_score_gain=gain, resolves_hard_fail=resolved,
-            ))
+            deletions.append(
+                dataclasses.replace(
+                    dl,
+                    estimated_score_gain=gain,
+                    resolves_hard_fail=resolved,
+                )
+            )
 
         return RepairResult(reorders=reorders, time_tunes=time_tunes, deletions=deletions)

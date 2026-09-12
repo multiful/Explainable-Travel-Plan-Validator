@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-30 | hash: 22ccaf16 | summary: Neo4j 제거, Seoul API 추가, 기술 스택·아키텍처 규칙·선결 조건 업데이트 -->
+<!-- updated: 2026-09-12 | hash: 22ccaf16 | summary: Neo4j 제거, Seoul API 추가, 기술 스택·아키텍처 규칙·선결 조건 업데이트 -->
 # 프로젝트: Explainable Travel Plan Validator
 
 ## 기술 스택

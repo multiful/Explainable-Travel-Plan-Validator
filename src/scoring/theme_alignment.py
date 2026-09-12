@@ -10,29 +10,30 @@
 - Prompt Caching: system 프롬프트는 cache_control: ephemeral 적용
 - Timeout: 10초, 실패 시 정보성 DeepDive
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.data.models import DeepDiveItem
+from src.data.models import DeepDiveItem, Settings
 from src.data.theme_taxonomy import TRAVEL_STYLE_DESCRIPTIONS, UserPreferences
 
 # Anthropic SDK는 선택적 의존성
 try:
     import anthropic
+
     _ANTHROPIC_AVAILABLE = True
 except ImportError:
     _ANTHROPIC_AVAILABLE = False
 
 
 # ── 패널티 임계값 ─────────────────────────────────────────────────────
-WARN_THRESHOLD: float = 0.8     # 0.6 ≤ score < 0.8 → -5
-RISK_THRESHOLD: float = 0.6     # 0.4 ≤ score < 0.6 → -10
-CRIT_THRESHOLD: float = 0.4     # score < 0.4 → -20
+WARN_THRESHOLD: float = 0.8  # 0.6 ≤ score < 0.8 → -5
+RISK_THRESHOLD: float = 0.6  # 0.4 ≤ score < 0.6 → -10
+CRIT_THRESHOLD: float = 0.4  # score < 0.4 → -20
 
 PENALTY_WARN: int = 5
 PENALTY_RISK: int = 10
@@ -67,8 +68,9 @@ SYSTEM_PROMPT = """당신은 한국 여행 일정 평가 전문가입니다.
 @dataclass
 class POIWithCategory:
     """LLM에게 전달할 POI 정보 (카테고리 명 포함)."""
+
     name: str
-    category_name: str = ""    # 예: "자연관광지/산", "음식점/카페"
+    category_name: str = ""  # 예: "자연관광지/산", "음식점/카페"
     visit_order: int = 0
     stay_minutes: int = 0
 
@@ -76,15 +78,16 @@ class POIWithCategory:
 @dataclass(frozen=True)
 class ThemeJudgment:
     """LLM 평가 결과."""
-    score: float                       # 0.0 ~ 1.0
+
+    score: float  # 0.0 ~ 1.0
     reasoning: str
     mismatched_places: list[str] = field(default_factory=list)
-    api_used: bool = True              # False = LLM 호출 없이 폴백
+    api_used: bool = True  # False = LLM 호출 없이 폴백
 
 
 @dataclass(frozen=True)
 class ThemeAlignmentReport:
-    judgment: ThemeJudgment | None     # None = LLM 미호출
+    judgment: ThemeJudgment | None  # None = LLM 미호출
     penalty: int
     deep_dive: list[DeepDiveItem]
 
@@ -151,7 +154,7 @@ def _parse_llm_response(raw_text: str) -> ThemeJudgment:
 
     data = json.loads(text)
     score = float(data.get("score", 0.5))
-    score = max(0.0, min(1.0, score))   # clamp
+    score = max(0.0, min(1.0, score))  # clamp
     return ThemeJudgment(
         score=score,
         reasoning=str(data.get("reasoning", "")),
@@ -174,12 +177,12 @@ class ThemeAlignmentJudge:
         model: str = DEFAULT_MODEL,
         timeout_sec: float = DEFAULT_TIMEOUT_SEC,
         max_tokens: int = DEFAULT_MAX_TOKENS,
-        client: Any = None,                    # 테스트에서 주입 가능
+        client: Any = None,  # 테스트에서 주입 가능
     ) -> None:
         self._model = model
         self._timeout = timeout_sec
         self._max_tokens = max_tokens
-        self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self._api_key = Settings().anthropic_api_key if api_key is None else api_key
         self._client = client
         if self._client is None and _ANTHROPIC_AVAILABLE and self._api_key:
             self._client = anthropic.Anthropic(api_key=self._api_key)
@@ -196,19 +199,18 @@ class ThemeAlignmentJudge:
         """테마 일치도 평가 + 패널티 산출."""
         # ── LLM 사용 불가 케이스: 정보성 DeepDive만 ──
         if not self.is_available():
-            reason = (
-                "ANTHROPIC_API_KEY 미설정" if not self._api_key
-                else "anthropic SDK 미설치"
-            )
+            reason = "ANTHROPIC_API_KEY 미설정" if not self._api_key else "anthropic SDK 미설치"
             return ThemeAlignmentReport(
                 judgment=None,
                 penalty=0,
-                deep_dive=[DeepDiveItem(
-                    fact=f"테마 일치성 평가 미수행 — {reason}",
-                    rule="theme_alignment_skipped",
-                    risk="OK",
-                    suggestion="ANTHROPIC_API_KEY 환경변수 설정 후 재실행하세요.",
-                )],
+                deep_dive=[
+                    DeepDiveItem(
+                        fact=f"테마 일치성 평가 미수행 — {reason}",
+                        rule="theme_alignment_skipped",
+                        risk="OK",
+                        suggestion="ANTHROPIC_API_KEY 환경변수 설정 후 재실행하세요.",
+                    )
+                ],
             )
 
         # ── 캐시 조회 ──
@@ -223,12 +225,14 @@ class ThemeAlignmentJudge:
                 return ThemeAlignmentReport(
                     judgment=None,
                     penalty=0,
-                    deep_dive=[DeepDiveItem(
-                        fact=f"LLM 호출 실패 — {type(e).__name__}: {str(e)[:100]}",
-                        rule="theme_alignment_error",
-                        risk="OK",
-                        suggestion="네트워크/API 키 확인 후 재시도하세요.",
-                    )],
+                    deep_dive=[
+                        DeepDiveItem(
+                            fact=f"LLM 호출 실패 — {type(e).__name__}: {str(e)[:100]}",
+                            rule="theme_alignment_error",
+                            risk="OK",
+                            suggestion="네트워크/API 키 확인 후 재시도하세요.",
+                        )
+                    ],
                 )
 
         # ── 패널티 + DeepDive 생성 ──
@@ -237,20 +241,23 @@ class ThemeAlignmentJudge:
         if penalty > 0:
             mismatched_str = (
                 f" 어긋난 장소: {', '.join(judgment.mismatched_places)}"
-                if judgment.mismatched_places else ""
+                if judgment.mismatched_places
+                else ""
             )
-            deep_dive.append(DeepDiveItem(
-                fact=(
-                    f"테마 일치도 {judgment.score:.2f}/1.0 — "
-                    f"{judgment.reasoning}{mismatched_str}"
-                ),
-                rule="theme_alignment",
-                risk=risk,  # type: ignore[arg-type]
-                suggestion=(
-                    "선택하신 테마에 맞지 않는 장소들을 더 적합한 곳으로 교체하거나, "
-                    "테마를 다시 선택해 보세요."
-                ),
-            ))
+            deep_dive.append(
+                DeepDiveItem(
+                    fact=(
+                        f"테마 일치도 {judgment.score:.2f}/1.0 — "
+                        f"{judgment.reasoning}{mismatched_str}"
+                    ),
+                    rule="theme_alignment",
+                    risk=risk,  # type: ignore[arg-type]
+                    suggestion=(
+                        "선택하신 테마에 맞지 않는 장소들을 더 적합한 곳으로 교체하거나, "
+                        "테마를 다시 선택해 보세요."
+                    ),
+                )
+            )
 
         return ThemeAlignmentReport(
             judgment=judgment,
@@ -271,11 +278,13 @@ class ThemeAlignmentJudge:
             model=self._model,
             max_tokens=self._max_tokens,
             timeout=self._timeout,
-            system=[{
-                "type": "text",
-                "text": SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }],
+            system=[
+                {
+                    "type": "text",
+                    "text": SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             messages=[{"role": "user", "content": user_prompt}],
         )
 

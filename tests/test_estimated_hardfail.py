@@ -1,7 +1,8 @@
 """P1: 추정 영업시간 충돌의 하드페일 강등 테스트."""
+
 from __future__ import annotations
 
-from src.data.models import DayPlan, ItineraryPlan, PlaceInput, POI
+from src.data.models import POI, DayPlan, ItineraryPlan, PlaceInput
 from src.validation.hard_fail import HardFailDetector
 
 

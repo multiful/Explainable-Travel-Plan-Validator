@@ -10,26 +10,28 @@ ExplanationItem 리스트를 반환한다.
   - Graceful fallback: API 키 없거나 호출 실패 시 규칙 기반 설명으로 대체
   - 이슈 없을 때 LLM 미호출: 불필요한 API 호출 방지
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 from collections import OrderedDict
 from typing import Any
 
-from src.data.graph_retriever import GraphRetriever
+from src.data.evidence_retriever import LocalEvidenceRetriever
 from src.data.models import (
     AlternativePOI,
     ExplanationItem,
     HardFail,
     ItineraryPlan,
     Scores,
+    Settings,
     Warning,
 )
 
 try:
     import anthropic
+
     _ANTHROPIC_AVAILABLE = True
 except ImportError:
     _ANTHROPIC_AVAILABLE = False
@@ -40,6 +42,7 @@ DEFAULT_TIMEOUT_SEC: float = 20.0
 DEFAULT_MAX_TOKENS: int = 2500
 
 # ── 메모리 캐시 (모듈 단위, 콘텐츠 해시 키) ──────────────────────────────
+
 
 class _LRUCache:
     """최대 크기 제한 LRU 캐시 — collections.OrderedDict 기반 (외부 의존성 없음)."""
@@ -175,8 +178,15 @@ def _cache_key(
     final_score: int,
 ) -> str:
     payload = {
-        "hf": sorted([(h.fail_type, h.poi_name or "", h.day_index if h.day_index is not None else -1) for h in hard_fails]),
-        "w": sorted([(w.warning_type, w.day_index if w.day_index is not None else -1) for w in warnings]),
+        "hf": sorted(
+            [
+                (h.fail_type, h.poi_name or "", h.day_index if h.day_index is not None else -1)
+                for h in hard_fails
+            ]
+        ),
+        "w": sorted(
+            [(w.warning_type, w.day_index if w.day_index is not None else -1) for w in warnings]
+        ),
         "p": sorted(penalty_breakdown.items()),
         "score": final_score,
     }
@@ -184,7 +194,7 @@ def _cache_key(
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
-def _graph_context(poi_name: str, graph: GraphRetriever | None) -> dict | None:
+def _graph_context(poi_name: str, graph: LocalEvidenceRetriever | None) -> dict | None:
     """지식그래프에서 POI명 검색 → 지역/카테고리 + 도보 근접 대안 근거.
 
     그래프 미설정이거나 매칭 실패(대상 지역 밖 POI 등) 시 None — 프롬프트에 노이즈를 넣지 않는다.
@@ -202,7 +212,7 @@ def _graph_context(poi_name: str, graph: GraphRetriever | None) -> dict | None:
     return ctx
 
 
-def _find_alternatives(poi_name: str, graph: GraphRetriever | None) -> list[AlternativePOI]:
+def _find_alternatives(poi_name: str, graph: LocalEvidenceRetriever | None) -> list[AlternativePOI]:
     """지식그래프에서 POI명 검색 → 도보 근접 대안 POI 목록. 미매칭/미설정 시 빈 리스트."""
     if not poi_name or graph is None or not graph.enabled:
         return []
@@ -220,7 +230,7 @@ def _build_user_prompt(
     scores: Scores | None,
     plan: ItineraryPlan,
     final_score: int,
-    graph: GraphRetriever | None = None,
+    graph: LocalEvidenceRetriever | None = None,
 ) -> str:
     issues: list[dict] = []
 
@@ -236,12 +246,14 @@ def _build_user_prompt(
         gctx = _graph_context(hf.poi_name or "", graph)
         if gctx:
             data["지식그래프_근거"] = gctx
-        issues.append({
-            "item_type": "hard_fail",
-            "item_key": hf.fail_type,
-            "day_index": hf.day_index,
-            "data": data,
-        })
+        issues.append(
+            {
+                "item_type": "hard_fail",
+                "item_key": hf.fail_type,
+                "day_index": hf.day_index,
+                "data": data,
+            }
+        )
 
     for w in warnings:
         data = {
@@ -255,36 +267,42 @@ def _build_user_prompt(
             gctx = _graph_context(w.poi_names[0], graph)
             if gctx:
                 data["지식그래프_근거"] = gctx
-        issues.append({
-            "item_type": "warning",
-            "item_key": w.warning_type,
-            "day_index": w.day_index,
-            "data": data,
-        })
+        issues.append(
+            {
+                "item_type": "warning",
+                "item_key": w.warning_type,
+                "day_index": w.day_index,
+                "data": data,
+            }
+        )
 
     for key, penalty in penalty_breakdown.items():
-        issues.append({
-            "item_type": "penalty",
-            "item_key": key,
-            "data": {
-                "감점": penalty,
-                "규칙_설명": _PENALTY_RULES.get(key, key),
-            },
-        })
+        issues.append(
+            {
+                "item_type": "penalty",
+                "item_key": key,
+                "data": {
+                    "감점": penalty,
+                    "규칙_설명": _PENALTY_RULES.get(key, key),
+                },
+            }
+        )
 
     passed = final_score >= 60 and not hard_fails
-    issues.append({
-        "item_type": "overall",
-        "item_key": "summary",
-        "data": {
-            "최종_점수": final_score,
-            "합격_여부": "PASS" if passed else "FAIL",
-            "Hard_Fail_수": len(hard_fails),
-            "Warning_수": len(warnings),
-            "총_감점": sum(penalty_breakdown.values()),
-            "총_가산": sum(bonus_breakdown.values()),
-        },
-    })
+    issues.append(
+        {
+            "item_type": "overall",
+            "item_key": "summary",
+            "data": {
+                "최종_점수": final_score,
+                "합격_여부": "PASS" if passed else "FAIL",
+                "Hard_Fail_수": len(hard_fails),
+                "Warning_수": len(warnings),
+                "총_감점": sum(penalty_breakdown.values()),
+                "총_가산": sum(bonus_breakdown.values()),
+            },
+        }
+    )
 
     plan_info = {
         "파티": f"{plan.party_type} {plan.party_size}인",
@@ -332,21 +350,23 @@ def _parse_llm_response(raw: str) -> list[ExplanationItem]:
     text = raw.strip()
     if text.startswith("```"):
         lines = text.split("\n")
-        end = next((i for i, l in enumerate(lines[1:], 1) if l.strip() == "```"), len(lines))
+        end = next((i for i, line in enumerate(lines[1:], 1) if line.strip() == "```"), len(lines))
         text = "\n".join(lines[1:end])
 
     data = json.loads(text)
     items: list[ExplanationItem] = []
     for obj in data:
-        items.append(ExplanationItem(
-            item_type=obj.get("item_type", "overall"),
-            item_key=obj.get("item_key", "unknown"),
-            fact=str(obj.get("fact", "")),
-            rule=str(obj.get("rule", "")),
-            risk=obj.get("risk", "WARNING"),
-            suggestion=str(obj.get("suggestion", "")),
-            day_index=obj.get("day_index"),
-        ))
+        items.append(
+            ExplanationItem(
+                item_type=obj.get("item_type", "overall"),
+                item_key=obj.get("item_key", "unknown"),
+                fact=str(obj.get("fact", "")),
+                rule=str(obj.get("rule", "")),
+                risk=obj.get("risk", "WARNING"),
+                suggestion=str(obj.get("suggestion", "")),
+                day_index=obj.get("day_index"),
+            )
+        )
     return items
 
 
@@ -360,55 +380,63 @@ def _fallback(
 
     for hf in hard_fails:
         day_prefix = f"{hf.day_index + 1}일차: " if hf.day_index is not None else ""
-        items.append(ExplanationItem(
-            item_type="hard_fail",
-            item_key=hf.fail_type,
-            fact=f"{day_prefix}[{hf.poi_name or '장소'}] {hf.message} (증거: {hf.evidence})",
-            rule=_HARD_FAIL_RULES.get(hf.fail_type, hf.message),
-            risk="CRITICAL",
-            suggestion=_HARD_FAIL_SUGGESTIONS.get(hf.fail_type, "일정을 수정하세요."),
-            day_index=hf.day_index,
-        ))
+        items.append(
+            ExplanationItem(
+                item_type="hard_fail",
+                item_key=hf.fail_type,
+                fact=f"{day_prefix}[{hf.poi_name or '장소'}] {hf.message} (증거: {hf.evidence})",
+                rule=_HARD_FAIL_RULES.get(hf.fail_type, hf.message),
+                risk="CRITICAL",
+                suggestion=_HARD_FAIL_SUGGESTIONS.get(hf.fail_type, "일정을 수정하세요."),
+                day_index=hf.day_index,
+            )
+        )
 
     for w in warnings:
         day_prefix = f"{w.day_index + 1}일차: " if w.day_index is not None else ""
-        items.append(ExplanationItem(
-            item_type="warning",
-            item_key=w.warning_type,
-            fact=f"{day_prefix}{w.message}",
-            rule=_WARNING_RULES.get(w.warning_type, w.message),
-            risk="WARNING",
-            suggestion=_WARNING_SUGGESTIONS.get(w.warning_type, "일정을 조정하세요."),
-            day_index=w.day_index,
-        ))
+        items.append(
+            ExplanationItem(
+                item_type="warning",
+                item_key=w.warning_type,
+                fact=f"{day_prefix}{w.message}",
+                rule=_WARNING_RULES.get(w.warning_type, w.message),
+                risk="WARNING",
+                suggestion=_WARNING_SUGGESTIONS.get(w.warning_type, "일정을 조정하세요."),
+                day_index=w.day_index,
+            )
+        )
 
     for key, penalty in penalty_breakdown.items():
-        items.append(ExplanationItem(
-            item_type="penalty",
-            item_key=key,
-            fact=f"{key} 패널티 {penalty}점 감점",
-            rule=_PENALTY_RULES.get(key, ""),
-            risk="CRITICAL" if penalty > 5 else "WARNING",
-            suggestion=_PENALTY_SUGGESTIONS.get(key, "동선을 최적화하세요."),
-        ))
+        items.append(
+            ExplanationItem(
+                item_type="penalty",
+                item_key=key,
+                fact=f"{key} 패널티 {penalty}점 감점",
+                rule=_PENALTY_RULES.get(key, ""),
+                risk="CRITICAL" if penalty > 5 else "WARNING",
+                suggestion=_PENALTY_SUGGESTIONS.get(key, "동선을 최적화하세요."),
+            )
+        )
 
     passed = final_score >= 60 and not hard_fails
-    items.append(ExplanationItem(
-        item_type="overall",
-        item_key="summary",
-        fact=(
-            f"종합 점수 {final_score}/100 — "
-            f"Hard Fail {len(hard_fails)}건, Warning {len(warnings)}건, "
-            f"패널티 {sum(penalty_breakdown.values())}점"
-        ),
-        rule="60점 이상이면 PASS. Hard Fail 존재 시 점수는 59점 이하로 제한됩니다.",
-        risk="OK" if passed else "CRITICAL",
-        suggestion=(
-            "일정이 기준을 통과했습니다. 경고 항목을 개선하면 더 나은 여행이 됩니다."
-            if passed else
-            "Hard Fail을 먼저 해결한 후, Warning 항목을 순서대로 개선하세요."
-        ),
-    ))
+    items.append(
+        ExplanationItem(
+            item_type="overall",
+            item_key="summary",
+            fact=(
+                f"종합 점수 {final_score}/100 — "
+                f"Hard Fail {len(hard_fails)}건, Warning {len(warnings)}건, "
+                f"패널티 {sum(penalty_breakdown.values())}점"
+            ),
+            rule="60점 이상이면 PASS. Hard Fail 존재 시 점수는 59점 이하로 제한됩니다.",
+            risk="OK" if passed else "CRITICAL",
+            suggestion=(
+                "일정이 기준을 통과했습니다. 경고 항목을 개선하면 더 나은 여행이 됩니다."
+                if passed
+                else "Hard Fail을 먼저 해결한 후, Warning 항목을 순서대로 개선하세요."
+            ),
+        )
+    )
 
     return items
 
@@ -423,17 +451,20 @@ class ExplainEngine:
         timeout_sec: float = DEFAULT_TIMEOUT_SEC,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         client: Any = None,
-        graph_retriever: GraphRetriever | None = None,
+        graph_retriever: LocalEvidenceRetriever | None = None,
     ) -> None:
         self._model = model
         self._timeout = timeout_sec
         self._max_tokens = max_tokens
-        self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self._api_key = Settings().anthropic_api_key if api_key is None else api_key
         self._client = client
         if self._client is None and _ANTHROPIC_AVAILABLE and self._api_key:
             self._client = anthropic.Anthropic(api_key=self._api_key)
-        # NEO4J_URI 미설정 시 GraphRetriever.enabled=False → 그래프 근거는 조용히 생략된다.
-        self._graph = graph_retriever if graph_retriever is not None else GraphRetriever.from_env()
+        self._graph = (
+            graph_retriever
+            if graph_retriever is not None
+            else LocalEvidenceRetriever.from_settings()
+        )
 
     def is_available(self) -> bool:
         return self._client is not None
@@ -491,18 +522,22 @@ class ExplainEngine:
             if improvement_hints:
                 suggestion = f"{'·'.join(improvement_hints)}으로 점수를 추가로 높일 수 있습니다."
             elif final_score < 85:
-                suggestion = "웰니스·무장애 장소를 추가하면 보너스 가산점으로 점수를 더 높일 수 있습니다."
+                suggestion = (
+                    "웰니스·무장애 장소를 추가하면 보너스 가산점으로 점수를 더 높일 수 있습니다."
+                )
             else:
                 suggestion = "완성도 높은 일정입니다. 현재 구성을 유지하세요."
 
-            return [ExplanationItem(
-                item_type="overall",
-                item_key="summary",
-                fact=", ".join(fact_parts),
-                rule="60점 이상이면 PASS. Hard Fail 없이 모든 항목을 통과했습니다.",
-                risk="OK",
-                suggestion=suggestion,
-            )]
+            return [
+                ExplanationItem(
+                    item_type="overall",
+                    item_key="summary",
+                    fact=", ".join(fact_parts),
+                    rule="60점 이상이면 PASS. Hard Fail 없이 모든 항목을 통과했습니다.",
+                    risk="OK",
+                    suggestion=suggestion,
+                )
+            ]
 
         # 폴백 (LLM 미사용)
         if not self.is_available():
@@ -515,8 +550,13 @@ class ExplainEngine:
 
         try:
             result = self._call_llm(
-                hard_fails, warnings, penalty_breakdown, bonus_breakdown,
-                scores, plan, final_score,
+                hard_fails,
+                warnings,
+                penalty_breakdown,
+                bonus_breakdown,
+                scores,
+                plan,
+                final_score,
             )
             _CACHE[key] = result
             return result
@@ -534,8 +574,13 @@ class ExplainEngine:
         final_score: int,
     ) -> list[ExplanationItem]:
         user_prompt = _build_user_prompt(
-            hard_fails, warnings, penalty_breakdown,
-            bonus_breakdown, scores, plan, final_score,
+            hard_fails,
+            warnings,
+            penalty_breakdown,
+            bonus_breakdown,
+            scores,
+            plan,
+            final_score,
             graph=self._graph,
         )
 
@@ -543,11 +588,13 @@ class ExplainEngine:
             model=self._model,
             max_tokens=self._max_tokens,
             timeout=self._timeout,
-            system=[{
-                "type": "text",
-                "text": SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }],
+            system=[
+                {
+                    "type": "text",
+                    "text": SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             messages=[{"role": "user", "content": user_prompt}],
         )
 

@@ -8,11 +8,10 @@ TRAVEL_STYLE은 매핑하지 않음 — LLM 판정에만 사용.
 
 사용자 입력 모델은 UserPreferences로 묶어서 양 축 다중 선택을 허용.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
-
 
 # ── 축 A: 장소 유형 (List 1) ──────────────────────────────────────────
 PLACE_TYPES: list[str] = [
@@ -45,15 +44,15 @@ TRAVEL_STYLES: list[str] = [
 # 한 PLACE_TYPE에 여러 코드가 매핑될 수 있음 (OR 조건).
 # 매핑은 코드의 prefix 매칭 (예: "NA04" → 산 → 모든 NA04로 시작하는 코드)
 PLACE_TYPE_TO_LCLS: dict[str, list[str]] = {
-    "산":         ["NA04", "NA01"],                   # 산, 국립공원
-    "바다":       ["NA12", "NA11", "NA13", "NA14"],   # 해수욕장, 해안절경, 섬, 항구
+    "산": ["NA04", "NA01"],  # 산, 국립공원
+    "바다": ["NA12", "NA11", "NA13", "NA14"],  # 해수욕장, 해안절경, 섬, 항구
     "실내 여행지": ["VE01", "VE03", "VE04", "VE05"],  # 박물관, 전시관, 미술관, 체험관
-    "액티비티":    ["EX"],                             # 레포츠 전체
-    "문화_역사":   ["VE01", "VE02", "HS"],            # 박물관, 기념관, 역사관광지
-    "테마파크":    ["EX21"],                           # 테마파크 (레포츠 하위)
-    "카페":       ["FD02"],                            # 카페·전통찻집
-    "전통시장":    ["SH01"],                           # 5일·전통시장
-    "축제":       [],                                  # contentTypeId=15로 별도 매칭
+    "액티비티": ["EX"],  # 레포츠 전체
+    "문화_역사": ["VE01", "VE02", "HS"],  # 박물관, 기념관, 역사관광지
+    "테마파크": ["EX21"],  # 테마파크 (레포츠 하위)
+    "카페": ["FD02"],  # 카페·전통찻집
+    "전통시장": ["SH01"],  # 5일·전통시장
+    "축제": [],  # contentTypeId=15로 별도 매칭
 }
 
 
@@ -66,15 +65,15 @@ PLACE_TYPE_TO_CONTENT_TYPE: dict[str, list[int]] = {
 # ── TRAVEL_STYLE 메타 정보 (LLM 프롬프트 컨텍스트용) ─────────────────
 # 각 스타일에 대한 한 줄 설명 — Claude API 호출 시 system 또는 user 프롬프트에 포함
 TRAVEL_STYLE_DESCRIPTIONS: dict[str, str] = {
-    "체험_액티비티":     "직접 몸으로 부딪히는 체험형 활동 (서핑, 등산, ATV 등)",
-    "SNS 핫플레이스":    "사진 찍기 좋고 트렌디한 곳 (인스타 감성 카페, 포토존)",
-    "자연과 함께":      "자연 풍경 중심 (산, 바다, 숲, 공원)",
+    "체험_액티비티": "직접 몸으로 부딪히는 체험형 활동 (서핑, 등산, ATV 등)",
+    "SNS 핫플레이스": "사진 찍기 좋고 트렌디한 곳 (인스타 감성 카페, 포토존)",
+    "자연과 함께": "자연 풍경 중심 (산, 바다, 숲, 공원)",
     "유명 관광지는 필수": "랜드마크·필수 코스 (경복궁, 해운대 등)",
-    "여유롭게 힐링":     "조용하고 편안한 휴식 (한적한 카페, 명상, 온천)",
-    "문화_예술_역사":    "박물관·미술관·고궁·전통 문화 체험",
-    "여행지 느낌 물씬":   "그 지역 고유의 분위기·전통 강하게 살아있는 곳",
-    "쇼핑은 열정적으로":  "쇼핑 위주 (백화점, 면세점, 시장, 쇼핑몰)",
-    "관광보다 먹방":     "유명 맛집·식도락 위주 (현지 음식, 노포)",
+    "여유롭게 힐링": "조용하고 편안한 휴식 (한적한 카페, 명상, 온천)",
+    "문화_예술_역사": "박물관·미술관·고궁·전통 문화 체험",
+    "여행지 느낌 물씬": "그 지역 고유의 분위기·전통 강하게 살아있는 곳",
+    "쇼핑은 열정적으로": "쇼핑 위주 (백화점, 면세점, 시장, 쇼핑몰)",
+    "관광보다 먹방": "유명 맛집·식도락 위주 (현지 음식, 노포)",
 }
 
 
@@ -82,6 +81,7 @@ TRAVEL_STYLE_DESCRIPTIONS: dict[str, str] = {
 @dataclass
 class UserPreferences:
     """사용자가 선택한 테마. 두 축 모두 다중 선택 허용 (각 1개 이상)."""
+
     place_types: list[str] = field(default_factory=list)
     travel_styles: list[str] = field(default_factory=list)
 
@@ -89,16 +89,10 @@ class UserPreferences:
         # 검증: 모든 항목이 정의된 테마인지 확인
         invalid_pt = [p for p in self.place_types if p not in PLACE_TYPES]
         if invalid_pt:
-            raise ValueError(
-                f"정의되지 않은 PLACE_TYPE: {invalid_pt}. "
-                f"허용: {PLACE_TYPES}"
-            )
+            raise ValueError(f"정의되지 않은 PLACE_TYPE: {invalid_pt}. 허용: {PLACE_TYPES}")
         invalid_ts = [s for s in self.travel_styles if s not in TRAVEL_STYLES]
         if invalid_ts:
-            raise ValueError(
-                f"정의되지 않은 TRAVEL_STYLE: {invalid_ts}. "
-                f"허용: {TRAVEL_STYLES}"
-            )
+            raise ValueError(f"정의되지 않은 TRAVEL_STYLE: {invalid_ts}. 허용: {TRAVEL_STYLES}")
         if not self.place_types and not self.travel_styles:
             raise ValueError("최소 하나의 PLACE_TYPE 또는 TRAVEL_STYLE을 선택해야 합니다.")
 

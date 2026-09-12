@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-29 | hash: 9930dac1 | summary: PRD↔PLAN↔코드 3대 충돌 해소 — 점수체계 교체 명문화·누락 Warning 2건 결정·Neo4j 연기 -->
+<!-- updated: 2026-09-12 | hash: 9930dac1 | summary: PRD↔PLAN↔코드 3대 충돌 해소 — 점수체계 교체 명문화·누락 Warning 2건 결정·Neo4j 연기 -->
 # Design Reconciliation — PRD ↔ ENHANCEMENT_PLAN ↔ 실제 코드
 
 > ENHANCEMENT_PLAN(2026-04-26) 검토 중 발견된 **3대 정합성 이슈**를 해소하기 위한 결정 기록. 이 문서가 원본 문서들의 **상위 권위**를 가진다 (이후 충돌 시 본 문서 기준).

@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: 3bdb3574 | summary: Warning 탐지기 구현 (동선 비효율·일정 과밀·체력 부담·경험 편향·구역 재방문) -->
+<!-- updated: 2026-09-12 | hash: 3bdb3574 | summary: Warning 탐지기 구현 (동선 비효율·일정 과밀·체력 부담·경험 편향·구역 재방문) -->
 # Step 1: warning
 
 ## 읽어야 할 파일

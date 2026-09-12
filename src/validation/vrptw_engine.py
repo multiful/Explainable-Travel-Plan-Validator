@@ -6,6 +6,7 @@ Read-only: never modifies input data or analysis result files.
 TimeMatrix interface is swappable — replace CachedRouteMatrix with a Kakao
 Mobility implementation without touching solver code.
 """
+
 from __future__ import annotations
 
 import json
@@ -13,7 +14,6 @@ import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from src.data.models import (
     DayRouteComparison,
@@ -24,18 +24,24 @@ from src.data.models import (
     VRPTWResult,
 )
 
+
+def _time_to_minutes(value: str) -> int:
+    hour, minute = map(int, value.split(":"))
+    return hour * 60 + minute
+
+
 # ---------------------------------------------------------------------------
 # Tunable thresholds
 # ---------------------------------------------------------------------------
 
-EFFICIENCY_GAP_THRESHOLD: float = 0.20   # 20%: efficiency gap that triggers "low efficiency"
-FATIGUE_HOURS_LIMIT: int = 12            # hours: daily schedule exceeding this incurs penalty
-FATIGUE_PENALTY_PER_HOUR: int = 10       # points deducted per hour over limit
-SAFETY_MARGIN_MINUTES: int = 60          # minutes: arrival within this of close → CRITICAL
-PASS_THRESHOLD: int = 60                 # risk_score >= this → passed
+EFFICIENCY_GAP_THRESHOLD: float = 0.20  # 20%: efficiency gap that triggers "low efficiency"
+FATIGUE_HOURS_LIMIT: int = 12  # hours: daily schedule exceeding this incurs penalty
+FATIGUE_PENALTY_PER_HOUR: int = 10  # points deducted per hour over limit
+SAFETY_MARGIN_MINUTES: int = 60  # minutes: arrival within this of close → CRITICAL
+PASS_THRESHOLD: int = 60  # risk_score >= this → passed
 
 # Day-start time assumption when no depot open time is specified
-DEFAULT_START_MINUTES: int = 9 * 60      # 09:00
+DEFAULT_START_MINUTES: int = 9 * 60  # 09:00
 
 # ---------------------------------------------------------------------------
 # OR-Tools import (graceful degradation)
@@ -43,6 +49,7 @@ DEFAULT_START_MINUTES: int = 9 * 60      # 09:00
 
 try:
     from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+
     _ORTOOLS_AVAILABLE = True
 except Exception:
     _ORTOOLS_AVAILABLE = False
@@ -51,6 +58,7 @@ except Exception:
 # ---------------------------------------------------------------------------
 # TimeMatrix interface
 # ---------------------------------------------------------------------------
+
 
 class TimeMatrix(ABC):
     """Abstract travel-time provider. Implementations are interchangeable."""
@@ -72,8 +80,8 @@ class HaversineMatrix(TimeMatrix):
 
     # (거리 상한 m, 유효 속도 m/s)
     _BANDS: tuple = (
-        (5_000,   12_000 / 3600),   # 도심 <5km
-        (50_000,  22_000 / 3600),   # 중거리 5~50km
+        (5_000, 12_000 / 3600),  # 도심 <5km
+        (50_000, 22_000 / 3600),  # 중거리 5~50km
         (float("inf"), 80_000 / 3600),  # 장거리 >50km
     )
 
@@ -109,7 +117,7 @@ class CachedRouteMatrix(TimeMatrix):
         self._fallback = HaversineMatrix()
 
     @classmethod
-    def from_file(cls, path: str | Path) -> "CachedRouteMatrix":
+    def from_file(cls, path: str | Path) -> CachedRouteMatrix:
         with open(path, encoding="utf-8") as f:
             data: dict[str, int] = json.load(f)
         return cls(data)
@@ -126,7 +134,6 @@ class CachedRouteMatrix(TimeMatrix):
         return self._fallback.get_travel_time(origin, destination)
 
 
-
 def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     R = 6_371_000.0
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -140,9 +147,11 @@ def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class _SimResult:
     """Simulation result for a single day."""
+
     travel_seconds: int
     visit_order: list[str]
     deep_dive: list[DeepDiveItem] = field(default_factory=list)
@@ -177,30 +186,34 @@ def _simulate_day(
         # --- Safety margin check ---
         minutes_before_close = place.close_minutes - arrive
         if 0 < minutes_before_close < SAFETY_MARGIN_MINUTES and not place.is_depot:
-            deep_dive.append(DeepDiveItem(
-                fact=(
-                    f"'{place.name}' 도착 예정 {_minutes_to_hhmm(arrive)}, "
-                    f"영업 종료 {place.close} — {minutes_before_close:.0f}분 여유"
-                ),
-                rule="safety_margin",
-                risk="CRITICAL",
-                suggestion=(
-                    f"'{place.name}' 방문 순서를 앞당기거나 "
-                    f"체류 시간({place.stay_duration}분)을 줄이세요."
-                ),
-            ))
+            deep_dive.append(
+                DeepDiveItem(
+                    fact=(
+                        f"'{place.name}' 도착 예정 {_minutes_to_hhmm(arrive)}, "
+                        f"영업 종료 {place.close} — {minutes_before_close:.0f}분 여유"
+                    ),
+                    rule="safety_margin",
+                    risk="CRITICAL",
+                    suggestion=(
+                        f"'{place.name}' 방문 순서를 앞당기거나 "
+                        f"체류 시간({place.stay_duration}분)을 줄이세요."
+                    ),
+                )
+            )
 
         # --- Time window infeasibility check ---
         if arrive > place.close_minutes and not place.is_depot:
-            deep_dive.append(DeepDiveItem(
-                fact=(
-                    f"'{place.name}' 도착 예정 {_minutes_to_hhmm(arrive)}이나 "
-                    f"영업 종료는 {place.close}. 입장 불가."
-                ),
-                rule="time_window_infeasibility",
-                risk="CRITICAL",
-                suggestion=f"'{place.name}'을 더 이른 시간대로 이동하거나 일정에서 제외하세요.",
-            ))
+            deep_dive.append(
+                DeepDiveItem(
+                    fact=(
+                        f"'{place.name}' 도착 예정 {_minutes_to_hhmm(arrive)}이나 "
+                        f"영업 종료는 {place.close}. 입장 불가."
+                    ),
+                    rule="time_window_infeasibility",
+                    risk="CRITICAL",
+                    suggestion=f"'{place.name}'을 더 이른 시간대로 이동하거나 일정에서 제외하세요.",
+                )
+            )
 
         # Wait until open if arrived early
         effective_arrive = max(arrive, place.open_minutes)
@@ -241,6 +254,7 @@ def _compute_day_total_minutes(
 # OR-Tools VRPTW solver (per-day, single-vehicle)
 # ---------------------------------------------------------------------------
 
+
 def _solve_vrptw_ortools(
     places: list[VRPTWPlace],
     matrix: TimeMatrix,
@@ -271,9 +285,9 @@ def _solve_vrptw_ortools(
     # OR-Tools AddDimension: (evaluator_index, slack_max, capacity, fix_start_cumul_to_zero, name)
     routing.AddDimension(
         cb_idx,
-        24 * 3600,    # slack_max (max waiting time)
-        24 * 3600,    # capacity (max total time)
-        False,        # fix_start_cumul_to_zero
+        24 * 3600,  # slack_max (max waiting time)
+        24 * 3600,  # capacity (max total time)
+        False,  # fix_start_cumul_to_zero
         "Time",
     )
     time_dim = routing.GetDimensionOrDie("Time")
@@ -285,9 +299,7 @@ def _solve_vrptw_ortools(
         time_dim.CumulVar(idx).SetRange(open_sec, close_sec)
 
     params = pywrapcp.DefaultRoutingSearchParameters()
-    params.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-    )
+    params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     params.time_limit.seconds = 5
 
     solution = routing.SolveWithParameters(params)
@@ -314,6 +326,7 @@ def _solve_vrptw_ortools(
 # Depot constraint checker
 # ---------------------------------------------------------------------------
 
+
 def _check_depot_constraints(
     days: list[VRPTWDay],
 ) -> list[DeepDiveItem]:
@@ -336,37 +349,45 @@ def _check_depot_constraints(
         if is_first_day:
             # Day 1: must end at depot
             if not _has_depot(places, "last"):
-                issues.append(DeepDiveItem(
-                    fact=f"1일차 마지막 장소가 숙소(depot)가 아닙니다. ('{places[-1].name}')",
-                    rule="depot_constraint",
-                    risk="CRITICAL",
-                    suggestion="1일차 일정 마지막에 숙소 복귀를 추가하세요.",
-                ))
+                issues.append(
+                    DeepDiveItem(
+                        fact=f"1일차 마지막 장소가 숙소(depot)가 아닙니다. ('{places[-1].name}')",
+                        rule="depot_constraint",
+                        risk="CRITICAL",
+                        suggestion="1일차 일정 마지막에 숙소 복귀를 추가하세요.",
+                    )
+                )
         elif is_last_day:
             # Last day: must start at depot
             if not _has_depot(places, "first"):
-                issues.append(DeepDiveItem(
-                    fact=f"마지막 날 첫 장소가 숙소(depot)가 아닙니다. ('{places[0].name}')",
-                    rule="depot_constraint",
-                    risk="CRITICAL",
-                    suggestion="마지막 날 일정은 숙소 출발로 시작해야 합니다.",
-                ))
+                issues.append(
+                    DeepDiveItem(
+                        fact=f"마지막 날 첫 장소가 숙소(depot)가 아닙니다. ('{places[0].name}')",
+                        rule="depot_constraint",
+                        risk="CRITICAL",
+                        suggestion="마지막 날 일정은 숙소 출발로 시작해야 합니다.",
+                    )
+                )
         else:
             # Middle days: must start AND end at depot
             if not _has_depot(places, "first"):
-                issues.append(DeepDiveItem(
-                    fact=f"{day_idx + 1}일차 첫 장소가 숙소(depot)가 아닙니다. ('{places[0].name}')",
-                    rule="depot_constraint",
-                    risk="CRITICAL",
-                    suggestion=f"{day_idx + 1}일차는 숙소에서 출발해야 합니다.",
-                ))
+                issues.append(
+                    DeepDiveItem(
+                        fact=f"{day_idx + 1}일차 첫 장소가 숙소(depot)가 아닙니다. ('{places[0].name}')",
+                        rule="depot_constraint",
+                        risk="CRITICAL",
+                        suggestion=f"{day_idx + 1}일차는 숙소에서 출발해야 합니다.",
+                    )
+                )
             if not _has_depot(places, "last"):
-                issues.append(DeepDiveItem(
-                    fact=f"{day_idx + 1}일차 마지막 장소가 숙소(depot)가 아닙니다. ('{places[-1].name}')",
-                    rule="depot_constraint",
-                    risk="CRITICAL",
-                    suggestion=f"{day_idx + 1}일차는 숙소로 귀환해야 합니다.",
-                ))
+                issues.append(
+                    DeepDiveItem(
+                        fact=f"{day_idx + 1}일차 마지막 장소가 숙소(depot)가 아닙니다. ('{places[-1].name}')",
+                        rule="depot_constraint",
+                        risk="CRITICAL",
+                        suggestion=f"{day_idx + 1}일차는 숙소로 귀환해야 합니다.",
+                    )
+                )
 
     return issues
 
@@ -374,6 +395,7 @@ def _check_depot_constraints(
 # ---------------------------------------------------------------------------
 # Main engine
 # ---------------------------------------------------------------------------
+
 
 class VRPTWEngine:
     """VRPTW-based travel itinerary validator.
@@ -402,13 +424,14 @@ class VRPTWEngine:
         # Depot constraint check
         deep_dive.extend(_check_depot_constraints(request.days))
 
+        start_minutes = _time_to_minutes(request.start_time)
         for day_idx, day in enumerate(request.days):
             places = day.places
-            start_min = DEFAULT_START_MINUTES
+            start_min = start_minutes
 
             # Determine day start from depot open time if present
             if places and places[0].is_depot:
-                start_min = max(DEFAULT_START_MINUTES, places[0].open_minutes)
+                start_min = max(start_minutes, places[0].open_minutes)
 
             # Simulate user route
             user_sim = _simulate_day(places, self._matrix, start_min)
@@ -419,16 +442,18 @@ class VRPTWEngine:
             day_total_min = _compute_day_total_minutes(places, self._matrix, start_min)
             if day_total_min > FATIGUE_HOURS_LIMIT * 60:
                 excess_h = (day_total_min - FATIGUE_HOURS_LIMIT * 60) / 60
-                deep_dive.append(DeepDiveItem(
-                    fact=(
-                        f"{day_idx + 1}일차 총 소요 시간 {day_total_min:.0f}분 "
-                        f"({day_total_min/60:.1f}시간) — "
-                        f"{FATIGUE_HOURS_LIMIT}시간 초과 {excess_h:.1f}시간"
-                    ),
-                    rule="fatigue",
-                    risk="WARNING",
-                    suggestion="장소 수를 줄이거나 체류 시간을 단축해 일정을 12시간 이내로 조정하세요.",
-                ))
+                deep_dive.append(
+                    DeepDiveItem(
+                        fact=(
+                            f"{day_idx + 1}일차 총 소요 시간 {day_total_min:.0f}분 "
+                            f"({day_total_min / 60:.1f}시간) — "
+                            f"{FATIGUE_HOURS_LIMIT}시간 초과 {excess_h:.1f}시간"
+                        ),
+                        rule="fatigue",
+                        risk="WARNING",
+                        suggestion="장소 수를 줄이거나 체류 시간을 단축해 일정을 12시간 이내로 조정하세요.",
+                    )
+                )
 
             # OR-Tools optimal route
             optimal_order: list[str] | None = None
@@ -440,33 +465,33 @@ class VRPTWEngine:
                     if total_optimal_travel is not None:
                         total_optimal_travel += optimal_travel
 
-            day_comparisons.append(DayRouteComparison(
-                day_index=day_idx,
-                user_order=[p.name for p in places],
-                optimal_order=optimal_order,
-                user_travel_seconds=user_sim.travel_seconds,
-                optimal_travel_seconds=optimal_travel,
-            ))
+            day_comparisons.append(
+                DayRouteComparison(
+                    day_index=day_idx,
+                    user_order=[p.name for p in places],
+                    optimal_order=optimal_order,
+                    user_travel_seconds=user_sim.travel_seconds,
+                    optimal_travel_seconds=optimal_travel,
+                )
+            )
 
         # Efficiency gap
         efficiency_gap: float | None = None
-        if (
-            total_optimal_travel is not None
-            and total_optimal_travel > 0
-            and total_user_travel > 0
-        ):
+        if total_optimal_travel is not None and total_optimal_travel > 0 and total_user_travel > 0:
             efficiency_gap = (total_user_travel - total_optimal_travel) / total_optimal_travel
             if efficiency_gap > EFFICIENCY_GAP_THRESHOLD:
-                deep_dive.append(DeepDiveItem(
-                    fact=(
-                        f"사용자 이동 시간 {total_user_travel}초 vs "
-                        f"최적 {total_optimal_travel}초 "
-                        f"(효율성 격차 {efficiency_gap:.1%})"
-                    ),
-                    rule="efficiency_gap",
-                    risk="WARNING",
-                    suggestion="VRPTW 최적 순서를 참고해 방문 순서를 재배치하세요.",
-                ))
+                deep_dive.append(
+                    DeepDiveItem(
+                        fact=(
+                            f"사용자 이동 시간 {total_user_travel}초 vs "
+                            f"최적 {total_optimal_travel}초 "
+                            f"(효율성 격차 {efficiency_gap:.1%})"
+                        ),
+                        rule="efficiency_gap",
+                        risk="WARNING",
+                        suggestion="VRPTW 최적 순서를 참고해 방문 순서를 재배치하세요.",
+                    )
+                )
 
         # Risk score
         risk_score = self._compute_risk_score(deep_dive, efficiency_gap, request.days)
@@ -514,7 +539,7 @@ class VRPTWEngine:
 
         # Fatigue: extra deduction already encoded in deep_dive above;
         # additionally compute raw fatigue hours across all days
-        for day_idx, day in enumerate(days):
+        for _day_idx, day in enumerate(days):
             day_total_min = _compute_day_total_minutes(
                 day.places, self._matrix, DEFAULT_START_MINUTES
             )

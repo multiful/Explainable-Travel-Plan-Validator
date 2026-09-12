@@ -1,4 +1,5 @@
 """한국관광공사 TourAPI v2 비동기 클라이언트 (httpx + Graceful Fallback)."""
+
 from __future__ import annotations
 
 import re
@@ -59,7 +60,7 @@ class TourAPIClient:
         self._hours_cache: dict[str, tuple[str, str]] = {}
 
     @classmethod
-    def from_settings(cls, settings: Settings | None = None) -> "TourAPIClient | None":
+    def from_settings(cls, settings: Settings | None = None) -> TourAPIClient | None:
         """Settings에서 키 로드. 키 없으면 None 반환 (Graceful Fallback 진입점)."""
         if settings is None:
             settings = Settings()
@@ -76,13 +77,13 @@ class TourAPIClient:
         """키워드로 POI 검색. 실패 시 빈 리스트 반환."""
         params: dict[str, Any] = {
             "serviceKey": self._key,
-            "numOfRows":  num_of_rows,
-            "pageNo":     1,
-            "MobileOS":   "ETC",
-            "MobileApp":  self._mobile_app,
-            "arrange":    "A",
-            "keyword":    keyword,
-            "_type":      "json",
+            "numOfRows": num_of_rows,
+            "pageNo": 1,
+            "MobileOS": "ETC",
+            "MobileApp": self._mobile_app,
+            "arrange": "A",
+            "keyword": keyword,
+            "_type": "json",
         }
         if content_type_id is not None:
             params["contentTypeId"] = content_type_id
@@ -106,16 +107,18 @@ class TourAPIClient:
                 if not lat or not lng:
                     continue
                 open_s, close_s = await self.get_operating_hours(content_id, ctype)
-                pois.append(POI(
-                    poi_id=content_id,
-                    name=str(item.get("title", keyword)),
-                    lat=lat,
-                    lng=lng,
-                    open_start=open_s,
-                    open_end=close_s,
-                    duration_min=60,
-                    category=str(ctype),
-                ))
+                pois.append(
+                    POI(
+                        poi_id=content_id,
+                        name=str(item.get("title", keyword)),
+                        lat=lat,
+                        lng=lng,
+                        open_start=open_s,
+                        open_end=close_s,
+                        duration_min=60,
+                        category=str(ctype),
+                    )
+                )
             except Exception:
                 continue
         return pois
@@ -130,12 +133,12 @@ class TourAPIClient:
             return self._hours_cache[content_id]
 
         params: dict[str, Any] = {
-            "serviceKey":    self._key,
-            "contentId":     content_id,
+            "serviceKey": self._key,
+            "contentId": content_id,
             "contentTypeId": content_type_id,
-            "MobileOS":      "ETC",
-            "MobileApp":     self._mobile_app,
-            "_type":         "json",
+            "MobileOS": "ETC",
+            "MobileApp": self._mobile_app,
+            "_type": "json",
         }
 
         result = (_FALLBACK_OPEN, _FALLBACK_CLOSE)

@@ -1,16 +1,17 @@
 """5개 지표 기반 최종 점수 계산기."""
+
 from __future__ import annotations
 
-from src.data.models import HardFail, ItineraryPlan, POI, Scores
+from src.data.models import POI, HardFail, ItineraryPlan, Scores
 from src.data.party_config import get_party_profile
 from src.utils.geo import build_dist_cache, get_travel_min, nn_heuristic_km
 from src.validation.warning import INTENT_VECTORS, _cosine_distance
 
 WEIGHTS = {
-    "efficiency":     0.30,
-    "feasibility":    0.25,
-    "purpose_fit":    0.20,
-    "flow":           0.15,
+    "efficiency": 0.30,
+    "feasibility": 0.25,
+    "purpose_fit": 0.20,
+    "flow": 0.15,
     "area_intensity": 0.10,
 }
 
@@ -34,10 +35,10 @@ class ScoreCalculator:
         """
         dist_cache = build_dist_cache(pois)
 
-        efficiency     = self._calc_efficiency(pois, dist_cache)
-        feasibility    = self._calc_feasibility(plan, pois, matrix, hard_fails, dist_cache)
-        purpose_fit    = self._calc_purpose_fit(plan, pois)
-        flow           = self._calc_flow(pois, dist_cache)
+        efficiency = self._calc_efficiency(pois, dist_cache)
+        feasibility = self._calc_feasibility(plan, pois, matrix, hard_fails, dist_cache)
+        purpose_fit = self._calc_purpose_fit(plan, pois)
+        flow = self._calc_flow(pois, dist_cache)
         area_intensity = self._calc_area_intensity(pois)
 
         scores = Scores(
@@ -147,9 +148,7 @@ class ScoreCalculator:
 
         actual_km = sum(dist_cache.get((i, i + 1), 0.0) for i in range(n - 1))
         nn_km = nn_heuristic_km(pois, dist_cache)
-        backtrack_ratio = (
-            max(0.0, (actual_km - nn_km) / actual_km) if actual_km > 0 else 0.0
-        )
+        backtrack_ratio = max(0.0, (actual_km - nn_km) / actual_km) if actual_km > 0 else 0.0
 
         seen: dict[str, bool] = {}
         prev_cat: str | None = None

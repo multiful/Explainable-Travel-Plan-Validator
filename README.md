@@ -1,4 +1,4 @@
-<!-- updated: 2026-06-09 | hash: d14dcb5d | summary: POI 34,441건 반영·카카오 키워드 검색 폴백·추정 영업시간 강등·구현 현황 ⑰~⑲ 추가 -->
+<!-- updated: 2026-09-12 | hash: d14dcb5d | summary: POI 34,441건 반영·카카오 키워드 검색 폴백·추정 영업시간 강등·구현 현황 ⑰~⑲ 추가 -->
 
 # 관광 일정 QA 엔진 — Explainable Travel Plan Validator
 

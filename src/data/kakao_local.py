@@ -9,13 +9,12 @@ CLAUDE.md 규칙:
   - 키는 환경변수로만 관리한다.
   - 모듈 간 데이터는 Pydantic 모델(KakaoPlace)로 주고받는다.
 """
-from __future__ import annotations
 
-import os
+from __future__ import annotations
 
 import httpx
 
-from src.data.models import KakaoPlace
+from src.data.models import KakaoPlace, Settings
 
 _KEYWORD_URL = "https://dapi.kakao.com/v2/local/search/keyword.json"
 _ADDRESS_URL = "https://dapi.kakao.com/v2/local/search/address.json"
@@ -33,8 +32,10 @@ class KakaoLocalClient:
         self.stats: dict[str, int] = {"hit": 0, "miss": 0, "api_ok": 0, "api_fail": 0}
 
     @classmethod
-    def from_env(cls) -> KakaoLocalClient:
-        return cls(api_key=os.environ.get("KAKAO_REST_API_KEY", ""))
+    def from_settings(cls, settings: Settings | None = None) -> KakaoLocalClient:
+        return cls(api_key=(settings or Settings()).kakao_rest_api_key)
+
+    from_env = from_settings
 
     @property
     def enabled(self) -> bool:

@@ -1,4 +1,5 @@
 """Tests for src/scoring/theme_alignment.py — LLM mocking 필수."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -7,12 +8,10 @@ import pytest
 
 from src.data.theme_taxonomy import UserPreferences
 from src.scoring.theme_alignment import (
+    _CACHE,
     PENALTY_CRIT,
-    PENALTY_RISK,
     POIWithCategory,
     ThemeAlignmentJudge,
-    ThemeJudgment,
-    _CACHE,
     _classify_score,
     _parse_llm_response,
 )
@@ -74,14 +73,19 @@ class TestEvaluateWithMockClient:
         """LLM이 0.9 응답 → 패널티 0."""
         mock_client = MagicMock()
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text='{"score": 0.9, "reasoning": "잘 맞음", "mismatched_places": []}')]
+        mock_msg.content = [
+            MagicMock(text='{"score": 0.9, "reasoning": "잘 맞음", "mismatched_places": []}')
+        ]
         mock_client.messages.create.return_value = mock_msg
 
         judge = ThemeAlignmentJudge(api_key="dummy", client=mock_client)
         prefs = UserPreferences(place_types=["산"], travel_styles=["자연과 함께"])
-        report = judge.evaluate(prefs, [
-            POIWithCategory(name="한라산", category_name="자연관광지/산", visit_order=1),
-        ])
+        report = judge.evaluate(
+            prefs,
+            [
+                POIWithCategory(name="한라산", category_name="자연관광지/산", visit_order=1),
+            ],
+        )
 
         assert report.judgment is not None
         assert report.judgment.score == 0.9
@@ -91,14 +95,19 @@ class TestEvaluateWithMockClient:
         """LLM이 0.3 응답 → CRITICAL 패널티."""
         mock_client = MagicMock()
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text='{"score": 0.3, "reasoning": "안 맞음", "mismatched_places": ["카페A"]}')]
+        mock_msg.content = [
+            MagicMock(text='{"score": 0.3, "reasoning": "안 맞음", "mismatched_places": ["카페A"]}')
+        ]
         mock_client.messages.create.return_value = mock_msg
 
         judge = ThemeAlignmentJudge(api_key="dummy", client=mock_client)
         prefs = UserPreferences(place_types=["액티비티"], travel_styles=[])
-        report = judge.evaluate(prefs, [
-            POIWithCategory(name="카페A", category_name="음식점/카페", visit_order=1),
-        ])
+        report = judge.evaluate(
+            prefs,
+            [
+                POIWithCategory(name="카페A", category_name="음식점/카페", visit_order=1),
+            ],
+        )
 
         assert report.penalty == PENALTY_CRIT
         assert any(d.rule == "theme_alignment" for d in report.deep_dive)
@@ -107,7 +116,9 @@ class TestEvaluateWithMockClient:
         """동일 입력으로 두 번 호출 시 LLM은 1회만 호출."""
         mock_client = MagicMock()
         mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text='{"score": 0.7, "reasoning": "x", "mismatched_places": []}')]
+        mock_msg.content = [
+            MagicMock(text='{"score": 0.7, "reasoning": "x", "mismatched_places": []}')
+        ]
         mock_client.messages.create.return_value = mock_msg
 
         judge = ThemeAlignmentJudge(api_key="dummy", client=mock_client)

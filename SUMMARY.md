@@ -1,4 +1,4 @@
-<!-- updated: 2026-05-07 | hash: 4c6e87f5 | summary: VRPTWEngine 파이프라인 통합 완료 — ⑯ 항목 추가, 구현 현황 16개 전체 완료 -->
+<!-- updated: 2026-09-12 | hash: 4c6e87f5 | summary: VRPTWEngine 파이프라인 통합 완료 — ⑯ 항목 추가, 구현 현황 16개 전체 완료 -->
 
 0. 실증 분석 근거 — "왜 이 시스템이 필요한가"
 

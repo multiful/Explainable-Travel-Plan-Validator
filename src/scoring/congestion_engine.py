@@ -7,24 +7,24 @@
     3. 카테고리 평균 (poi_name에 지역/유형 접두어 기반 클러스터링)
     4. 전체 평균
 """
+
 from __future__ import annotations
 
 import unicodedata
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pandas as pd
 
-if TYPE_CHECKING:
-    from src.data.seoul_citydata_client import SeoulCityDataClient
+from src.data.models import Settings
+from src.data.seoul_citydata_client import SeoulCityDataClient
 
 _DEFAULT_CSV = Path(__file__).parent.parent.parent / "data" / "congestion_stats.csv"
 
 
-class CongestionLevel(str, Enum):
+class CongestionLevel(StrEnum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -35,11 +35,11 @@ class CongestionLevel(str, Enum):
 class CongestionResult:
     poi_name: str
     month: int
-    congestion_score: float       # 0.0 ~ 1.0
+    congestion_score: float  # 0.0 ~ 1.0
     level: CongestionLevel
     avg_visitors: float
-    matched_poi: str              # 실제 매칭된 POI명
-    fallback_used: str            # "exact" | "partial" | "category" | "global"
+    matched_poi: str  # 실제 매칭된 POI명
+    fallback_used: str  # "exact" | "partial" | "category" | "global"
 
 
 def _normalize(s: str) -> str:
@@ -75,6 +75,16 @@ class CongestionEngine:
         self._prefix_len = category_prefix_len
         self._seoul: SeoulCityDataClient | None = seoul_client
 
+    @classmethod
+    def from_settings(cls, settings: Settings | None = None) -> CongestionEngine:
+        settings = settings or Settings()
+        seoul_client = (
+            SeoulCityDataClient(api_key=settings.seoul_data_api_key)
+            if settings.seoul_data_api_key.strip()
+            else None
+        )
+        return cls(seoul_client=seoul_client)
+
     @cached_property
     def _df(self) -> pd.DataFrame:
         if not self._csv_path.exists():
@@ -100,13 +110,12 @@ class CongestionEngine:
     def _category_avg_by_month(self) -> dict[str, dict[int, tuple[float, float]]]:
         """prefix → month → (avg_visitors, congestion_score)."""
         df = self._df.copy()
-        df["prefix"] = df["poi_name"].str[:self._prefix_len]
+        df["prefix"] = df["poi_name"].str[: self._prefix_len]
         result: dict[str, dict[int, tuple[float, float]]] = {}
         for prefix, group in df.groupby("prefix"):
             agg = group.groupby("month")[["avg_visitors", "congestion_score"]].mean()
             result[prefix] = {
-                int(m): (row["avg_visitors"], row["congestion_score"])
-                for m, row in agg.iterrows()
+                int(m): (row["avg_visitors"], row["congestion_score"]) for m, row in agg.iterrows()
             }
         return result
 
@@ -150,7 +159,8 @@ class CongestionEngine:
                 realtime = self._seoul.get(poi_name)
                 if realtime is not None:
                     return CongestionResult(
-                        poi_name=poi_name, month=month,
+                        poi_name=poi_name,
+                        month=month,
                         congestion_score=realtime.score,
                         level=_score_to_level(realtime.score),
                         avg_visitors=float((realtime.ppltn_min + realtime.ppltn_max) // 2),
@@ -164,11 +174,13 @@ class CongestionEngine:
         row = self._lookup_exact(norm_name, month)
         if row is not None:
             return CongestionResult(
-                poi_name=poi_name, month=month,
+                poi_name=poi_name,
+                month=month,
                 congestion_score=float(row["congestion_score"]),
                 level=_score_to_level(float(row["congestion_score"])),
                 avg_visitors=float(row["avg_visitors"]),
-                matched_poi=row["poi_name"], fallback_used="exact",
+                matched_poi=row["poi_name"],
+                fallback_used="exact",
             )
 
         # 2. Partial match
@@ -176,42 +188,46 @@ class CongestionEngine:
         if partial is not None:
             row, matched = partial
             return CongestionResult(
-                poi_name=poi_name, month=month,
+                poi_name=poi_name,
+                month=month,
                 congestion_score=float(row["congestion_score"]),
                 level=_score_to_level(float(row["congestion_score"])),
                 avg_visitors=float(row["avg_visitors"]),
-                matched_poi=matched, fallback_used="partial",
+                matched_poi=matched,
+                fallback_used="partial",
             )
 
         # 3. Category average (prefix-based)
-        prefix = norm_name[:self._prefix_len]
+        prefix = norm_name[: self._prefix_len]
         cat_data = self._category_avg_by_month.get(prefix, {})
         if month in cat_data:
             avg_v, score = cat_data[month]
             return CongestionResult(
-                poi_name=poi_name, month=month,
+                poi_name=poi_name,
+                month=month,
                 congestion_score=round(score, 4),
                 level=_score_to_level(score),
                 avg_visitors=round(avg_v, 1),
-                matched_poi=f"[카테고리:{prefix}*]", fallback_used="category",
+                matched_poi=f"[카테고리:{prefix}*]",
+                fallback_used="category",
             )
 
         # 4. Global average
         avg_v, score = self._global_avg_by_month.get(month, (0.0, 0.5))
         return CongestionResult(
-            poi_name=poi_name, month=month,
+            poi_name=poi_name,
+            month=month,
             congestion_score=round(score, 4),
             level=_score_to_level(score),
             avg_visitors=round(avg_v, 1),
-            matched_poi="[전체평균]", fallback_used="global",
+            matched_poi="[전체평균]",
+            fallback_used="global",
         )
 
     def is_crowded(self, poi_name: str, month: int, threshold: float = 0.7) -> bool:
         """congestion_score >= threshold 이면 True."""
         return self.score(poi_name, month).congestion_score >= threshold
 
-    def score_itinerary(
-        self, pois: list[str], month: int
-    ) -> list[CongestionResult]:
+    def score_itinerary(self, pois: list[str], month: int) -> list[CongestionResult]:
         """여행 일정의 모든 POI 혼잡도를 일괄 반환한다."""
         return [self.score(poi, month) for poi in pois]

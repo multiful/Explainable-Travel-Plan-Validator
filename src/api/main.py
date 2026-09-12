@@ -1,7 +1,7 @@
 """FastAPI 앱 진입점."""
+
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,18 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-# .env → os.environ 로드 (uvicorn 직접 실행 시 환경변수 자동 주입)
-# router import보다 먼저 실행해야 한다 — router.py는 모듈 로드 시점에
-# GraphRetriever.from_env() 등으로 즉시 환경변수를 읽는 싱글턴을 생성한다.
-_dotenv_path = Path(__file__).parent.parent.parent / ".env"
-if _dotenv_path.exists() and not os.environ.get("ANTHROPIC_API_KEY"):
-    for line in _dotenv_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, val = line.partition("=")
-            os.environ.setdefault(key.strip(), val.strip())
-
-from src.api.router import router  # noqa: E402 — .env 로드 이후에 import해야 함
+from src.api.router import router
+from src.api.security import security_middleware
+from src.data.models import Settings
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
@@ -30,12 +21,18 @@ app = FastAPI(
     description="여행 계획 QA 검증 API",
 )
 
+_settings = Settings()
+_cors_origins = [
+    origin.strip() for origin in _settings.cors_allowed_origins.split(",") if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+app.middleware("http")(security_middleware)
 
 app.include_router(router, prefix="/api")
 
@@ -80,16 +77,13 @@ async def health() -> dict:
     데이터 적재 상태를 한 번에 확인하는 용도.
     """
 
-    def _is_set(name: str) -> bool:
-        return bool(os.environ.get(name, "").strip())
-
     apis_configured = {
-        "anthropic": _is_set("ANTHROPIC_API_KEY"),
-        "tour_api": _is_set("TOUR_API_KEY"),
-        "kakao_rest": _is_set("KAKAO_REST_API_KEY"),
-        "kakao_mobility": _is_set("KAKAO_MOBILITY_KEY"),
-        "seoul_data": _is_set("SEOUL_DATA_API_KEY"),
-        "naver": _is_set("NAVER_API_KEY"),
+        "anthropic": bool(_settings.anthropic_api_key.strip()),
+        "tour_api": bool(_settings.tour_api_key.strip()),
+        "kakao_rest": bool(_settings.kakao_rest_api_key.strip()),
+        "kakao_mobility": bool(_settings.kakao_mobility_key.strip()),
+        "seoul_data": bool(_settings.seoul_data_api_key.strip()),
+        "naver": bool(_settings.naver_api_key.strip()),
     }
 
     data_loaded: dict[str, int] = {}
@@ -104,8 +98,10 @@ async def health() -> dict:
     except Exception:  # pragma: no cover - 진단용, 실패해도 health 는 200
         data_loaded = {}
 
+    ready = data_loaded.get("places", 0) > 0 and data_loaded.get("congestion_places", 0) > 0
     return {
-        "status": "ok",
+        "status": "ok" if ready else "degraded",
+        "ready": ready,
         "version": app.version,
         "apis_configured": apis_configured,
         "data_loaded": data_loaded,

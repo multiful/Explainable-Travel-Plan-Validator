@@ -1,11 +1,11 @@
 """Tests for VRPTW validation engine (TDD)."""
+
 from __future__ import annotations
 
-import math
-from typing import Any
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from src.data.models import VRPTWDay, VRPTWPlace, VRPTWRequest, VRPTWResult
 from src.validation.vrptw_engine import (
@@ -20,6 +20,7 @@ from src.validation.vrptw_engine import (
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def make_place(
     name: str = "POI",
@@ -51,6 +52,7 @@ POI_C = make_place("POI_C", 127.3, 37.5, "09:00", "18:00", 60)
 # HaversineMatrix
 # ---------------------------------------------------------------------------
 
+
 class TestHaversineMatrix:
     def test_same_point_is_zero(self):
         m = HaversineMatrix()
@@ -71,6 +73,7 @@ class TestHaversineMatrix:
 # ---------------------------------------------------------------------------
 # CachedRouteMatrix
 # ---------------------------------------------------------------------------
+
 
 class TestCachedRouteMatrix:
     def test_cache_hit(self):
@@ -102,6 +105,7 @@ class TestCachedRouteMatrix:
 # Depot constraint enforcement
 # ---------------------------------------------------------------------------
 
+
 class TestDepotConstraint:
     def _engine_with_haversine(self) -> VRPTWEngine:
         return VRPTWEngine(matrix=HaversineMatrix())
@@ -110,7 +114,7 @@ class TestDepotConstraint:
         """2박3일: day1 last place must be depot."""
         req = VRPTWRequest(
             days=[
-                VRPTWDay(places=[DEPOT, POI_A, POI_B]),   # depot only at start
+                VRPTWDay(places=[DEPOT, POI_A, POI_B]),  # depot only at start
                 VRPTWDay(places=[DEPOT, POI_C, DEPOT]),
                 VRPTWDay(places=[DEPOT, POI_A]),
             ]
@@ -118,8 +122,7 @@ class TestDepotConstraint:
         engine = self._engine_with_haversine()
         result = engine.validate(req)
         has_depot_warning = any(
-            "depot" in d.fact.lower() or "숙소" in d.fact
-            for d in result.deep_dive
+            "depot" in d.fact.lower() or "숙소" in d.fact for d in result.deep_dive
         )
         assert has_depot_warning or result.risk_score < 100
 
@@ -133,7 +136,9 @@ class TestDepotConstraint:
         )
         engine = self._engine_with_haversine()
         result = engine.validate(req)
-        depot_issues = [d for d in result.deep_dive if "depot" in d.fact.lower() or "숙소" in d.fact]
+        depot_issues = [
+            d for d in result.deep_dive if "depot" in d.fact.lower() or "숙소" in d.fact
+        ]
         assert len(depot_issues) >= 1
 
     def test_1n2d_no_depot_constraint_applied(self):
@@ -147,9 +152,9 @@ class TestDepotConstraint:
         engine = self._engine_with_haversine()
         result = engine.validate(req)
         depot_issues = [
-            d for d in result.deep_dive
-            if ("depot" in d.rule.lower() or "depot" in d.fact.lower())
-            and "1박" not in d.fact
+            d
+            for d in result.deep_dive
+            if ("depot" in d.rule.lower() or "depot" in d.fact.lower()) and "1박" not in d.fact
         ]
         assert len(depot_issues) == 0
 
@@ -158,25 +163,24 @@ class TestDepotConstraint:
 # Time window feasibility
 # ---------------------------------------------------------------------------
 
+
 class TestTimeWindowFeasibility:
     def _engine(self) -> VRPTWEngine:
         return VRPTWEngine(matrix=HaversineMatrix())
 
     def test_feasible_schedule_passes(self):
-        req = VRPTWRequest(
-            days=[VRPTWDay(places=[POI_A, POI_B])]
-        )
+        req = VRPTWRequest(days=[VRPTWDay(places=[POI_A, POI_B])])
         engine = self._engine()
         result = engine.validate(req)
-        hard_fails = [d for d in result.deep_dive if d.risk == "CRITICAL" and "time_window" in d.rule.lower()]
+        hard_fails = [
+            d for d in result.deep_dive if d.risk == "CRITICAL" and "time_window" in d.rule.lower()
+        ]
         assert len(hard_fails) == 0
 
     def test_infeasible_close_time_triggers_critical(self):
         """A place that closes at 09:05 — impossible to visit after travel from A."""
         tight = make_place("TightPOI", 127.2, 37.5, "08:00", "09:05", 60)
-        req = VRPTWRequest(
-            days=[VRPTWDay(places=[POI_A, tight])]
-        )
+        req = VRPTWRequest(days=[VRPTWDay(places=[POI_A, tight])])
         engine = self._engine()
         result = engine.validate(req)
         critical = [d for d in result.deep_dive if d.risk == "CRITICAL"]
@@ -187,18 +191,28 @@ class TestTimeWindowFeasibility:
         # POI_A at 127.1, stay 60 min → depart 10:00; near_close ~0.1° away → arrive ~10:20
         # close = 11:00 → margin = 40 min < 60 min → safety_margin warning
         near_close = make_place("NearClose", 127.2, 37.5, "08:00", "11:00", 30)
-        req = VRPTWRequest(
-            days=[VRPTWDay(places=[POI_A, near_close])]
-        )
+        req = VRPTWRequest(days=[VRPTWDay(places=[POI_A, near_close])])
         engine = self._engine()
         result = engine.validate(req)
         safety_issues = [d for d in result.deep_dive if "safety_margin" in d.rule.lower()]
         assert len(safety_issues) >= 1
 
+    def test_request_start_time_is_used(self):
+        late_poi = make_place("Late", 127.0, 37.5, "09:00", "10:00", 30)
+        req = VRPTWRequest(
+            days=[VRPTWDay(places=[late_poi])],
+            start_time="10:30",
+        )
+
+        result = self._engine().validate(req)
+
+        assert any(d.risk == "CRITICAL" for d in result.deep_dive)
+
 
 # ---------------------------------------------------------------------------
 # Efficiency gap
 # ---------------------------------------------------------------------------
+
 
 class TestEfficiencyGap:
     def test_optimal_order_same_as_user_gives_zero_gap(self):
@@ -221,6 +235,7 @@ class TestEfficiencyGap:
 # ---------------------------------------------------------------------------
 # Fatigue score
 # ---------------------------------------------------------------------------
+
 
 class TestFatigueScore:
     def test_12h_schedule_no_fatigue_penalty(self):
@@ -253,13 +268,20 @@ class TestFatigueScore:
 # OR-Tools graceful degradation
 # ---------------------------------------------------------------------------
 
+
 class TestORToolsDegradation:
     def test_missing_ortools_still_returns_result(self):
         """When ortools is not available, engine still returns a VRPTWResult."""
         req = VRPTWRequest(days=[VRPTWDay(places=[POI_A, POI_B])])
-        with patch.dict("sys.modules", {"ortools": None, "ortools.constraint_solver": None,
-                                         "ortools.constraint_solver.routing_enums_pb2": None,
-                                         "ortools.constraint_solver.pywrapcsp": None}):
+        with patch.dict(
+            "sys.modules",
+            {
+                "ortools": None,
+                "ortools.constraint_solver": None,
+                "ortools.constraint_solver.routing_enums_pb2": None,
+                "ortools.constraint_solver.pywrapcsp": None,
+            },
+        ):
             # Re-import engine in patched context is complex; instead directly test the
             # fallback path by calling with ortools_available=False
             engine = VRPTWEngine(matrix=HaversineMatrix(), ortools_available=False)
@@ -273,6 +295,7 @@ class TestORToolsDegradation:
 # ---------------------------------------------------------------------------
 # Risk score bounds
 # ---------------------------------------------------------------------------
+
 
 class TestRiskScore:
     def test_risk_score_in_0_100(self):
@@ -295,6 +318,7 @@ class TestRiskScore:
 # Constants are tunable
 # ---------------------------------------------------------------------------
 
+
 def test_constants_accessible():
     assert EFFICIENCY_GAP_THRESHOLD == 0.20
     assert FATIGUE_HOURS_LIMIT == 12
@@ -305,38 +329,46 @@ def test_constants_accessible():
 # Pydantic model validation
 # ---------------------------------------------------------------------------
 
+
 class TestModelValidation:
     def test_invalid_lat_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             VRPTWPlace(name="X", lng=127.0, lat=91.0, open="09:00", close="18:00", stay_duration=60)
 
     def test_invalid_lng_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             VRPTWPlace(name="X", lng=181.0, lat=37.0, open="09:00", close="18:00", stay_duration=60)
 
     def test_invalid_time_format_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             VRPTWPlace(name="X", lng=127.0, lat=37.0, open="9:00", close="18:00", stay_duration=60)
 
     def test_invalid_time_value_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             VRPTWPlace(name="X", lng=127.0, lat=37.0, open="25:00", close="18:00", stay_duration=60)
 
     def test_negative_stay_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             VRPTWPlace(name="X", lng=127.0, lat=37.0, open="09:00", close="18:00", stay_duration=-1)
 
     def test_zero_stay_allowed_for_depot(self):
-        p = VRPTWPlace(name="Hotel", lng=127.0, lat=37.0, open="00:00", close="23:59",
-                       stay_duration=0, is_depot=True)
+        p = VRPTWPlace(
+            name="Hotel",
+            lng=127.0,
+            lat=37.0,
+            open="00:00",
+            close="23:59",
+            stay_duration=0,
+            is_depot=True,
+        )
         assert p.stay_duration == 0
 
     def test_empty_day_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             VRPTWDay(places=[])
 
     def test_empty_days_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             VRPTWRequest(days=[])
 
     def test_open_minutes_property(self):
@@ -351,6 +383,7 @@ class TestModelValidation:
 # ---------------------------------------------------------------------------
 # Efficiency gap over threshold triggers deep_dive entry
 # ---------------------------------------------------------------------------
+
 
 class TestEfficiencyGapThreshold:
     def test_gap_over_threshold_adds_warning(self):
@@ -372,6 +405,7 @@ class TestEfficiencyGapThreshold:
 # ---------------------------------------------------------------------------
 # Multi-day result structure
 # ---------------------------------------------------------------------------
+
 
 class TestMultiDayResult:
     def test_multi_day_returns_per_day_comparison(self):
@@ -412,17 +446,19 @@ class TestMultiDayResult:
 # Summary string
 # ---------------------------------------------------------------------------
 
+
 def test_summary_contains_score():
     req = VRPTWRequest(days=[VRPTWDay(places=[POI_A, POI_B])])
     engine = VRPTWEngine(matrix=HaversineMatrix())
     result = engine.validate(req)
     assert str(result.risk_score) in result.summary
-    assert ("PASS" in result.summary or "FAIL" in result.summary)
+    assert "PASS" in result.summary or "FAIL" in result.summary
 
 
 # ---------------------------------------------------------------------------
 # DeepDiveItem structure
 # ---------------------------------------------------------------------------
+
 
 def test_deep_dive_items_have_all_fields():
     """Every DeepDiveItem must have non-empty fact, rule, risk, suggestion."""
@@ -441,9 +477,11 @@ def test_deep_dive_items_have_all_fields():
 # CachedRouteMatrix.from_file (uses actual cache_route.json)
 # ---------------------------------------------------------------------------
 
+
 def test_cached_matrix_from_actual_file():
     """Smoke test: load real cache_route.json and verify at least one hit."""
     import os
+
     cache_path = os.path.join(
         os.path.dirname(__file__), "..", "phases", "0-setup", "cache_route.json"
     )

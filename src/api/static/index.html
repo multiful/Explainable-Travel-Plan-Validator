@@ -3141,7 +3141,11 @@ function renderResult(d) {
   // Repair
   var rep=d.repair_suggestions;
   if(rep&&!isRepEmpty(rep)){
-    html+='<div id="res-repair" class="rcard"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><h3>이렇게 바꿔보면 어떨까요?</h3></div><div class="rcard-body">';
+    var repCount=(rep.reorders||[]).length+(rep.time_tunes||[]).length+(rep.deletions||[]).length;
+    var repTotalGain=rep.total_estimated_gain||0;
+    html+='<div id="res-repair" class="rcard"><div class="rcard-head"><div class="rcard-head-icon rcard-icon-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><h3>이렇게 바꿔보면 어떨까요?</h3>'+
+      (repCount>1&&repTotalGain>0?'<span class="rep-gain">전부 적용 시 +'+repTotalGain+'점 예상</span>':'')+
+      '</div><div class="rcard-body">';
     (rep.reorders||[]).forEach(function(ro){
       var firstPoi=(ro.suggested_order||[])[0];
       html+='<div class="rep-item">'+

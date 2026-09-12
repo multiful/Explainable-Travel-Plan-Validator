@@ -10,6 +10,7 @@ Hard Fail이 있으면 빈 리스트 반환 (칭찬 불필요).
   - purpose_fit ≥ 0.80  → 여행 테마 일치
   - n_warnings == 0     → 경고 없음
 """
+
 from __future__ import annotations
 
 from src.data.models import Scores
@@ -55,9 +56,7 @@ def generate_rewards(
         )
 
     if scores.purpose_fit >= PURPOSE_FIT_EXCELLENT:
-        messages.append(
-            "선택하신 장소들이 여행 목적에 잘 맞습니다. 테마에 집중된 알찬 일정이에요."
-        )
+        messages.append("선택하신 장소들이 여행 목적에 잘 맞습니다. 테마에 집중된 알찬 일정이에요.")
 
     if n_warnings == 0:
         messages.append(

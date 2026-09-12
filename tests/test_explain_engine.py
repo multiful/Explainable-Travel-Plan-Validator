@@ -1,10 +1,9 @@
 """Tests for ExplainEngine (TDD) — LLM은 mock으로 대체."""
+
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from src.data.models import (
     AlternativePOI,
@@ -26,10 +25,10 @@ from src.explain.explain_engine import (
     _parse_llm_response,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_plan() -> ItineraryPlan:
     return ItineraryPlan(
@@ -63,19 +62,25 @@ def make_warning() -> Warning:
 
 
 def make_graph_stub(with_nearby: bool = True) -> MagicMock:
-    """GraphRetriever 스텁 — 실제 Neo4j 연결 없이 성산일출봉 검색 결과를 흉내낸다."""
+    """근거 리트리버 스텁 — 외부 서비스 없이 장소 검색 결과를 흉내낸다."""
     graph = MagicMock()
     graph.enabled = True
     graph.search_places.return_value = [
         PlaceEvidence(
-            place_id="kakao_1", name="성산일출봉", place_type="ACTIVITY",
-            category_name="자연관광지", region_name="성산읍",
-            address="제주 서귀포시 성산읍", lat=33.458, lng=126.942,
+            place_id="kakao_1",
+            name="성산일출봉",
+            place_type="ACTIVITY",
+            category_name="자연관광지",
+            region_name="성산읍",
+            address="제주 서귀포시 성산읍",
+            lat=33.458,
+            lng=126.942,
         )
     ]
     graph.find_nearby.return_value = (
         [AlternativePOI(name="우도", distance_km=0.25, category="자연관광지", lat=33.5, lng=126.95)]
-        if with_nearby else []
+        if with_nearby
+        else []
     )
     return graph
 
@@ -89,6 +94,7 @@ def make_disabled_graph_stub() -> MagicMock:
 # ---------------------------------------------------------------------------
 # _cache_key
 # ---------------------------------------------------------------------------
+
 
 class TestCacheKey:
     def test_same_inputs_same_key(self):
@@ -116,6 +122,7 @@ class TestCacheKey:
 # ---------------------------------------------------------------------------
 # _graph_context
 # ---------------------------------------------------------------------------
+
 
 class TestGraphContext:
     def test_none_graph_returns_none(self):
@@ -151,6 +158,7 @@ class TestGraphContext:
 # _build_user_prompt
 # ---------------------------------------------------------------------------
 
+
 class TestBuildUserPrompt:
     def test_contains_plan_info(self):
         prompt = _build_user_prompt([], [], {}, {}, None, make_plan(), 80)
@@ -181,7 +189,13 @@ class TestBuildUserPrompt:
 
     def test_graph_evidence_included_when_matched(self):
         prompt = _build_user_prompt(
-            [make_hard_fail()], [], {}, {}, None, make_plan(), 45,
+            [make_hard_fail()],
+            [],
+            {},
+            {},
+            None,
+            make_plan(),
+            45,
             graph=make_graph_stub(),
         )
         assert "지식그래프_근거" in prompt
@@ -207,7 +221,9 @@ class TestBuildUserPrompt:
         assert "경복궁" in prompt
 
     def test_no_day_index_omits_day_field(self):
-        prompt = _build_user_prompt([make_hard_fail()], [make_warning()], {}, {}, None, make_plan(), 45)
+        prompt = _build_user_prompt(
+            [make_hard_fail()], [make_warning()], {}, {}, None, make_plan(), 45
+        )
         assert "일자" not in prompt.split("출력 예시")[0]
 
     def test_warning_graph_evidence_uses_first_poi_name(self):
@@ -222,56 +238,102 @@ class TestBuildUserPrompt:
 # _parse_llm_response
 # ---------------------------------------------------------------------------
 
+
 class TestParseLlmResponse:
     def test_parses_valid_json_array(self):
-        raw = json.dumps([{
-            "item_type": "hard_fail",
-            "item_key": "OPERATING_HOURS_CONFLICT",
-            "fact": "경복궁 도착 18:30, 운영 종료 18:00",
-            "rule": "운영시간 외 방문 불가",
-            "risk": "CRITICAL",
-            "suggestion": "방문 순서를 앞당기세요",
-        }])
+        raw = json.dumps(
+            [
+                {
+                    "item_type": "hard_fail",
+                    "item_key": "OPERATING_HOURS_CONFLICT",
+                    "fact": "경복궁 도착 18:30, 운영 종료 18:00",
+                    "rule": "운영시간 외 방문 불가",
+                    "risk": "CRITICAL",
+                    "suggestion": "방문 순서를 앞당기세요",
+                }
+            ]
+        )
         items = _parse_llm_response(raw)
         assert len(items) == 1
         assert items[0].item_type == "hard_fail"
         assert items[0].risk == "CRITICAL"
 
     def test_strips_code_block_wrapper(self):
-        raw = "```json\n[{\"item_type\":\"overall\",\"item_key\":\"summary\",\"fact\":\"점수 80\",\"rule\":\"규칙\",\"risk\":\"OK\",\"suggestion\":\"좋음\"}]\n```"
+        raw = '```json\n[{"item_type":"overall","item_key":"summary","fact":"점수 80","rule":"규칙","risk":"OK","suggestion":"좋음"}]\n```'
         items = _parse_llm_response(raw)
         assert len(items) == 1
         assert items[0].risk == "OK"
 
     def test_multiple_items(self):
-        raw = json.dumps([
-            {"item_type": "hard_fail", "item_key": "HF1", "fact": "f", "rule": "r", "risk": "CRITICAL", "suggestion": "s"},
-            {"item_type": "warning", "item_key": "W1", "fact": "f", "rule": "r", "risk": "WARNING", "suggestion": "s"},
-        ])
+        raw = json.dumps(
+            [
+                {
+                    "item_type": "hard_fail",
+                    "item_key": "HF1",
+                    "fact": "f",
+                    "rule": "r",
+                    "risk": "CRITICAL",
+                    "suggestion": "s",
+                },
+                {
+                    "item_type": "warning",
+                    "item_key": "W1",
+                    "fact": "f",
+                    "rule": "r",
+                    "risk": "WARNING",
+                    "suggestion": "s",
+                },
+            ]
+        )
         items = _parse_llm_response(raw)
         assert len(items) == 2
 
     def test_returns_explanation_items(self):
-        raw = json.dumps([{
-            "item_type": "overall", "item_key": "summary",
-            "fact": "fact", "rule": "rule", "risk": "OK", "suggestion": "sug",
-        }])
+        raw = json.dumps(
+            [
+                {
+                    "item_type": "overall",
+                    "item_key": "summary",
+                    "fact": "fact",
+                    "rule": "rule",
+                    "risk": "OK",
+                    "suggestion": "sug",
+                }
+            ]
+        )
         items = _parse_llm_response(raw)
         assert all(isinstance(i, ExplanationItem) for i in items)
 
     def test_day_index_echoed_back(self):
-        raw = json.dumps([{
-            "item_type": "hard_fail", "item_key": "OPERATING_HOURS_CONFLICT", "day_index": 1,
-            "fact": "f", "rule": "r", "risk": "CRITICAL", "suggestion": "s",
-        }])
+        raw = json.dumps(
+            [
+                {
+                    "item_type": "hard_fail",
+                    "item_key": "OPERATING_HOURS_CONFLICT",
+                    "day_index": 1,
+                    "fact": "f",
+                    "rule": "r",
+                    "risk": "CRITICAL",
+                    "suggestion": "s",
+                }
+            ]
+        )
         items = _parse_llm_response(raw)
         assert items[0].day_index == 1
 
     def test_missing_day_index_defaults_to_none(self):
-        raw = json.dumps([{
-            "item_type": "overall", "item_key": "summary",
-            "fact": "f", "rule": "r", "risk": "OK", "suggestion": "s",
-        }])
+        raw = json.dumps(
+            [
+                {
+                    "item_type": "overall",
+                    "item_key": "summary",
+                    "fact": "f",
+                    "rule": "r",
+                    "risk": "OK",
+                    "suggestion": "s",
+                }
+            ]
+        )
         items = _parse_llm_response(raw)
         assert items[0].day_index is None
 
@@ -279,6 +341,7 @@ class TestParseLlmResponse:
 # ---------------------------------------------------------------------------
 # _fallback
 # ---------------------------------------------------------------------------
+
 
 class TestFallback:
     def test_hard_fail_becomes_critical(self):
@@ -348,6 +411,7 @@ class TestFallback:
 # ExplainEngine (no LLM)
 # ---------------------------------------------------------------------------
 
+
 class TestExplainEngineNoLLM:
     def setup_method(self):
         # API 키 없이 인스턴스 — fallback 경로 테스트
@@ -371,8 +435,13 @@ class TestExplainEngineNoLLM:
 
     def test_no_issues_returns_ok_overall(self):
         result = self.engine.generate(
-            hard_fails=[], warnings=[], penalty_breakdown={},
-            bonus_breakdown={}, scores=make_scores(), plan=make_plan(), final_score=82,
+            hard_fails=[],
+            warnings=[],
+            penalty_breakdown={},
+            bonus_breakdown={},
+            scores=make_scores(),
+            plan=make_plan(),
+            final_score=82,
         )
         assert len(result) == 1
         assert result[0].item_type == "overall"
@@ -380,24 +449,39 @@ class TestExplainEngineNoLLM:
 
     def test_hard_fail_present_in_results(self):
         result = self.engine.generate(
-            hard_fails=[make_hard_fail()], warnings=[], penalty_breakdown={},
-            bonus_breakdown={}, scores=None, plan=make_plan(), final_score=45,
+            hard_fails=[make_hard_fail()],
+            warnings=[],
+            penalty_breakdown={},
+            bonus_breakdown={},
+            scores=None,
+            plan=make_plan(),
+            final_score=45,
         )
         hf_items = [i for i in result if i.item_type == "hard_fail"]
         assert len(hf_items) >= 1
 
     def test_warning_present_in_results(self):
         result = self.engine.generate(
-            hard_fails=[], warnings=[make_warning()], penalty_breakdown={},
-            bonus_breakdown={}, scores=None, plan=make_plan(), final_score=70,
+            hard_fails=[],
+            warnings=[make_warning()],
+            penalty_breakdown={},
+            bonus_breakdown={},
+            scores=None,
+            plan=make_plan(),
+            final_score=70,
         )
         w_items = [i for i in result if i.item_type == "warning"]
         assert len(w_items) >= 1
 
     def test_penalty_present_in_results(self):
         result = self.engine.generate(
-            hard_fails=[], warnings=[], penalty_breakdown={"cluster_dispersion": 10},
-            bonus_breakdown={}, scores=None, plan=make_plan(), final_score=70,
+            hard_fails=[],
+            warnings=[],
+            penalty_breakdown={"cluster_dispersion": 10},
+            bonus_breakdown={},
+            scores=None,
+            plan=make_plan(),
+            final_score=70,
         )
         p_items = [i for i in result if i.item_type == "penalty"]
         assert len(p_items) >= 1
@@ -406,6 +490,7 @@ class TestExplainEngineNoLLM:
 # ---------------------------------------------------------------------------
 # ExplainEngine — LLM mock 경로
 # ---------------------------------------------------------------------------
+
 
 class TestExplainEngineMockLLM:
     def _make_mock_client(self, response_json: list[dict]):
@@ -419,25 +504,33 @@ class TestExplainEngineMockLLM:
         return client
 
     def test_llm_response_used_when_available(self):
-        llm_output = [{
-            "item_type": "hard_fail",
-            "item_key": "OPERATING_HOURS_CONFLICT",
-            "fact": "경복궁 도착 18:30, 운영종료 18:00 — 30분 초과",
-            "rule": "운영시간 외 방문 불가 (Hard Fail)",
-            "risk": "CRITICAL",
-            "suggestion": "방문 순서를 오전으로 앞당기세요.",
-        }, {
-            "item_type": "overall",
-            "item_key": "summary",
-            "fact": "최종 점수 45/100",
-            "rule": "60점 미만은 FAIL",
-            "risk": "CRITICAL",
-            "suggestion": "Hard Fail 해결 후 재검증하세요.",
-        }]
+        llm_output = [
+            {
+                "item_type": "hard_fail",
+                "item_key": "OPERATING_HOURS_CONFLICT",
+                "fact": "경복궁 도착 18:30, 운영종료 18:00 — 30분 초과",
+                "rule": "운영시간 외 방문 불가 (Hard Fail)",
+                "risk": "CRITICAL",
+                "suggestion": "방문 순서를 오전으로 앞당기세요.",
+            },
+            {
+                "item_type": "overall",
+                "item_key": "summary",
+                "fact": "최종 점수 45/100",
+                "rule": "60점 미만은 FAIL",
+                "risk": "CRITICAL",
+                "suggestion": "Hard Fail 해결 후 재검증하세요.",
+            },
+        ]
         engine = ExplainEngine(api_key="test-key", client=self._make_mock_client(llm_output))
         result = engine.generate(
-            hard_fails=[make_hard_fail()], warnings=[], penalty_breakdown={},
-            bonus_breakdown={}, scores=None, plan=make_plan(), final_score=45,
+            hard_fails=[make_hard_fail()],
+            warnings=[],
+            penalty_breakdown={},
+            bonus_breakdown={},
+            scores=None,
+            plan=make_plan(),
+            final_score=45,
         )
         assert len(result) == 2
         assert result[0].fact == "경복궁 도착 18:30, 운영종료 18:00 — 30분 초과"
@@ -447,20 +540,32 @@ class TestExplainEngineMockLLM:
         client.messages.create.side_effect = Exception("API timeout")
         engine = ExplainEngine(api_key="test-key", client=client)
         result = engine.generate(
-            hard_fails=[make_hard_fail()], warnings=[], penalty_breakdown={},
-            bonus_breakdown={}, scores=None, plan=make_plan(), final_score=45,
+            hard_fails=[make_hard_fail()],
+            warnings=[],
+            penalty_breakdown={},
+            bonus_breakdown={},
+            scores=None,
+            plan=make_plan(),
+            final_score=45,
         )
         assert len(result) >= 1
         assert all(isinstance(i, ExplanationItem) for i in result)
 
     def test_cache_prevents_second_llm_call(self):
         import src.explain.explain_engine as ee
+
         ee._CACHE.clear()  # 모듈 단위 캐시 초기화 — 타 테스트와 격리
 
-        llm_output = [{
-            "item_type": "overall", "item_key": "summary",
-            "fact": "f", "rule": "r", "risk": "CRITICAL", "suggestion": "s",
-        }]
+        llm_output = [
+            {
+                "item_type": "overall",
+                "item_key": "summary",
+                "fact": "f",
+                "rule": "r",
+                "risk": "CRITICAL",
+                "suggestion": "s",
+            }
+        ]
         client = self._make_mock_client(llm_output)
         engine = ExplainEngine(api_key="test-key", client=client)
         # 동일 입력으로 두 번 호출
@@ -476,17 +581,29 @@ class TestExplainEngineMockLLM:
 
     def test_graph_evidence_reaches_llm_prompt(self):
         import src.explain.explain_engine as ee
+
         ee._CACHE.clear()
 
-        llm_output = [{
-            "item_type": "hard_fail", "item_key": "OPERATING_HOURS_CONFLICT",
-            "fact": "f", "rule": "r", "risk": "CRITICAL", "suggestion": "s",
-        }]
+        llm_output = [
+            {
+                "item_type": "hard_fail",
+                "item_key": "OPERATING_HOURS_CONFLICT",
+                "fact": "f",
+                "rule": "r",
+                "risk": "CRITICAL",
+                "suggestion": "s",
+            }
+        ]
         client = self._make_mock_client(llm_output)
         engine = ExplainEngine(api_key="test-key", client=client, graph_retriever=make_graph_stub())
         engine.generate(
-            hard_fails=[make_hard_fail()], warnings=[], penalty_breakdown={},
-            bonus_breakdown={}, scores=None, plan=make_plan(), final_score=45,
+            hard_fails=[make_hard_fail()],
+            warnings=[],
+            penalty_breakdown={},
+            bonus_breakdown={},
+            scores=None,
+            plan=make_plan(),
+            final_score=45,
         )
         sent_prompt = client.messages.create.call_args.kwargs["messages"][0]["content"]
         assert "지식그래프_근거" in sent_prompt
@@ -494,15 +611,16 @@ class TestExplainEngineMockLLM:
 
 
 class TestExplainEngineGraphDefault:
-    def test_default_graph_disabled_without_env(self, monkeypatch):
+    def test_default_graph_uses_local_catalog_without_env(self, monkeypatch):
         monkeypatch.delenv("NEO4J_URI", raising=False)
         engine = ExplainEngine(api_key="", client=None)
-        assert engine._graph.enabled is False
+        assert engine._graph.enabled is True
 
 
 # ---------------------------------------------------------------------------
 # ExplainEngine.build_alternatives — Hard Fail POI 지식그래프 대안 제안
 # ---------------------------------------------------------------------------
+
 
 class TestBuildAlternatives:
     def test_no_hard_fails_returns_empty(self):

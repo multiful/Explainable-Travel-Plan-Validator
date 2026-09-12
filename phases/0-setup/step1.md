@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: d85cf863 | summary: src/ 전체 모듈 스텁 파일 생성 (새 아키텍처 기준) -->
+<!-- updated: 2026-09-12 | hash: aeb253c9 | summary: src/ 전체 모듈 스텁 파일 생성 (새 아키텍처 기준) -->
 # Step 1: src-scaffold
 
 ## 읽어야 할 파일

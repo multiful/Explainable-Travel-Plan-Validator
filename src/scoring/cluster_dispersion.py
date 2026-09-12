@@ -14,9 +14,10 @@
       eps=2.0km (도보 25분). sklearn 없으면 자동 스킵.
       per-request 즉석 계산 (4~8 POI → <1ms, DB 사전 클러스터링 불필요).
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from src.data.models import DeepDiveItem, VRPTWDay, VRPTWPlace
 from src.utils.geo import haversine_km as _haversine_km
@@ -24,6 +25,7 @@ from src.utils.geo import haversine_km as _haversine_km
 try:
     import numpy as np
     from sklearn.cluster import DBSCAN as _DBSCAN
+
     _SKLEARN_AVAILABLE = True
 except ImportError:
     _SKLEARN_AVAILABLE = False
@@ -55,7 +57,7 @@ GEO_BT_WARN: int = 1
 GEO_BT_CRIT: int = 2
 PENALTY_GEO_BT_WARN: int = 5
 PENALTY_GEO_BT_CRIT: int = 10
-DBSCAN_EPS_KM: float = 2.0   # 도보 25분 ≈ 2km
+DBSCAN_EPS_KM: float = 2.0  # 도보 25분 ≈ 2km
 
 # ── 합산 캡 ──────────────────────────────────────────────────────────
 COMBINED_PENALTY_CAP: int = 20
@@ -104,21 +106,22 @@ def count_geo_cluster_backtracks(
         return 0
     coords = np.radians([[p.lat, p.lng] for p in places])
     eps_rad = eps_km / _EARTH_R_KM
-    labels: list[int] = _DBSCAN(
-        eps=eps_rad, min_samples=1, metric="haversine"
-    ).fit_predict(coords).tolist()
+    labels: list[int] = (
+        _DBSCAN(eps=eps_rad, min_samples=1, metric="haversine").fit_predict(coords).tolist()
+    )
     return _count_label_backtracks(labels)
 
 
 @dataclass(frozen=True)
 class DayDispersionMetric:
     """일자별 밀집도 측정."""
+
     day_index: int
     sigungu_switches: int
     max_pairwise_km: float
     sigungu_codes_visited: list[str]
-    area_backtrack_count: int = 0       # M3 시군구 기반
-    geo_cluster_backtrack: int = 0      # M4 DBSCAN 지리 기반
+    area_backtrack_count: int = 0  # M3 시군구 기반
+    geo_cluster_backtrack: int = 0  # M4 DBSCAN 지리 기반
 
 
 @dataclass(frozen=True)
@@ -136,7 +139,7 @@ def _compute_day_dispersion(
     """하루 일정의 네 메트릭 계산."""
     # ── M1 ──
     sigungus: list[str] = [c for c in (sigungu_codes or []) if c]
-    switches = sum(1 for a, b in zip(sigungus, sigungus[1:]) if a != b)
+    switches = sum(1 for a, b in zip(sigungus, sigungus[1:], strict=False) if a != b)
 
     # ── M2 ──
     max_dist = 0.0
@@ -212,71 +215,82 @@ def evaluate_cluster_dispersion(
     total_penalty = 0
 
     for idx, day in enumerate(days):
-        sg = sigungu_codes_per_day[idx] if sigungu_codes_per_day and idx < len(sigungu_codes_per_day) else None
+        sg = (
+            sigungu_codes_per_day[idx]
+            if sigungu_codes_per_day and idx < len(sigungu_codes_per_day)
+            else None
+        )
         metric = _compute_day_dispersion(idx, day.places, sg)
         per_day.append(metric)
 
-        sw_pen  = _switch_penalty(metric.sigungu_switches)
-        ds_pen  = _distance_penalty(metric.max_pairwise_km)
-        bt_pen  = _backtrack_penalty(metric.area_backtrack_count)
+        sw_pen = _switch_penalty(metric.sigungu_switches)
+        ds_pen = _distance_penalty(metric.max_pairwise_km)
+        bt_pen = _backtrack_penalty(metric.area_backtrack_count)
         geo_pen = _geo_bt_penalty(metric.geo_cluster_backtrack, metric.area_backtrack_count)
 
         day_penalty = min(sw_pen + ds_pen + bt_pen + geo_pen, COMBINED_PENALTY_CAP)
         total_penalty += day_penalty
 
         if bt_pen > 0:
-            deep_dive.append(DeepDiveItem(
-                fact=(
-                    f"{idx + 1}일차 구역 백트래킹 {metric.area_backtrack_count}회 탐지 "
-                    f"(이미 방문한 시군구에 다시 되돌아옴)"
-                ),
-                rule="area_backtrack",
-                risk="WARNING" if bt_pen == PENALTY_BACKTRACK_WARN else "CRITICAL",
-                suggestion=(
-                    "이미 방문한 지역으로 되돌아가는 동선이 있습니다. "
-                    "같은 구역 방문을 연속으로 묶어 이동 낭비를 줄이세요."
-                ),
-            ))
+            deep_dive.append(
+                DeepDiveItem(
+                    fact=(
+                        f"{idx + 1}일차 구역 백트래킹 {metric.area_backtrack_count}회 탐지 "
+                        f"(이미 방문한 시군구에 다시 되돌아옴)"
+                    ),
+                    rule="area_backtrack",
+                    risk="WARNING" if bt_pen == PENALTY_BACKTRACK_WARN else "CRITICAL",
+                    suggestion=(
+                        "이미 방문한 지역으로 되돌아가는 동선이 있습니다. "
+                        "같은 구역 방문을 연속으로 묶어 이동 낭비를 줄이세요."
+                    ),
+                )
+            )
         if geo_pen > 0:
-            deep_dive.append(DeepDiveItem(
-                fact=(
-                    f"{idx + 1}일차 지리적 클러스터 백트래킹 {metric.geo_cluster_backtrack}회 탐지 "
-                    f"(같은 시군구 내 지리적으로 분산된 구역 간 왕복)"
-                ),
-                rule="geo_cluster_backtrack",
-                risk="WARNING" if geo_pen == PENALTY_GEO_BT_WARN else "CRITICAL",
-                suggestion=(
-                    "같은 행정구역 안에서도 멀리 떨어진 장소를 왕복하고 있습니다. "
-                    "인접한 장소끼리 묶어 방문 순서를 재배치하세요."
-                ),
-            ))
+            deep_dive.append(
+                DeepDiveItem(
+                    fact=(
+                        f"{idx + 1}일차 지리적 클러스터 백트래킹 {metric.geo_cluster_backtrack}회 탐지 "
+                        f"(같은 시군구 내 지리적으로 분산된 구역 간 왕복)"
+                    ),
+                    rule="geo_cluster_backtrack",
+                    risk="WARNING" if geo_pen == PENALTY_GEO_BT_WARN else "CRITICAL",
+                    suggestion=(
+                        "같은 행정구역 안에서도 멀리 떨어진 장소를 왕복하고 있습니다. "
+                        "인접한 장소끼리 묶어 방문 순서를 재배치하세요."
+                    ),
+                )
+            )
         if sw_pen > 0:
-            deep_dive.append(DeepDiveItem(
-                fact=(
-                    f"{idx + 1}일차 시군구 전환 {metric.sigungu_switches}회 "
-                    f"(방문: {', '.join(metric.sigungu_codes_visited)})"
-                ),
-                rule="cluster_dispersion_switches",
-                risk="WARNING" if sw_pen == PENALTY_SWITCH_WARN else "CRITICAL",
-                suggestion=(
-                    "하루 안에 너무 많은 시군구를 이동합니다. "
-                    "같은 지역 내 장소로 묶어주세요."
-                ),
-            ))
+            deep_dive.append(
+                DeepDiveItem(
+                    fact=(
+                        f"{idx + 1}일차 시군구 전환 {metric.sigungu_switches}회 "
+                        f"(방문: {', '.join(metric.sigungu_codes_visited)})"
+                    ),
+                    rule="cluster_dispersion_switches",
+                    risk="WARNING" if sw_pen == PENALTY_SWITCH_WARN else "CRITICAL",
+                    suggestion=(
+                        "하루 안에 너무 많은 시군구를 이동합니다. 같은 지역 내 장소로 묶어주세요."
+                    ),
+                )
+            )
         if ds_pen > 0:
             risk = "CRITICAL" if ds_pen == PENALTY_DIST_CRIT else "WARNING"
-            deep_dive.append(DeepDiveItem(
-                fact=(
-                    f"{idx + 1}일차 최대 직선거리 {metric.max_pairwise_km}km "
-                    f"({len(day.places)}개 장소)"
-                ),
-                rule="cluster_dispersion_distance",
-                risk=risk,  # type: ignore[arg-type]
-                suggestion=(
-                    "하루 안에 멀리 떨어진 장소들이 섞여 있습니다. "
-                    "1일차는 목적지 근처에 집중하고, 다른 지역은 다른 날로 분리하세요."
-                ),
-            ))
+            deep_dive.append(
+                DeepDiveItem(
+                    fact=(
+                        f"{idx + 1}일차 최대 직선거리 {metric.max_pairwise_km}km "
+                        f"({len(day.places)}개 장소)"
+                    ),
+                    rule="cluster_dispersion_distance",
+                    risk=risk,  # type: ignore[arg-type]
+                    suggestion=(
+                        "하루 안에 멀리 떨어진 장소들이 섞여 있습니다. "
+                        "1일차는 목적지 근처에 집중하고, 다른 지역은 다른 날로 분리하세요."
+                    ),
+                )
+            )
 
     return ClusterDispersionReport(
         per_day=per_day,

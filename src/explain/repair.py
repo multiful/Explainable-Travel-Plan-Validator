@@ -8,6 +8,7 @@
 이 엔진은 '장소 대체(substitution)'를 수행하지 않는다.
 사용자가 선택한 POI 목록을 보존하며 제약 조건만을 최적화하는 수학적 교정 도구다.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -22,9 +23,9 @@ from src.data.restaurant_catalog import RestaurantCatalog
 from src.utils.geo import build_dist_cache, get_travel_min, haversine_km
 from src.validation.hard_fail import HardFailDetector
 
-_MAX_PERM_N: int = 7       # 7! = 5040 — 탐색 허용 상한
-_MIN_DWELL_RATIO: float = 0.5   # 최소 체류 = 원래의 50%
-_MIN_DWELL_ABS: int = 20        # 절대 최솟값 20분
+_MAX_PERM_N: int = 7  # 7! = 5040 — 탐색 허용 상한
+_MIN_DWELL_RATIO: float = 0.5  # 최소 체류 = 원래의 50%
+_MIN_DWELL_ABS: int = 20  # 절대 최솟값 20분
 
 
 def _norm(name: str) -> str:
@@ -80,8 +81,22 @@ class RepairResult:
     def is_empty(self) -> bool:
         return not (self.reorders or self.time_tunes or self.deletions)
 
+    @property
+    def total_estimated_gain(self) -> int:
+        """모든 제안을 적용했을 때 예상 총 점수 상승분.
+
+        같은 날짜의 제안들은 서로 대안(하나만 적용)이므로 최댓값만 취하고,
+        서로 다른 날짜의 제안은 독립적이므로 합산한다.
+        """
+        per_day: dict[int, int] = {}
+        for sug in (*self.reorders, *self.time_tunes, *self.deletions):
+            per_day[sug.day_index] = max(per_day.get(sug.day_index, 0), sug.estimated_score_gain)
+        return sum(per_day.values())
+
     def to_dict(self) -> dict:
-        return dataclasses.asdict(self)
+        d = dataclasses.asdict(self)
+        d["total_estimated_gain"] = self.total_estimated_gain
+        return d
 
 
 class RepairEngine:
@@ -194,8 +209,7 @@ class RepairEngine:
             return None
 
         saved = sum(
-            poi.duration_min - adjustments[poi.name]
-            for poi in pois if poi.name in adjustments
+            poi.duration_min - adjustments[poi.name] for poi in pois if poi.name in adjustments
         )
         return TimeTuneSuggestion(
             day_index=day_idx,
@@ -224,7 +238,7 @@ class RepairEngine:
         max_savings = -1.0
         best_idx = -1
 
-        for i, poi in enumerate(pois):
+        for i, _poi in enumerate(pois):
             before = pois[i - 1] if i > 0 else None
             after = pois[i + 1] if i < len(pois) - 1 else None
 
@@ -236,7 +250,8 @@ class RepairEngine:
 
             bypass = (
                 haversine_km(before.lat, before.lng, after.lat, after.lng)
-                if before and after else 0.0
+                if before and after
+                else 0.0
             )
 
             savings = detour - bypass
@@ -256,7 +271,9 @@ class RepairEngine:
         )
         if nearby:
             reason += (
-                " 대신 근처 음식점 " + ", ".join(f"{a.name}({a.distance_km}km)" for a in nearby) + "을(를) 추천합니다."
+                " 대신 근처 음식점 "
+                + ", ".join(f"{a.name}({a.distance_km}km)" for a in nearby)
+                + "을(를) 추천합니다."
             )
         else:
             reason += " 반경 2km 내 대체 가능한 음식점을 찾지 못했습니다."

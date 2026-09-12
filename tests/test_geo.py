@@ -1,4 +1,5 @@
 """Tests for src/utils/geo.py (TDD)."""
+
 from __future__ import annotations
 
 import pytest
@@ -9,9 +10,12 @@ from src.utils.geo import build_dist_cache, get_travel_min, haversine_km, nn_heu
 
 def make_poi(poi_id: str, lat: float, lng: float) -> POI:
     return POI(
-        poi_id=poi_id, name=poi_id,
-        lat=lat, lng=lng,
-        open_start="09:00", open_end="18:00",
+        poi_id=poi_id,
+        name=poi_id,
+        lat=lat,
+        lng=lng,
+        open_start="09:00",
+        open_end="18:00",
         duration_min=60,
     )
 
@@ -19,6 +23,7 @@ def make_poi(poi_id: str, lat: float, lng: float) -> POI:
 # ---------------------------------------------------------------------------
 # haversine_km
 # ---------------------------------------------------------------------------
+
 
 class TestHaversineKm:
     def test_same_point_is_zero(self):
@@ -41,6 +46,7 @@ class TestHaversineKm:
 # ---------------------------------------------------------------------------
 # build_dist_cache
 # ---------------------------------------------------------------------------
+
 
 class TestBuildDistCache:
     def test_all_pairs_present(self):
@@ -80,6 +86,7 @@ class TestBuildDistCache:
 # nn_heuristic_km
 # ---------------------------------------------------------------------------
 
+
 class TestNnHeuristicKm:
     def test_single_poi_returns_zero(self):
         pois = [make_poi("A", 37.5, 127.0)]
@@ -115,8 +122,7 @@ class TestNnHeuristicKm:
         # 일렬로 나열된 POI를 순서대로 방문 → NN과 동일
         pois = [make_poi(str(i), 37.5, 127.0 + i * 0.1) for i in range(4)]
         actual_km = sum(
-            haversine_km(37.5, 127.0 + i * 0.1, 37.5, 127.0 + (i + 1) * 0.1)
-            for i in range(3)
+            haversine_km(37.5, 127.0 + i * 0.1, 37.5, 127.0 + (i + 1) * 0.1) for i in range(3)
         )
         assert nn_heuristic_km(pois) == pytest.approx(actual_km, rel=1e-6)
 
@@ -124,6 +130,7 @@ class TestNnHeuristicKm:
 # ---------------------------------------------------------------------------
 # get_travel_min
 # ---------------------------------------------------------------------------
+
 
 class TestGetTravelMin:
     def test_uses_matrix_when_available(self):

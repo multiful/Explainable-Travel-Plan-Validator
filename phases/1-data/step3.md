@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-19 | hash: d671fb82 | summary: TourAPI 배치 수집 스크립트 data/collector.py 구현 -->
+<!-- updated: 2026-09-12 | hash: d671fb82 | summary: TourAPI 배치 수집 스크립트 data/collector.py 구현 -->
 # Step 3: data-collector
 
 ## 읽어야 할 파일

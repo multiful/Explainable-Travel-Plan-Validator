@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: fa4058f8 | summary: Kakao Local + Mobility API 비동기 클라이언트 구현 및 직선거리 폴백 -->
+<!-- updated: 2026-09-12 | hash: fa4058f8 | summary: Kakao Local + Mobility API 비동기 클라이언트 구현 및 직선거리 폴백 -->
 # Step 2: kakao-client
 
 ## 읽어야 할 파일

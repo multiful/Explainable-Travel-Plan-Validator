@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: fcda23fc | summary: Hard Fail 탐지기 구현 (운영시간 충돌·이동 불가·시간 수행 불가) -->
+<!-- updated: 2026-09-12 | hash: fcda23fc | summary: Hard Fail 탐지기 구현 (운영시간 충돌·이동 불가·시간 수행 불가) -->
 # Step 0: hard-fail
 
 ## 읽어야 할 파일

@@ -1,15 +1,16 @@
 """Tests for ScoreCalculator (TDD)."""
+
 from __future__ import annotations
 
 import pytest
 
-from src.data.models import DayPlan, HardFail, ItineraryPlan, PlaceInput, POI, Scores
+from src.data.models import POI, DayPlan, HardFail, ItineraryPlan, PlaceInput
 from src.validation.scoring import WEIGHTS, ScoreCalculator
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_poi(
     poi_id: str = "1",
@@ -20,9 +21,14 @@ def make_poi(
     duration_min: int = 60,
 ) -> POI:
     return POI(
-        poi_id=poi_id, name=name, lat=lat, lng=lng,
-        open_start="09:00", open_end="18:00",
-        duration_min=duration_min, category=category,
+        poi_id=poi_id,
+        name=name,
+        lat=lat,
+        lng=lng,
+        open_start="09:00",
+        open_end="18:00",
+        duration_min=duration_min,
+        category=category,
     )
 
 
@@ -62,6 +68,7 @@ def make_hard_fail() -> HardFail:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def calc() -> ScoreCalculator:
     return ScoreCalculator()
@@ -92,6 +99,7 @@ def sample_plan(sample_pois) -> ItineraryPlan:
 # WEIGHTS constant
 # ---------------------------------------------------------------------------
 
+
 class TestWeights:
     def test_weights_sum_to_one(self):
         total = sum(WEIGHTS.values())
@@ -99,7 +107,11 @@ class TestWeights:
 
     def test_weights_keys(self):
         assert set(WEIGHTS.keys()) == {
-            "efficiency", "feasibility", "purpose_fit", "flow", "area_intensity"
+            "efficiency",
+            "feasibility",
+            "purpose_fit",
+            "flow",
+            "area_intensity",
         }
 
 
@@ -107,15 +119,14 @@ class TestWeights:
 # compute() — final_score range
 # ---------------------------------------------------------------------------
 
+
 class TestCompute:
     def test_final_score_in_range(self, calc, sample_pois, sample_matrix, sample_plan):
         scores, final_score = calc.compute(sample_plan, sample_pois, sample_matrix, [])
         assert 0 <= final_score <= 100
 
     def test_hard_fail_caps_score_at_59(self, calc, sample_pois, sample_matrix, sample_plan):
-        _, final_score = calc.compute(
-            sample_plan, sample_pois, sample_matrix, [make_hard_fail()]
-        )
+        _, final_score = calc.compute(sample_plan, sample_pois, sample_matrix, [make_hard_fail()])
         assert final_score <= 59
 
     def test_no_hard_fail_can_exceed_59(self, calc, sample_pois, sample_matrix, sample_plan):
@@ -137,12 +148,12 @@ class TestCompute:
 # _calc_efficiency
 # ---------------------------------------------------------------------------
 
+
 class TestEfficiency:
     def test_optimal_order_is_one(self, calc):
         # 4 POIs in a straight line — user visits in order → efficiency ≈ 1.0
         pois = [
-            make_poi(poi_id=str(i), name=f"P{i}", lat=37.5, lng=127.0 + i * 0.01)
-            for i in range(4)
+            make_poi(poi_id=str(i), name=f"P{i}", lat=37.5, lng=127.0 + i * 0.01) for i in range(4)
         ]
         efficiency = calc._calc_efficiency(pois, {})
         assert efficiency == pytest.approx(1.0, abs=0.05)
@@ -167,6 +178,7 @@ class TestEfficiency:
 # _calc_feasibility
 # ---------------------------------------------------------------------------
 
+
 class TestFeasibility:
     def test_no_hard_fails_hard_is_one(self, calc, sample_pois, sample_matrix, sample_plan):
         feasibility = calc._calc_feasibility(sample_plan, sample_pois, sample_matrix, [])
@@ -174,7 +186,9 @@ class TestFeasibility:
         assert feasibility >= 0.5
 
     def test_hard_fail_reduces_feasibility(self, calc, sample_pois, sample_matrix, sample_plan):
-        with_fail = calc._calc_feasibility(sample_plan, sample_pois, sample_matrix, [make_hard_fail()])
+        with_fail = calc._calc_feasibility(
+            sample_plan, sample_pois, sample_matrix, [make_hard_fail()]
+        )
         no_fail = calc._calc_feasibility(sample_plan, sample_pois, sample_matrix, [])
         assert with_fail < no_fail
 
@@ -186,6 +200,7 @@ class TestFeasibility:
 # ---------------------------------------------------------------------------
 # _calc_purpose_fit
 # ---------------------------------------------------------------------------
+
 
 class TestPurposeFit:
     def test_cultural_all_cultural_high(self, calc):
@@ -209,6 +224,7 @@ class TestPurposeFit:
 # ---------------------------------------------------------------------------
 # _cosine_distance
 # ---------------------------------------------------------------------------
+
 
 class TestCosineDistance:
     def test_identical_vectors(self, calc):

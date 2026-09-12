@@ -10,6 +10,7 @@
   가족              : 10h  (어린 자녀 동반 가능성)
   아기동반 / 어르신동반: 8h   (취약 그룹 동반, 조기 경고)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,16 +18,16 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PartyProfile:
-    speed_factor: float   # 체력 부담 임계 보정 계수 (1.0 = 기준)
-    fatigue_hours: int    # 일정 과밀 경고 기준 시간
+    speed_factor: float  # 체력 부담 임계 보정 계수 (1.0 = 기준)
+    fatigue_hours: int  # 일정 과밀 경고 기준 시간
 
 
 PARTY_PROFILES: dict[str, PartyProfile] = {
-    "혼자":       PartyProfile(speed_factor=1.0, fatigue_hours=12),
-    "친구":       PartyProfile(speed_factor=1.0, fatigue_hours=12),
-    "연인":       PartyProfile(speed_factor=1.0, fatigue_hours=12),
-    "가족":       PartyProfile(speed_factor=0.9, fatigue_hours=10),
-    "아기동반":   PartyProfile(speed_factor=0.8, fatigue_hours=8),
+    "혼자": PartyProfile(speed_factor=1.0, fatigue_hours=12),
+    "친구": PartyProfile(speed_factor=1.0, fatigue_hours=12),
+    "연인": PartyProfile(speed_factor=1.0, fatigue_hours=12),
+    "가족": PartyProfile(speed_factor=0.9, fatigue_hours=10),
+    "아기동반": PartyProfile(speed_factor=0.8, fatigue_hours=8),
     "어르신동반": PartyProfile(speed_factor=0.8, fatigue_hours=8),
 }
 

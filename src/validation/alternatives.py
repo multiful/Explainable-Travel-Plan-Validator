@@ -18,15 +18,16 @@
     )
     # → {"경복궁": [AlternativePOI(name="창덕궁", ...), ...]}
 """
+
 from __future__ import annotations
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
-from src.data.models import AlternativePOI, HardFail, POI
+from src.data.models import POI, AlternativePOI, HardFail
 
 _EARTH_R = 6371.0
-_MAX_SEARCH_KM = 10.0   # 기본 탐색 반경
+_MAX_SEARCH_KM = 10.0  # 기본 탐색 반경
 
 
 def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:

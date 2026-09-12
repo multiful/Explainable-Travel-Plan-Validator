@@ -1,9 +1,8 @@
 """AlternativesFinder 유닛 테스트."""
+
 from __future__ import annotations
 
-import pytest
-
-from src.data.models import AlternativePOI, HardFail, POI
+from src.data.models import POI, HardFail
 from src.validation.alternatives import AlternativesFinder
 
 
@@ -40,7 +39,7 @@ class TestFindAlternatives:
     def test_returns_nearby_same_category(self):
         pool = [
             _poi("B", lat=37.502, lng=127.0, category="14"),
-            _poi("C", lat=37.6,   lng=127.0, category="12"),
+            _poi("C", lat=37.6, lng=127.0, category="12"),
         ]
         finder = AlternativesFinder(poi_pool=pool)
         failed = _poi("A", lat=37.5, lng=127.0, category="14")

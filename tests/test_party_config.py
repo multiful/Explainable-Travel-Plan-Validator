@@ -1,9 +1,12 @@
 """PartyProfile 수량화 로직 테스트."""
+
 from __future__ import annotations
+
+from dataclasses import FrozenInstanceError
 
 import pytest
 
-from src.data.party_config import PARTY_PROFILES, PartyProfile, get_party_profile
+from src.data.party_config import PARTY_PROFILES, get_party_profile
 
 
 class TestPartyProfiles:
@@ -43,7 +46,7 @@ class TestPartyProfiles:
 
     def test_profile_is_frozen(self):
         profile = get_party_profile("친구")
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             profile.speed_factor = 2.0  # type: ignore[misc]
 
 

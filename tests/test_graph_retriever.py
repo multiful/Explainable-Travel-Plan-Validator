@@ -1,97 +1,41 @@
-"""GraphRetriever 테스트 (실제 Neo4j 호출 X — 모두 mock)."""
-from __future__ import annotations
+"""로컬 장소 근거 리트리버 테스트."""
 
-from unittest.mock import MagicMock, patch
+from pathlib import Path
 
-from neo4j.exceptions import Neo4jError
-
-from src.data.graph_retriever import GraphRetriever
+from src.data.evidence_retriever import LocalEvidenceRetriever
 from src.data.models import AlternativePOI, PlaceEvidence
 
 
-def test_disabled_without_uri_returns_empty() -> None:
-    retriever = GraphRetriever(uri="", username="", password="")
+def _catalog(tmp_path: Path) -> Path:
+    path = tmp_path / "places.csv"
+    path.write_text(
+        "ID,대분류,상호명,도로명주소,위도,경도,중분류명\n"
+        "1,관광지,성산일출봉,제주특별자치도 서귀포시 성산읍,33.458,126.942,자연관광지\n"
+        "2,관광지,섭지코지,제주특별자치도 서귀포시 성산읍,33.43,126.93,자연관광지\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_missing_catalog_is_disabled(tmp_path: Path) -> None:
+    retriever = LocalEvidenceRetriever(tmp_path / "missing.csv")
     assert retriever.enabled is False
     assert retriever.search_places("성산일출봉") == []
-    assert retriever.find_nearby("kakao_1") == []
 
 
-def test_search_places_parses_records() -> None:
-    with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()):
-        retriever = GraphRetriever(uri="neo4j+s://x", username="u", password="p", database="db")
-        fake_result = MagicMock()
-        fake_result.records = [
-            {
-                "id": "kakao_1", "name": "성산일출봉", "place_type": "ACTIVITY",
-                "category_name": "자연관광지", "address": "제주 서귀포시 ...",
-                "lat": 33.458, "lng": 126.942, "region_name": "성산읍",
-            }
-        ]
-        retriever._driver.execute_query.return_value = fake_result
-        places = retriever.search_places("일출봉")
-
+def test_search_places_reads_local_catalog(tmp_path: Path) -> None:
+    retriever = LocalEvidenceRetriever(_catalog(tmp_path))
+    places = retriever.search_places("일출봉")
     assert len(places) == 1
     assert isinstance(places[0], PlaceEvidence)
     assert places[0].name == "성산일출봉"
-    assert places[0].region_name == "성산읍"
+    assert places[0].region_name == "제주특별자치도 서귀포시"
 
 
-def test_search_places_empty_query_skips_call() -> None:
-    with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()):
-        retriever = GraphRetriever(uri="neo4j+s://x", username="u", password="p")
-        assert retriever.search_places("   ") == []
-        retriever._driver.execute_query.assert_not_called()
-
-
-def test_search_places_neo4j_error_returns_empty() -> None:
-    with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()):
-        retriever = GraphRetriever(uri="neo4j+s://x", username="u", password="p")
-        retriever._driver.execute_query.side_effect = Neo4jError("boom")
-        assert retriever.search_places("일출봉") == []
-
-
-def test_find_nearby_parses_and_converts_distance() -> None:
-    with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()):
-        retriever = GraphRetriever(uri="neo4j+s://x", username="u", password="p")
-        fake_result = MagicMock()
-        fake_result.records = [
-            {"name": "우도", "category": "자연관광지", "lat": 33.5, "lng": 126.95, "distance_m": 250.0},
-        ]
-        retriever._driver.execute_query.return_value = fake_result
-        alts = retriever.find_nearby("kakao_1")
-
-    assert len(alts) == 1
-    assert isinstance(alts[0], AlternativePOI)
-    assert alts[0].distance_km == 0.25
-
-
-def test_repeated_failures_skip_driver_call_during_cooldown() -> None:
-    with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()):
-        retriever = GraphRetriever(uri="neo4j+s://x", username="u", password="p")
-        retriever._driver.execute_query.side_effect = Neo4jError("boom")
-
-        assert retriever.search_places("일출봉") == []
-        assert retriever.find_nearby("kakao_1") == []
-
-    assert retriever._driver.execute_query.call_count == 1
-
-
-def test_close_closes_driver() -> None:
-    with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()):
-        retriever = GraphRetriever(uri="neo4j+s://x", username="u", password="p")
-        retriever.close()
-    retriever._driver.close.assert_called_once()
-
-
-def test_from_env_reads_variables(monkeypatch) -> None:
-    monkeypatch.setenv("NEO4J_URI", "neo4j+s://x")
-    monkeypatch.setenv("NEO4J_USERNAME", "u")
-    monkeypatch.setenv("NEO4J_PASSWORD", "p")
-    monkeypatch.setenv("NEO4J_DATABASE", "db")
-    with patch("src.data.graph_retriever.GraphDatabase.driver", return_value=MagicMock()) as create:
-        retriever = GraphRetriever.from_env()
-
-    create.assert_called_once_with(
-        "neo4j+s://x", auth=("u", "p"), connection_timeout=5.0, max_transaction_retry_time=5.0
-    )
-    assert retriever._database == "db"
+def test_find_nearby_returns_local_alternatives(tmp_path: Path) -> None:
+    retriever = LocalEvidenceRetriever(_catalog(tmp_path))
+    alternatives = retriever.find_nearby("1")
+    assert len(alternatives) == 1
+    assert isinstance(alternatives[0], AlternativePOI)
+    assert alternatives[0].name == "섭지코지"
+    assert alternatives[0].distance_km > 0

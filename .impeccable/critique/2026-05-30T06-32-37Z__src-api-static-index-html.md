@@ -1,3 +1,4 @@
+<!-- updated: 2026-09-12 | hash: c4548497 | summary: Generated frontend critique artifact -->
 ---
 target: src/api/static/index.html
 total_score: 28

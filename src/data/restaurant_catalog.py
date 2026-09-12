@@ -6,6 +6,7 @@ RepairEngine의 Outlier Deletion 제안 시, 삭제 후보 자리를 대신할 �
 CLAUDE.md 규칙:
   - 모듈 간 데이터는 Pydantic 모델(AlternativePOI)로만 주고받는다.
 """
+
 from __future__ import annotations
 
 import csv
@@ -13,6 +14,8 @@ from pathlib import Path
 
 from src.data.models import AlternativePOI
 from src.utils.geo import haversine_km
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 _RESTAURANT_CODE = "FD"
 
@@ -48,7 +51,7 @@ class RestaurantCatalog:
 
     @classmethod
     def from_default(cls) -> RestaurantCatalog:
-        return cls.from_csv(Path("data/jeju_places.csv"))
+        return cls.from_csv(_PROJECT_ROOT / "data" / "jeju_places.csv")
 
     def nearby(
         self,
@@ -69,6 +72,12 @@ class RestaurantCatalog:
                 candidates.append((dist, r))
         candidates.sort(key=lambda c: c[0])
         return [
-            AlternativePOI(name=r["name"], distance_km=round(dist, 2), category="39", lat=r["lat"], lng=r["lng"])
+            AlternativePOI(
+                name=r["name"],
+                distance_km=round(dist, 2),
+                category="39",
+                lat=r["lat"],
+                lng=r["lng"],
+            )
             for dist, r in candidates[:limit]
         ]
