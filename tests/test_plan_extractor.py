@@ -101,3 +101,14 @@ def test_api_call_failure_raises_extraction_error() -> None:
 
     with pytest.raises(PlanExtractionError):
         extractor.extract_from_text("아무 텍스트")
+
+
+def test_system_prompt_uses_prompt_caching() -> None:
+    """system 프롬프트는 매 호출 동일하므로 ephemeral 캐싱 대상이어야 함(지연/토큰 절감)."""
+    client = _client_returning('{"days":[]}')
+    extractor = PlanExtractor(client=client)
+
+    extractor.extract_from_text("아무 텍스트")
+
+    system = client.messages.create.call_args.kwargs["system"]
+    assert system[0]["cache_control"] == {"type": "ephemeral"}

@@ -151,7 +151,6 @@ class PlanExtractor:
             {
                 "type": "text",
                 "text": _USER_PREFIX_DOC,
-                "cache_control": {"type": "ephemeral"},
             },
         ]
         return self._call(content)
@@ -162,7 +161,11 @@ class PlanExtractor:
                 model=self._model,
                 max_tokens=self._max_tokens,
                 timeout=self._timeout,
-                system=_SYSTEM_PROMPT,
+                system=[{
+                    "type": "text",
+                    "text": _SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }],
                 messages=[{"role": "user", "content": content}],
             )
         except Exception as e:
