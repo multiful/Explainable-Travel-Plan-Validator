@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-30 | hash: d6776591 | summary: 의존 방향 갱신, Neo4j Cypher injection → 범용 입력 신뢰도 검토로 교체 -->
+<!-- updated: 2026-09-12 | hash: d6776591 | summary: 의존 방향 갱신, Neo4j Cypher injection → 범용 입력 신뢰도 검토로 교체 -->
 # GEMINI — 시니어 엔지니어 검토자 역할 정의
 
 ## 역할

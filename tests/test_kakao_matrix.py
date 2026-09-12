@@ -1,4 +1,5 @@
 """KakaoMobilityMatrix 테스트 (실제 API 호출 X — 모두 mock)."""
+
 from __future__ import annotations
 
 import json
@@ -12,8 +13,13 @@ from src.validation.kakao_matrix import KakaoMobilityMatrix
 
 def _place(name: str, lng: float, lat: float) -> VRPTWPlace:
     return VRPTWPlace(
-        name=name, lng=lng, lat=lat,
-        open="09:00", close="22:00", stay_duration=60, is_depot=False,
+        name=name,
+        lng=lng,
+        lat=lat,
+        open="09:00",
+        close="22:00",
+        stay_duration=60,
+        is_depot=False,
     )
 
 
@@ -22,10 +28,12 @@ def _ok_response() -> MagicMock:
     m = MagicMock()
     m.status_code = 200
     m.json.return_value = {
-        "routes": [{
-            "summary": {"duration": 600, "distance": 5000},
-            "sections": [{"duration": 600}],
-        }],
+        "routes": [
+            {
+                "summary": {"duration": 600, "distance": 5000},
+                "sections": [{"duration": 600}],
+            }
+        ],
     }
     return m
 
@@ -44,6 +52,7 @@ def _httpx_sync_client(response: MagicMock) -> MagicMock:
 # Same point → zero
 # ---------------------------------------------------------------------------
 
+
 class TestSamePoint:
     def test_same_coords_returns_zero(self):
         m = KakaoMobilityMatrix(api_key="dummy")
@@ -55,14 +64,17 @@ class TestSamePoint:
 # Cache + sync API (_call_kakao_sync)
 # ---------------------------------------------------------------------------
 
+
 class TestApiCall:
     def test_sync_call_populates_cache(self):
         m = KakaoMobilityMatrix(api_key="dummy")
         a = _place("A", 127.0, 37.5)
         b = _place("B", 127.1, 37.6)
 
-        with patch("src.validation.kakao_matrix.httpx.Client",
-                   return_value=_httpx_sync_client(_ok_response())):
+        with patch(
+            "src.validation.kakao_matrix.httpx.Client",
+            return_value=_httpx_sync_client(_ok_response()),
+        ):
             result = m._call_kakao_sync(a, b)
 
         assert result == 600
@@ -73,8 +85,10 @@ class TestApiCall:
         a = _place("A", 127.0, 37.5)
         b = _place("B", 127.1, 37.6)
 
-        with patch("src.validation.kakao_matrix.httpx.Client",
-                   return_value=_httpx_sync_client(_ok_response())):
+        with patch(
+            "src.validation.kakao_matrix.httpx.Client",
+            return_value=_httpx_sync_client(_ok_response()),
+        ):
             m._call_kakao_sync(a, b)
 
         result = m.get_travel_time(a, b)
@@ -87,12 +101,14 @@ class TestApiCall:
         a = _place("A", 127.0, 37.5)
         b = _place("B", 127.1, 37.6)
 
-        with patch("src.validation.kakao_matrix.httpx.Client",
-                   return_value=_httpx_sync_client(_ok_response())):
+        with patch(
+            "src.validation.kakao_matrix.httpx.Client",
+            return_value=_httpx_sync_client(_ok_response()),
+        ):
             m._call_kakao_sync(a, b)
 
-        m.get_travel_time(a, b)   # 1st hit
-        m.get_travel_time(a, b)   # 2nd hit
+        m.get_travel_time(a, b)  # 1st hit
+        m.get_travel_time(a, b)  # 2nd hit
         assert m.stats["cache_hit"] == 2
 
     def test_reverse_direction_also_cached(self):
@@ -100,8 +116,10 @@ class TestApiCall:
         a = _place("A", 127.0, 37.5)
         b = _place("B", 127.1, 37.6)
 
-        with patch("src.validation.kakao_matrix.httpx.Client",
-                   return_value=_httpx_sync_client(_ok_response())):
+        with patch(
+            "src.validation.kakao_matrix.httpx.Client",
+            return_value=_httpx_sync_client(_ok_response()),
+        ):
             m._call_kakao_sync(a, b)
 
         result = m.get_travel_time(b, a)  # reverse 방향
@@ -113,6 +131,7 @@ class TestApiCall:
 # Quota exhaustion — 429
 # ---------------------------------------------------------------------------
 
+
 class TestQuotaExhaustion:
     def test_429_sets_quota_exhausted(self):
         m = KakaoMobilityMatrix(api_key="dummy")
@@ -122,8 +141,9 @@ class TestQuotaExhaustion:
         resp_429 = MagicMock()
         resp_429.status_code = 429
 
-        with patch("src.validation.kakao_matrix.httpx.Client",
-                   return_value=_httpx_sync_client(resp_429)):
+        with patch(
+            "src.validation.kakao_matrix.httpx.Client", return_value=_httpx_sync_client(resp_429)
+        ):
             result = m._call_kakao_sync(a, b)
 
         assert result is None
@@ -134,7 +154,7 @@ class TestQuotaExhaustion:
         a = _place("A", 127.0, 37.5)
         b = _place("B", 127.1, 37.6)
 
-        result = m.get_travel_time(a, b)   # cache miss → haversine
+        result = m.get_travel_time(a, b)  # cache miss → haversine
         assert result > 0
         assert m.stats["fallback"] == 1
 
@@ -152,6 +172,7 @@ class TestQuotaExhaustion:
 # Auth error
 # ---------------------------------------------------------------------------
 
+
 class TestAuthError:
     def test_401_raises(self):
         resp_401 = MagicMock()
@@ -161,8 +182,9 @@ class TestAuthError:
         a = _place("A", 127.0, 37.5)
         b = _place("B", 127.1, 37.6)
 
-        with patch("src.validation.kakao_matrix.httpx.Client",
-                   return_value=_httpx_sync_client(resp_401)):
+        with patch(
+            "src.validation.kakao_matrix.httpx.Client", return_value=_httpx_sync_client(resp_401)
+        ):
             with pytest.raises(RuntimeError, match="인증 오류"):
                 m._call_kakao_sync(a, b)
 
@@ -170,6 +192,7 @@ class TestAuthError:
 # ---------------------------------------------------------------------------
 # Cache persistence
 # ---------------------------------------------------------------------------
+
 
 class TestCachePersistence:
     def test_save_and_load_cache(self, tmp_path):
@@ -179,8 +202,10 @@ class TestCachePersistence:
         a = _place("A", 127.0, 37.5)
         b = _place("B", 127.1, 37.6)
 
-        with patch("src.validation.kakao_matrix.httpx.Client",
-                   return_value=_httpx_sync_client(_ok_response())):
+        with patch(
+            "src.validation.kakao_matrix.httpx.Client",
+            return_value=_httpx_sync_client(_ok_response()),
+        ):
             m1._call_kakao_sync(a, b)
         m1.save_cache()
 
@@ -197,6 +222,7 @@ class TestCachePersistence:
 # ---------------------------------------------------------------------------
 # from_env
 # ---------------------------------------------------------------------------
+
 
 class TestFromEnv:
     def test_no_key_raises(self, monkeypatch):
@@ -222,10 +248,10 @@ class TestFromEnv:
 # aprefetch_matrix (async)
 # ---------------------------------------------------------------------------
 
+
 class TestAsyncPrefetch:
     def test_aprefetch_populates_cache_and_hit_on_get(self):
         """aprefetch_matrix 후 get_travel_time이 캐시를 사용한다."""
-        import asyncio
 
         m = KakaoMobilityMatrix(api_key="dummy")
         a = _place("A", 127.0, 37.5)

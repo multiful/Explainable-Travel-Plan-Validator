@@ -1,3 +1,4 @@
+<!-- updated: 2026-09-12 | hash: b7e7ed26 | summary: Product and API notes -->
 # Product
 
 ## Register

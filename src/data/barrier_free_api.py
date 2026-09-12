@@ -6,6 +6,7 @@
 
 참고: 한국관광공사_개방데이터_활용매뉴얼(무장애여행)_v4.3
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,32 +17,34 @@ import httpx
 from src.data.models import Settings
 
 _BASE_URL = "https://apis.data.go.kr/B551011/KorWithService2"
-_LIST_OP = "areaBasedList2"       # 지역기반 목록 조회
-_DETAIL_OP = "detailWithTour2"    # 무장애여행 상세 조회
+_LIST_OP = "areaBasedList2"  # 지역기반 목록 조회
+_DETAIL_OP = "detailWithTour2"  # 무장애여행 상세 조회
 
 
 @dataclass(frozen=True)
 class BarrierFreePlace:
     """areaBasedList2 기반 기본 POI + detailWithTour2 접근성 세부 항목."""
+
     content_id: str
     title: str
     addr: str
-    lat: float    # mapy (WGS84 위도)
-    lng: float    # mapx (WGS84 경도)
+    lat: float  # mapy (WGS84 위도)
+    lng: float  # mapx (WGS84 경도)
     # ── detailWithTour2 지체장애 항목 (선택 보강) ──────────────────
-    wheelchair: str = ""    # 휠체어 대여/접근 여부 (텍스트, 예: "대여가능(수동휠체어 2대)")
-    elevator: str = ""      # 엘리베이터 여부 (텍스트)
-    parking: str = ""       # 장애인 주차 여부 (텍스트)
+    wheelchair: str = ""  # 휠체어 대여/접근 여부 (텍스트, 예: "대여가능(수동휠체어 2대)")
+    elevator: str = ""  # 엘리베이터 여부 (텍스트)
+    parking: str = ""  # 장애인 주차 여부 (텍스트)
     # ── detailWithTour2 영유아가족 항목 ─────────────────────────────
-    stroller: str = ""      # 유모차 여부 (텍스트)
+    stroller: str = ""  # 유모차 여부 (텍스트)
     lactation_room: str = ""  # 수유실 여부 (텍스트)
     # ── detailWithTour2 시각장애 항목 ───────────────────────────────
-    help_dog: str = ""      # 보조견 동반 여부 (텍스트)
+    help_dog: str = ""  # 보조견 동반 여부 (텍스트)
 
 
 @dataclass(frozen=True)
 class BarrierFreeDetail:
     """detailWithTour2 응답 전체 필드 (필요 시 개별 조회용)."""
+
     content_id: str
     # 지체장애
     parking: str = ""
@@ -101,7 +104,7 @@ class BarrierFreeAPIClient:
         self._timeout = timeout_sec
 
     @classmethod
-    def from_settings(cls, settings: Settings | None = None) -> "BarrierFreeAPIClient | None":
+    def from_settings(cls, settings: Settings | None = None) -> BarrierFreeAPIClient | None:
         if settings is None:
             settings = Settings()
         key = settings.barrier_free_api_key
@@ -151,13 +154,15 @@ class BarrierFreeAPIClient:
             lng = _safe_float(item.get("mapx") or item.get("lng"))
             if not content_id or lat == 0.0 or lng == 0.0:
                 continue
-            places.append(BarrierFreePlace(
-                content_id=content_id,
-                title=title,
-                addr=addr,
-                lat=lat,
-                lng=lng,
-            ))
+            places.append(
+                BarrierFreePlace(
+                    content_id=content_id,
+                    title=title,
+                    addr=addr,
+                    lat=lat,
+                    lng=lng,
+                )
+            )
         return places
 
     async def fetch_detail(self, content_id: str) -> BarrierFreeDetail | None:

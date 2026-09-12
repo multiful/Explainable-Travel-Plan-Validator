@@ -21,25 +21,24 @@ VRPTW 엔진의 TimeMatrix 인터페이스를 구현해 즉시 swap-in 가능:
 6. async aprefetch_matrix: httpx.AsyncClient로 N×N 쌍 비동기 사전 로드
    (get_travel_time은 동기 유지 — VRPTWEngine/OR-Tools 호환)
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
-import os
 import time
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-from src.data.models import VRPTWPlace
+from src.data.models import Settings, VRPTWPlace
 from src.validation.vrptw_engine import HaversineMatrix, TimeMatrix
-
 
 KAKAO_DIRECTIONS_URL = "https://apis-navi.kakaomobility.com/v1/directions"
 
 DEFAULT_TIMEOUT_SEC: float = 5.0
-DEFAULT_SLEEP_BETWEEN: float = 0.05   # 초당 ~20회
+DEFAULT_SLEEP_BETWEEN: float = 0.05  # 초당 ~20회
 DEFAULT_MAX_RETRIES: int = 3
 DEFAULT_RETRY_BACKOFF: float = 2.0
 
@@ -80,7 +79,10 @@ class KakaoMobilityMatrix(TimeMatrix):
         self._fallback = HaversineMatrix()
         self._quota_exhausted = False
         self._stats: dict[str, int] = {
-            "cache_hit": 0, "api_success": 0, "api_fail": 0, "fallback": 0,
+            "cache_hit": 0,
+            "api_success": 0,
+            "api_fail": 0,
+            "fallback": 0,
         }
         self._dirty_count = 0
 
@@ -91,31 +93,11 @@ class KakaoMobilityMatrix(TimeMatrix):
         cache_path: str | Path | None = None,
         env_path: str | Path | None = None,
         **kwargs: Any,
-    ) -> "KakaoMobilityMatrix":
+    ) -> KakaoMobilityMatrix:
         """`.env`에서 KAKAO_MOBILITY_KEY (없으면 KAKAO_REST_API_KEY) 로드."""
-        if env_path:
-            cls._load_dotenv(Path(env_path))
-        else:
-            project_root = Path(__file__).resolve().parents[2]
-            env_default = project_root / ".env"
-            if env_default.exists():
-                cls._load_dotenv(env_default)
-
-        key = (
-            os.environ.get("KAKAO_MOBILITY_KEY", "")
-            or os.environ.get("KAKAO_REST_API_KEY", "")
-        )
+        settings = Settings(_env_file=env_path) if env_path else Settings()
+        key = settings.kakao_mobility_key or settings.kakao_rest_api_key
         return cls(api_key=key, cache_path=cache_path, **kwargs)
-
-    @staticmethod
-    def _load_dotenv(env_path: Path) -> None:
-        if not env_path.exists():
-            return
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, _, v = line.partition("=")
-                os.environ.setdefault(k.strip(), v.strip())
 
     # ── TimeMatrix 인터페이스 (동기) ──────────────────────────────────────
     def get_travel_time(self, origin: VRPTWPlace, destination: VRPTWPlace) -> int:
@@ -147,10 +129,7 @@ class KakaoMobilityMatrix(TimeMatrix):
         항상 캐시 히트되어 레이턴시 없이 동작한다.
         """
         pairs = [
-            (places[i], places[j])
-            for i in range(len(places))
-            for j in range(len(places))
-            if i != j
+            (places[i], places[j]) for i in range(len(places)) for j in range(len(places)) if i != j
         ]
 
         sem = asyncio.Semaphore(concurrency)
@@ -174,22 +153,18 @@ class KakaoMobilityMatrix(TimeMatrix):
             self.save_cache()
 
     # ── 비동기 API 호출 ──────────────────────────────────────────────────
-    async def _acall_kakao(
-        self, origin: VRPTWPlace, destination: VRPTWPlace
-    ) -> int | None:
+    async def _acall_kakao(self, origin: VRPTWPlace, destination: VRPTWPlace) -> int | None:
         """카카오 모빌리티 비동기 호출 (httpx.AsyncClient)."""
         headers = {"Authorization": f"KakaoAK {self._api_key}"}
         params = {
-            "origin":      f"{origin.lng},{origin.lat}",
+            "origin": f"{origin.lng},{origin.lat}",
             "destination": f"{destination.lng},{destination.lat}",
         }
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             for attempt in range(1, self._max_retries + 1):
                 try:
-                    r = await client.get(
-                        KAKAO_DIRECTIONS_URL, headers=headers, params=params
-                    )
+                    r = await client.get(KAKAO_DIRECTIONS_URL, headers=headers, params=params)
                     if r.status_code == 200:
                         return self._parse_duration(r.json())
                     if r.status_code == 429:
@@ -198,10 +173,10 @@ class KakaoMobilityMatrix(TimeMatrix):
                         return None
                     if r.status_code in (401, 403):
                         raise RuntimeError(f"인증 오류 {r.status_code}")
-                    await asyncio.sleep(DEFAULT_RETRY_BACKOFF ** attempt)
+                    await asyncio.sleep(DEFAULT_RETRY_BACKOFF**attempt)
                 except httpx.RequestError as e:
                     if attempt < self._max_retries:
-                        await asyncio.sleep(DEFAULT_RETRY_BACKOFF ** attempt)
+                        await asyncio.sleep(DEFAULT_RETRY_BACKOFF**attempt)
                     else:
                         print(f"  [kakao-mobility] 실패: {e}")
 
@@ -209,9 +184,7 @@ class KakaoMobilityMatrix(TimeMatrix):
         return None
 
     # ── 동기 API 호출 (캐시 워밍업 스크립트용) ──────────────────────────
-    def _call_kakao_sync(
-        self, origin: VRPTWPlace, destination: VRPTWPlace
-    ) -> int | None:
+    def _call_kakao_sync(self, origin: VRPTWPlace, destination: VRPTWPlace) -> int | None:
         """동기 API 호출 + 캐시 저장 + 통계 업데이트 (httpx.Client).
 
         캐시에 이미 있으면 API 호출 없이 캐시 값 반환.
@@ -230,7 +203,7 @@ class KakaoMobilityMatrix(TimeMatrix):
 
         headers = {"Authorization": f"KakaoAK {self._api_key}"}
         params = {
-            "origin":      f"{origin.lng},{origin.lat}",
+            "origin": f"{origin.lng},{origin.lat}",
             "destination": f"{destination.lng},{destination.lat}",
         }
 
@@ -251,10 +224,10 @@ class KakaoMobilityMatrix(TimeMatrix):
                     return None
                 if r.status_code in (401, 403):
                     raise RuntimeError(f"인증 오류 {r.status_code}")
-                time.sleep(DEFAULT_RETRY_BACKOFF ** attempt)
+                time.sleep(DEFAULT_RETRY_BACKOFF**attempt)
             except httpx.RequestError as e:
                 if attempt < self._max_retries:
-                    time.sleep(DEFAULT_RETRY_BACKOFF ** attempt)
+                    time.sleep(DEFAULT_RETRY_BACKOFF**attempt)
                 else:
                     print(f"  [kakao-mobility] 실패: {e}")
 
@@ -276,10 +249,7 @@ class KakaoMobilityMatrix(TimeMatrix):
 
     # ── 캐시 입출력 ──────────────────────────────────────────────────────
     def _make_key(self, origin: VRPTWPlace, destination: VRPTWPlace) -> str:
-        return (
-            f"{origin.lng:.4f},{origin.lat:.4f}"
-            f"|{destination.lng:.4f},{destination.lat:.4f}"
-        )
+        return f"{origin.lng:.4f},{origin.lat:.4f}|{destination.lng:.4f},{destination.lat:.4f}"
 
     def _load_cache(self) -> dict[str, int]:
         if not self._cache_path or not self._cache_path.exists():
@@ -300,9 +270,7 @@ class KakaoMobilityMatrix(TimeMatrix):
         if not self._cache_path:
             return
         self._cache_path.parent.mkdir(parents=True, exist_ok=True)
-        self._cache_path.write_text(
-            json.dumps(self._cache, ensure_ascii=False), encoding="utf-8"
-        )
+        self._cache_path.write_text(json.dumps(self._cache, ensure_ascii=False), encoding="utf-8")
         self._dirty_count = 0
 
     # ── 진단 ─────────────────────────────────────────────────────────────

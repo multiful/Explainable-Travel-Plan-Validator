@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: c03f1f3b | summary: Claude API 호출로 4단계 Evidence-based 설명 + Repair 제안 생성 -->
+<!-- updated: 2026-09-12 | hash: c03f1f3b | summary: Claude API 호출로 4단계 Evidence-based 설명 + Repair 제안 생성 -->
 # Step 1: explain-engine
 
 ## 읽어야 할 파일

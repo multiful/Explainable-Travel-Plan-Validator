@@ -1,7 +1,6 @@
 """RewardEngine 유닛 테스트."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.data.models import Scores
 from src.scoring.reward_engine import generate_rewards

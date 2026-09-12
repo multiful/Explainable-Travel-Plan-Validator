@@ -1,4 +1,5 @@
 """가산점 엔진 — 웰니스·무장애 여행지 방문 보너스."""
+
 from __future__ import annotations
 
 import json
@@ -25,9 +26,9 @@ class BonusResult:
     accessibility_bonus: int
     pet_friendly_bonus: int
     total_bonus: int
-    wellness_matched: list[str]        # 매칭된 POI 이름 목록
-    accessibility_matched: list[str]   # 매칭된 POI 이름 목록
-    pet_friendly_matched: list[str]    # 매칭된 POI 이름 목록
+    wellness_matched: list[str]  # 매칭된 POI 이름 목록
+    accessibility_matched: list[str]  # 매칭된 POI 이름 목록
+    pet_friendly_matched: list[str]  # 매칭된 POI 이름 목록
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ class BonusEngine:
         cls,
         wellness_path: Path | str = "data/wellness_places.json",
         barrier_free_path: Path | str = "data/barrier_free_places.json",
-    ) -> "BonusEngine":
+    ) -> BonusEngine:
         """로컬 JSON 데이터셋에서 로드. 파일 없으면 빈 엔진 반환."""
         wellness: list[_PlaceCoord] = []
         barrier_free: list[_PlaceCoord] = []
@@ -107,18 +108,14 @@ class BonusEngine:
             if pet_friendly_enabled and poi.pet_friendly:
                 pet_friendly_matched.append(poi.name)
 
-        wellness_bonus = min(
-            len(wellness_matched) * WELLNESS_BONUS_PER_PLACE, BONUS_CAP
-        )
+        wellness_bonus = min(len(wellness_matched) * WELLNESS_BONUS_PER_PLACE, BONUS_CAP)
         accessibility_bonus = min(
             len(accessibility_matched) * ACCESSIBILITY_BONUS_PER_PLACE, BONUS_CAP
         )
         pet_friendly_bonus = min(
             len(pet_friendly_matched) * PET_FRIENDLY_BONUS_PER_PLACE, BONUS_CAP
         )
-        total_bonus = min(
-            wellness_bonus + accessibility_bonus + pet_friendly_bonus, BONUS_CAP
-        )
+        total_bonus = min(wellness_bonus + accessibility_bonus + pet_friendly_bonus, BONUS_CAP)
 
         return BonusResult(
             wellness_bonus=wellness_bonus,

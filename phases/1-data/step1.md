@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: 40ca89b7 | summary: TourAPI v2 비동기 클라이언트 구현 (searchKeyword1 + detailIntro1) -->
+<!-- updated: 2026-09-12 | hash: 40ca89b7 | summary: TourAPI v2 비동기 클라이언트 구현 (searchKeyword1 + detailIntro1) -->
 # Step 1: tour-api-client
 
 ## 읽어야 할 파일

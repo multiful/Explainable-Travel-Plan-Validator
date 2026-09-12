@@ -13,17 +13,18 @@ KakaoMobilityMatrix의 drop-in 대체재:
     if matrix is None:
         matrix = KakaoMobilityMatrix.from_env(cache_path="data/route_cache.json")
 """
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
 
 from src.data.models import VRPTWPlace
 from src.validation.vrptw_engine import HaversineMatrix, TimeMatrix
 
 try:
     import redis as _redis_lib
+
     _REDIS_AVAILABLE = True
 except ImportError:
     _REDIS_AVAILABLE = False
@@ -42,13 +43,14 @@ class RedisTimeMatrix(TimeMatrix):
 
     def __init__(self, redis_url: str) -> None:
         if not _REDIS_AVAILABLE:
-            raise RuntimeError(
-                "redis-py 미설치. `pip install redis` 후 사용하세요."
-            )
+            raise RuntimeError("redis-py 미설치. `pip install redis` 후 사용하세요.")
         self._client = _redis_lib.from_url(redis_url, decode_responses=True)
         self._fallback = HaversineMatrix()
         self._stats: dict[str, int] = {
-            "cache_hit": 0, "cache_miss": 0, "fallback": 0, "write": 0,
+            "cache_hit": 0,
+            "cache_miss": 0,
+            "fallback": 0,
+            "write": 0,
         }
 
     # ── 팩토리 ───────────────────────────────────────────────────────────
@@ -56,7 +58,7 @@ class RedisTimeMatrix(TimeMatrix):
     def from_env(
         cls,
         env_path: str | Path | None = None,
-    ) -> "RedisTimeMatrix | None":
+    ) -> RedisTimeMatrix | None:
         """REDIS_URL 환경변수가 있으면 인스턴스 반환, 없으면 None."""
         if env_path:
             cls._load_dotenv(Path(env_path))

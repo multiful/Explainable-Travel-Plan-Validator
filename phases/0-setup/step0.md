@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: 95af287a | summary: pyproject.toml, .env.example, src/__init__.py 환경 설정 -->
+<!-- updated: 2026-09-12 | hash: 95af287a | summary: pyproject.toml, .env.example, src/__init__.py 환경 설정 -->
 # Step 0: python-env
 
 ## 읽어야 할 파일

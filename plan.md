@@ -1,3 +1,4 @@
+<!-- updated: 2026-09-12 | hash: 8fe0a9b0 | summary: Project work plan notes -->
  전체 분석 완료. 이제 결과를 종합해서 기획 문서로 정리합니다.                                                      
                                                                                           
   ---                                                                                                               

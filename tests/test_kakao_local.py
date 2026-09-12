@@ -1,4 +1,5 @@
 """KakaoLocalClient 테스트 (실제 API 호출 X — 모두 mock)."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -75,10 +76,20 @@ def _multi_response() -> MagicMock:
     m.raise_for_status.return_value = None
     m.json.return_value = {
         "documents": [
-            {"place_name": "금복식당", "x": "126.922", "y": "37.547",
-             "category_name": "음식점 > 한식", "road_address_name": "서울 마포구 ..."},
-            {"place_name": "금복식당 2호점", "x": "126.923", "y": "37.548",
-             "category_name": "음식점 > 한식", "address_name": "서울 마포구 ..."},
+            {
+                "place_name": "금복식당",
+                "x": "126.922",
+                "y": "37.547",
+                "category_name": "음식점 > 한식",
+                "road_address_name": "서울 마포구 ...",
+            },
+            {
+                "place_name": "금복식당 2호점",
+                "x": "126.923",
+                "y": "37.548",
+                "category_name": "음식점 > 한식",
+                "address_name": "서울 마포구 ...",
+            },
         ]
     }
     return m

@@ -1,4 +1,4 @@
-<!-- updated: 2026-07-30 | hash: 528a7ecf | summary: NEAR_BY 캡을 반경 300m+Top-20으로 재확정(실측 밀집도 검증) -->
+<!-- updated: 2026-09-12 | hash: 528a7ecf | summary: NEAR_BY 캡을 반경 300m+Top-20으로 재확정(실측 밀집도 검증) -->
 
 # 제주 Place 지식그래프 스키마 (Head - Relation - Tail)
 

@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-30 | hash: eea4cb43 | summary: Neo4j 제거 반영 (503·health 엔드포인트 갱신) -->
+<!-- updated: 2026-09-12 | hash: 2b231d35 | summary: Neo4j 제거 반영 (503·health 엔드포인트 갱신) -->
 # API 설계 가이드
 
 ## 설계 원칙
@@ -98,7 +98,7 @@
 
 ---
 
-### GET /repair/{plan_id}
+### Repair 제안
 검증된 일정의 Repair 제안 반환.
 
 **Response** (200)
@@ -168,4 +168,4 @@
 | 에러를 500으로 퉁치기 | 클라이언트가 원인 알 수 없음. 구체적 4xx/5xx 사용 |
 | `time.sleep()` in async 함수 | `asyncio.sleep()` 사용 |
 | 전역 변수에 연결 객체 저장 | FastAPI lifespan + dependency injection 사용 |
-| plan_id 없이 수정 제안 반환 | /repair는 항상 /validate 이후에 호출됨. plan_id 필수 |
+| 수정 제안 반환 | POST /api/validate 응답의 repair_suggestions에서 반환한다. 별도 /repair 호출은 제공하지 않는다. |

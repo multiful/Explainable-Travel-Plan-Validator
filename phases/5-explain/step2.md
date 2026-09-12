@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: d61b378c | summary: 전체 검증 파이프라인 오케스트레이터 구현 (ValidationOrchestrator) -->
+<!-- updated: 2026-09-12 | hash: d61b378c | summary: 전체 검증 파이프라인 오케스트레이터 구현 (ValidationOrchestrator) -->
 # Step 2: orchestrator
 
 ## 읽어야 할 파일

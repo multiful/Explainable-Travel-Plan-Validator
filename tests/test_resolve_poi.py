@@ -1,4 +1,5 @@
 """_resolve_poi() 좌표 해석 폴백 순서 테스트 (카탈로그 → csv → kakao 키워드 → 지오코딩 → 서울 폴백)."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -11,8 +12,16 @@ from src.api import router
 from src.api.main import app
 
 _XLSX_HEADER = [
-    "상호명", "도로명주소", "위도", "경도", "대분류코드", "대분류명", "영업시간",
-    "TourAPI_contentid", "TourAPI_영업시간", "반려동물동반",
+    "상호명",
+    "도로명주소",
+    "위도",
+    "경도",
+    "대분류코드",
+    "대분류명",
+    "영업시간",
+    "TourAPI_contentid",
+    "TourAPI_영업시간",
+    "반려동물동반",
 ]
 
 
@@ -32,15 +41,28 @@ def jeju_xlsx_index(tmp_path, monkeypatch):
         tmp_path / "제주특별자치도_통합_TourAPI병합.xlsx",
         [
             {  # TourAPI 매칭 성공 — 실측 영업시간·contentid 우선 사용, 반려동물 동반 가능
-                "상호명": "제주아트센터", "도로명주소": "제주시 어딘가", "위도": "33.4", "경도": "126.5",
-                "대분류코드": "VE", "대분류명": "문화관광",
-                "영업시간": "10:00~19:00", "TourAPI_contentid": 1755806,
-                "TourAPI_영업시간": "09:30~18:30 (휴게 12:00~13:00)", "반려동물동반": "Y",
+                "상호명": "제주아트센터",
+                "도로명주소": "제주시 어딘가",
+                "위도": "33.4",
+                "경도": "126.5",
+                "대분류코드": "VE",
+                "대분류명": "문화관광",
+                "영업시간": "10:00~19:00",
+                "TourAPI_contentid": 1755806,
+                "TourAPI_영업시간": "09:30~18:30 (휴게 12:00~13:00)",
+                "반려동물동반": "Y",
             },
             {  # TourAPI 미매칭 — 기존 영업시간 원문 텍스트로 폴백, 반려동물 동반 정보 없음
-                "상호명": "클리프홀", "도로명주소": "서귀포시 어딘가", "위도": "33.38", "경도": "126.23",
-                "대분류코드": "VE", "대분류명": "문화관광",
-                "영업시간": "10:00~24:00", "TourAPI_contentid": "", "TourAPI_영업시간": "", "반려동물동반": "",
+                "상호명": "클리프홀",
+                "도로명주소": "서귀포시 어딘가",
+                "위도": "33.38",
+                "경도": "126.23",
+                "대분류코드": "VE",
+                "대분류명": "문화관광",
+                "영업시간": "10:00~24:00",
+                "TourAPI_contentid": "",
+                "TourAPI_영업시간": "",
+                "반려동물동반": "",
             },
         ],
     )
@@ -80,9 +102,15 @@ def test_resolve_poi_propagates_pet_friendly_flag(monkeypatch):
         router._JEJU_CSV_INDEX,
         router._normalize("반려동반테스트장소"),
         {
-            "name": "반려동반테스트장소", "lat": 33.4, "lng": 126.5,
-            "region": "제주", "cat": "12", "cat_name": "관광지",
-            "addr": "", "has_coords": True, "source": "jeju_csv",
+            "name": "반려동반테스트장소",
+            "lat": 33.4,
+            "lng": 126.5,
+            "region": "제주",
+            "cat": "12",
+            "cat_name": "관광지",
+            "addr": "",
+            "has_coords": True,
+            "source": "jeju_csv",
             "pet_friendly": True,
         },
     )

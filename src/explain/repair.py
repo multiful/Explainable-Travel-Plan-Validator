@@ -8,6 +8,7 @@
 이 엔진은 '장소 대체(substitution)'를 수행하지 않는다.
 사용자가 선택한 POI 목록을 보존하며 제약 조건만을 최적화하는 수학적 교정 도구다.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -22,9 +23,9 @@ from src.data.restaurant_catalog import RestaurantCatalog
 from src.utils.geo import build_dist_cache, get_travel_min, haversine_km
 from src.validation.hard_fail import HardFailDetector
 
-_MAX_PERM_N: int = 7       # 7! = 5040 — 탐색 허용 상한
-_MIN_DWELL_RATIO: float = 0.5   # 최소 체류 = 원래의 50%
-_MIN_DWELL_ABS: int = 20        # 절대 최솟값 20분
+_MAX_PERM_N: int = 7  # 7! = 5040 — 탐색 허용 상한
+_MIN_DWELL_RATIO: float = 0.5  # 최소 체류 = 원래의 50%
+_MIN_DWELL_ABS: int = 20  # 절대 최솟값 20분
 
 
 def _norm(name: str) -> str:
@@ -208,8 +209,7 @@ class RepairEngine:
             return None
 
         saved = sum(
-            poi.duration_min - adjustments[poi.name]
-            for poi in pois if poi.name in adjustments
+            poi.duration_min - adjustments[poi.name] for poi in pois if poi.name in adjustments
         )
         return TimeTuneSuggestion(
             day_index=day_idx,
@@ -238,7 +238,7 @@ class RepairEngine:
         max_savings = -1.0
         best_idx = -1
 
-        for i, poi in enumerate(pois):
+        for i, _poi in enumerate(pois):
             before = pois[i - 1] if i > 0 else None
             after = pois[i + 1] if i < len(pois) - 1 else None
 
@@ -250,7 +250,8 @@ class RepairEngine:
 
             bypass = (
                 haversine_km(before.lat, before.lng, after.lat, after.lng)
-                if before and after else 0.0
+                if before and after
+                else 0.0
             )
 
             savings = detour - bypass
@@ -270,7 +271,9 @@ class RepairEngine:
         )
         if nearby:
             reason += (
-                " 대신 근처 음식점 " + ", ".join(f"{a.name}({a.distance_km}km)" for a in nearby) + "을(를) 추천합니다."
+                " 대신 근처 음식점 "
+                + ", ".join(f"{a.name}({a.distance_km}km)" for a in nearby)
+                + "을(를) 추천합니다."
             )
         else:
             reason += " 반경 2km 내 대체 가능한 음식점을 찾지 못했습니다."

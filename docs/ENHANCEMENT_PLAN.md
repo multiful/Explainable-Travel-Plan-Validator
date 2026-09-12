@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-30 | hash: bafb1d66 | summary: 8개 요구사항 전부 ✅, M1-M4 DBSCAN 추가, 혼잡도 ⑦⑧ 신규 반영 -->
+<!-- updated: 2026-09-12 | hash: bafb1d66 | summary: 8개 요구사항 전부 ✅, M1-M4 DBSCAN 추가, 혼잡도 ⑦⑧ 신규 반영 -->
 # 패널티 통합 설계서 (Enhancement Plan v2)
 
 > "**진짜 갈 수 있는 길인가**"(현실 제약) + "**얼마나 좋은 경로인가**"(품질 평가) — 6개 패널티 요구사항을 VRPTW 엔진(이미 구현)과 3개 신규 scoring 모듈로 분담 처리.

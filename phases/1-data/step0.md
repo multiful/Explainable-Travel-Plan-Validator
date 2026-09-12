@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: 36f9d9c2 | summary: Pydantic 데이터 모델 완성 (POI, ItineraryPlan, ValidationResult, Settings) -->
+<!-- updated: 2026-09-12 | hash: 36f9d9c2 | summary: Pydantic 데이터 모델 완성 (POI, ItineraryPlan, ValidationResult, Settings) -->
 # Step 0: data-models
 
 ## 읽어야 할 파일

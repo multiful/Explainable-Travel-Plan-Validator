@@ -1,16 +1,15 @@
 """Tests for BonusEngine (TDD)."""
+
 from __future__ import annotations
 
 import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from src.data.models import POI
 from src.scoring.bonus_engine import (
-    ACCESSIBLE_PARTY_TYPES,
     ACCESSIBILITY_BONUS_PER_PLACE,
+    ACCESSIBLE_PARTY_TYPES,
     BONUS_CAP,
     PET_FRIENDLY_BONUS_PER_PLACE,
     WELLNESS_BONUS_PER_PLACE,
@@ -20,12 +19,18 @@ from src.scoring.bonus_engine import (
 
 
 def make_poi(
-    poi_id: str = "1", lat: float = 37.5, lng: float = 127.0, pet_friendly: bool = False,
+    poi_id: str = "1",
+    lat: float = 37.5,
+    lng: float = 127.0,
+    pet_friendly: bool = False,
 ) -> POI:
     return POI(
-        poi_id=poi_id, name=f"POI_{poi_id}",
-        lat=lat, lng=lng,
-        open_start="09:00", open_end="18:00",
+        poi_id=poi_id,
+        name=f"POI_{poi_id}",
+        lat=lat,
+        lng=lng,
+        open_start="09:00",
+        open_end="18:00",
         duration_min=60,
         pet_friendly=pet_friendly,
     )
@@ -43,6 +48,7 @@ def make_engine(
 # ---------------------------------------------------------------------------
 # BonusEngine.compute() — wellness bonus
 # ---------------------------------------------------------------------------
+
 
 class TestWellnessBonus:
     def test_no_wellness_data_gives_zero(self):
@@ -92,6 +98,7 @@ class TestWellnessBonus:
 # BonusEngine.compute() — accessibility bonus
 # ---------------------------------------------------------------------------
 
+
 class TestAccessibilityBonus:
     def test_accessible_party_gets_bonus(self):
         engine = make_engine(barrier_free_coords=[(37.5, 127.0)])
@@ -118,6 +125,7 @@ class TestAccessibilityBonus:
 # ---------------------------------------------------------------------------
 # BonusEngine.compute() — pet-friendly bonus (가산점만, 감점 없음)
 # ---------------------------------------------------------------------------
+
 
 class TestPetFriendlyBonus:
     def test_disabled_gives_zero_even_if_matched(self):
@@ -156,6 +164,7 @@ class TestPetFriendlyBonus:
 # BonusEngine.compute() — total_bonus cap
 # ---------------------------------------------------------------------------
 
+
 class TestTotalBonusCap:
     def test_combined_bonus_capped_at_cap(self):
         coords = [(37.5 + i * 0.01, 127.0) for i in range(20)]
@@ -174,15 +183,14 @@ class TestTotalBonusCap:
             make_poi("2", 37.51, 127.0),
         ]
         result = engine.compute(pois, party_type="아기동반")
-        expected_total = min(
-            result.wellness_bonus + result.accessibility_bonus, BONUS_CAP
-        )
+        expected_total = min(result.wellness_bonus + result.accessibility_bonus, BONUS_CAP)
         assert result.total_bonus == expected_total
 
 
 # ---------------------------------------------------------------------------
 # BonusEngine.from_dataset()
 # ---------------------------------------------------------------------------
+
 
 class TestFromDataset:
     def test_missing_files_give_empty_engine(self):
@@ -214,7 +222,9 @@ class TestFromDataset:
             wp = Path(tmp) / "wellness.json"
             wp.write_text(json.dumps(records), encoding="utf-8")
 
-            engine = BonusEngine.from_dataset(wellness_path=wp, barrier_free_path="nonexistent.json")
+            engine = BonusEngine.from_dataset(
+                wellness_path=wp, barrier_free_path="nonexistent.json"
+            )
             pois = [make_poi("1", 37.5, 127.0)]
             result = engine.compute(pois, party_type="친구")
             assert result.wellness_bonus == 0
@@ -223,6 +233,7 @@ class TestFromDataset:
 # ---------------------------------------------------------------------------
 # BonusResult fields
 # ---------------------------------------------------------------------------
+
 
 class TestBonusResultFields:
     def test_matched_names_populated(self):

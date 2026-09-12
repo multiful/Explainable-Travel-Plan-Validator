@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-30 | hash: 9b1cb461 | summary: ADR-005 Neo4j 제거 확정(Python M3/M4 대체), 제거 기술 표 갱신 -->
+<!-- updated: 2026-09-12 | hash: 9b1cb461 | summary: ADR-005 Neo4j 제거 확정(Python M3/M4 대체), 제거 기술 표 갱신 -->
 # Architecture Decision Records
 
 ## 철학

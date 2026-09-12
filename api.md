@@ -1,3 +1,4 @@
+<!-- updated: 2026-09-12 | hash: 06799987 | summary: API test and integration notes -->
 # API 테스트 스니펫
 
 API 키는 `.env`에서 읽는다. 실행 전 `pip install python-dotenv requests` 필요.

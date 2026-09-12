@@ -1,4 +1,5 @@
 """PlanExtractor 테스트 (실제 Claude API 호출 X — 모두 mock)."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -47,10 +48,14 @@ def test_extract_from_text_empty_raises() -> None:
 def test_extract_from_text_without_client_falls_back_to_heuristic() -> None:
     extractor = PlanExtractor(client=None, api_key="")
 
-    resp = extractor.extract_from_text("Day 1\n1 다려도 여행지\n2 바람벽에흰당나귀 카페\n\nDay 2\n월정리해변")
+    resp = extractor.extract_from_text(
+        "Day 1\n1 다려도 여행지\n2 바람벽에흰당나귀 카페\n\nDay 2\n월정리해변"
+    )
 
     assert [p.name for d in resp.days for p in d.places] == [
-        "다려도", "바람벽에흰당나귀", "월정리해변",
+        "다려도",
+        "바람벽에흰당나귀",
+        "월정리해변",
     ]
     assert len(resp.days) == 2
 

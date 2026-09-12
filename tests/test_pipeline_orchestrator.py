@@ -1,18 +1,26 @@
 """Tests for ValidatorPipeline (TDD)."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
 
-from src.data.models import AlternativePOI, DayPlan, HardFail, ItineraryPlan, PlaceInput, POI, ValidationResult
+from src.data.models import (
+    POI,
+    AlternativePOI,
+    DayPlan,
+    ItineraryPlan,
+    PlaceInput,
+    ValidationResult,
+)
 from src.explain.pipeline import ValidatorPipeline, _to_vrptw_day
 from src.scoring.bonus_engine import BonusEngine, _PlaceCoord
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_poi(
     poi_id: str = "1",
@@ -22,9 +30,12 @@ def make_poi(
     duration_min: int = 60,
 ) -> POI:
     return POI(
-        poi_id=poi_id, name=f"POI_{poi_id}",
-        lat=lat, lng=lng,
-        open_start="09:00", open_end="18:00",
+        poi_id=poi_id,
+        name=f"POI_{poi_id}",
+        lat=lat,
+        lng=lng,
+        open_start="09:00",
+        open_end="18:00",
         duration_min=duration_min,
         category=category,
     )
@@ -81,6 +92,7 @@ def sample_plan(sample_pois: list[POI]) -> ItineraryPlan:
 # _to_vrptw_day helper
 # ---------------------------------------------------------------------------
 
+
 class TestToVrptwDay:
     def test_converts_poi_fields(self):
         pois = [make_poi("1", 37.5, 127.0)]
@@ -100,6 +112,7 @@ class TestToVrptwDay:
 # ---------------------------------------------------------------------------
 # ValidatorPipeline.run() — basic contract
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineBasic:
     def test_returns_validation_result(self, pipeline, sample_pois, sample_plan):
@@ -153,15 +166,20 @@ class TestPipelineBasic:
 # ValidatorPipeline.run() — hard_fail cap
 # ---------------------------------------------------------------------------
 
+
 class TestPipelineHardFail:
     def test_open_hours_conflict_caps_score(self, pipeline):
         # POI with impossible time window — close < open
         pois = [
             POI(
-                poi_id="X", name="NightOnly",
-                lat=37.5, lng=127.0,
-                open_start="22:00", open_end="23:00",
-                duration_min=60, category="14",
+                poi_id="X",
+                name="NightOnly",
+                lat=37.5,
+                lng=127.0,
+                open_start="22:00",
+                open_end="23:00",
+                duration_min=60,
+                category="14",
             ),
             make_poi("2", 37.51, 127.01),
         ]
@@ -182,10 +200,14 @@ class TestPipelineHardFail:
         # Day 0 정상, Day 1에 시간대 충돌 POI 배치
         day0 = [make_poi("1", 37.50, 127.00)]
         night_only = POI(
-            poi_id="X", name="NightOnly",
-            lat=37.5, lng=127.0,
-            open_start="22:00", open_end="23:00",
-            duration_min=60, category="14",
+            poi_id="X",
+            name="NightOnly",
+            lat=37.5,
+            lng=127.0,
+            open_start="22:00",
+            open_end="23:00",
+            duration_min=60,
+            category="14",
         )
         day1 = [night_only]
         plan = make_multi_day_plan([[p.name for p in day0], [night_only.name]])
@@ -197,14 +219,22 @@ class TestPipelineHardFail:
         mock_explain = MagicMock()
         mock_explain.generate.return_value = []
         mock_explain.build_alternatives.return_value = {
-            "NightOnly": [AlternativePOI(name="Alt", distance_km=0.3, category="14", lat=37.5, lng=127.0)]
+            "NightOnly": [
+                AlternativePOI(name="Alt", distance_km=0.3, category="14", lat=37.5, lng=127.0)
+            ]
         }
         pipeline = ValidatorPipeline(
             bonus_engine=make_empty_bonus_engine(), explain_engine=mock_explain
         )
         night_only = POI(
-            poi_id="X", name="NightOnly", lat=37.5, lng=127.0,
-            open_start="22:00", open_end="23:00", duration_min=60, category="14",
+            poi_id="X",
+            name="NightOnly",
+            lat=37.5,
+            lng=127.0,
+            open_start="22:00",
+            open_end="23:00",
+            duration_min=60,
+            category="14",
         )
         plan = make_plan([night_only.name])
         result = pipeline.run(plan=plan, per_day_pois=[[night_only]], matrix={})
@@ -221,6 +251,7 @@ class TestPipelineHardFail:
 # ---------------------------------------------------------------------------
 # ValidatorPipeline.run() — penalty/bonus breakdown
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineBreakdown:
     def test_breakdown_fields_are_dicts(self, pipeline, sample_pois, sample_plan):
@@ -257,9 +288,7 @@ class TestPipelineBreakdown:
     def test_pet_friendly_bonus_when_enabled(self, pipeline):
         poi = make_poi("1", 37.5, 127.0).model_copy(update={"pet_friendly": True})
         plan = make_plan([poi.name])
-        result = pipeline.run(
-            plan=plan, per_day_pois=[[poi]], matrix={}, pet_friendly_enabled=True
-        )
+        result = pipeline.run(plan=plan, per_day_pois=[[poi]], matrix={}, pet_friendly_enabled=True)
         assert "pet_friendly" in result.bonus_breakdown
         assert result.bonus_breakdown["pet_friendly"] > 0
 
@@ -286,14 +315,17 @@ class TestPipelineBreakdown:
 # ValidatorPipeline.run() — multi-day
 # ---------------------------------------------------------------------------
 
+
 class TestPipelineMultiDay:
     def test_multi_day_runs_without_error(self, pipeline):
         day1 = [make_poi("1", 37.50, 127.00), make_poi("2", 37.51, 127.01)]
         day2 = [make_poi("3", 37.52, 127.02), make_poi("4", 37.53, 127.03)]
-        plan = make_multi_day_plan([
-            [p.name for p in day1],
-            [p.name for p in day2],
-        ])
+        plan = make_multi_day_plan(
+            [
+                [p.name for p in day1],
+                [p.name for p in day2],
+            ]
+        )
         result = pipeline.run(plan=plan, per_day_pois=[day1, day2], matrix={})
         assert isinstance(result, ValidationResult)
         assert 0 <= result.final_score <= 100
@@ -314,6 +346,7 @@ class TestPipelineMultiDay:
 # ---------------------------------------------------------------------------
 # ValidatorPipeline.run() — VRPTW 통합
 # ---------------------------------------------------------------------------
+
 
 class TestPipelineVRPTW:
     def test_vrptw_fields_present(self, pipeline, sample_pois, sample_plan):
@@ -346,10 +379,12 @@ class TestPipelineVRPTW:
     def test_vrptw_optimal_route_per_day_count(self, pipeline):
         day1 = [make_poi("1", 37.50, 127.00), make_poi("2", 37.52, 127.02)]
         day2 = [make_poi("3", 37.51, 127.01), make_poi("4", 37.53, 127.03)]
-        plan = make_multi_day_plan([
-            [p.name for p in day1],
-            [p.name for p in day2],
-        ])
+        plan = make_multi_day_plan(
+            [
+                [p.name for p in day1],
+                [p.name for p in day2],
+            ]
+        )
         result = pipeline.run(plan=plan, per_day_pois=[day1, day2], matrix={})
         if result.vrptw_optimal_route is not None:
             assert len(result.vrptw_optimal_route) == 2
@@ -382,14 +417,21 @@ class TestPipelineVRPTW:
 # ValidatorPipeline.run() — Repair 제안 예상 점수 변화 (지도 UX 개선)
 # ---------------------------------------------------------------------------
 
+
 class TestPipelineRepairGainEstimation:
     def test_deletion_suggestion_carries_gain_and_resolves_flag(self, pipeline):
         """지리적 이상치이자 Hard Fail 유발 POI를 삭제하면 점수가 오르고 문제가 해소돼야 한다."""
         a = make_poi("A", 37.50, 127.00)
         b = make_poi("B", 37.51, 127.01)
         night_only = POI(
-            poi_id="X", name="NightOnly", lat=38.50, lng=127.00,
-            open_start="22:00", open_end="23:00", duration_min=60, category="14",
+            poi_id="X",
+            name="NightOnly",
+            lat=38.50,
+            lng=127.00,
+            open_start="22:00",
+            open_end="23:00",
+            duration_min=60,
+            category="14",
         )
         pois = [a, b, night_only]
         plan = make_plan([p.name for p in pois])

@@ -9,11 +9,11 @@ API: 서울 열린데이터광장 citydata (도시데이터 API)
 지원 혼잡도 레벨:
     여유 → 0.1  |  보통 → 0.4  |  약간 붐빔 → 0.7  |  붐빔 → 1.0
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 import httpx
 
@@ -22,15 +22,37 @@ BASE_URL = "http://openapi.seoul.go.kr:8088"
 # 서울 도시데이터 API 등록 장소명 (115개소 중 주요 관광지)
 # 정확한 문자열 일치가 필요 — 오타 시 404 반환
 KNOWN_AREAS: set[str] = {
-    "경복궁", "창덕궁", "창경궁", "덕수궁", "경희궁",
-    "인사동", "북촌한옥마을", "서촌", "남산공원",
-    "명동 관광특구", "동대문 관광특구", "이태원 관광특구",
-    "강남 MICE 관광특구", "홍대 관광특구",
-    "여의도한강공원", "반포한강공원", "뚝섬한강공원",
-    "잠실한강공원", "망원한강공원", "이촌한강공원",
-    "롯데월드", "코엑스", "국립중앙박물관",
-    "서울숲", "올림픽공원", "북한산", "관악산",
-    "강남역", "신촌·이대", "건대입구역", "왕십리역",
+    "경복궁",
+    "창덕궁",
+    "창경궁",
+    "덕수궁",
+    "경희궁",
+    "인사동",
+    "북촌한옥마을",
+    "서촌",
+    "남산공원",
+    "명동 관광특구",
+    "동대문 관광특구",
+    "이태원 관광특구",
+    "강남 MICE 관광특구",
+    "홍대 관광특구",
+    "여의도한강공원",
+    "반포한강공원",
+    "뚝섬한강공원",
+    "잠실한강공원",
+    "망원한강공원",
+    "이촌한강공원",
+    "롯데월드",
+    "코엑스",
+    "국립중앙박물관",
+    "서울숲",
+    "올림픽공원",
+    "북한산",
+    "관악산",
+    "강남역",
+    "신촌·이대",
+    "건대입구역",
+    "왕십리역",
 }
 
 # 사용자 입력 → API 장소명 별칭 매핑
@@ -60,9 +82,9 @@ CONGEST_SCORE_MAP: dict[str, float] = {
 
 @dataclass(frozen=True)
 class ForecastSlot:
-    time: str           # "YYYY-MM-DD HH:MM"
-    level: str          # "여유" | "보통" | "약간 붐빔" | "붐빔"
-    score: float        # 0.0~1.0
+    time: str  # "YYYY-MM-DD HH:MM"
+    level: str  # "여유" | "보통" | "약간 붐빔" | "붐빔"
+    score: float  # 0.0~1.0
     ppltn_min: int
     ppltn_max: int
 
@@ -71,13 +93,13 @@ class ForecastSlot:
 class SeoulRealtimeCongestion:
     area_name: str
     area_code: str
-    level: str                      # 현재 혼잡도 텍스트
-    score: float                    # 0.0~1.0
+    level: str  # 현재 혼잡도 텍스트
+    score: float  # 0.0~1.0
     ppltn_min: int
     ppltn_max: int
-    measured_at: str                # "YYYY-MM-DD HH:MM"
+    measured_at: str  # "YYYY-MM-DD HH:MM"
     forecast: list[ForecastSlot] = field(default_factory=list)
-    is_replaced: bool = False       # REPLACE_YN == 'Y' 이면 추정치
+    is_replaced: bool = False  # REPLACE_YN == 'Y' 이면 추정치
 
 
 class SeoulCityDataClient:
@@ -93,6 +115,7 @@ class SeoulCityDataClient:
             self._key = api_key
         else:
             from src.data.models import Settings
+
             self._key = Settings().seoul_data_api_key
         if not self._key:
             raise ValueError("SEOUL_DATA_API_KEY가 설정되지 않았습니다.")

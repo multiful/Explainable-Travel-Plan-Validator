@@ -1,4 +1,5 @@
 """한국관광공사 웰니스 관광 정보 API 클라이언트 (B551011/WellnessTursmService)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,8 +18,8 @@ class WellnessPlace:
     content_id: str
     title: str
     addr: str
-    lat: float   # mapY
-    lng: float   # mapX
+    lat: float  # mapY
+    lng: float  # mapX
     cat1: str = ""
     cat2: str = ""
     cat3: str = ""
@@ -55,7 +56,7 @@ class WellnessAPIClient:
         self._timeout = timeout_sec
 
     @classmethod
-    def from_settings(cls, settings: Settings | None = None) -> "WellnessAPIClient | None":
+    def from_settings(cls, settings: Settings | None = None) -> WellnessAPIClient | None:
         if settings is None:
             settings = Settings()
         key = settings.wellness_api_key
@@ -98,20 +99,22 @@ class WellnessAPIClient:
             addr = str(item.get("baseAddr") or item.get("addr1") or item.get("addr") or "")
             lat = _safe_float(item.get("mapY") or item.get("mapy") or item.get("lat"))
             lng = _safe_float(item.get("mapX") or item.get("mapx") or item.get("lng"))
-            
+
             if not content_id or lat == 0.0 or lng == 0.0:
                 continue
-                
-            places.append(WellnessPlace(
-                content_id=content_id,
-                title=title,
-                addr=addr,
-                lat=lat,
-                lng=lng,
-                cat1=str(item.get("cat1", "")),
-                cat2=str(item.get("cat2", "")),
-                cat3=str(item.get("cat3", "")),
-            ))
+
+            places.append(
+                WellnessPlace(
+                    content_id=content_id,
+                    title=title,
+                    addr=addr,
+                    lat=lat,
+                    lng=lng,
+                    cat1=str(item.get("cat1", "")),
+                    cat2=str(item.get("cat2", "")),
+                    cat3=str(item.get("cat3", "")),
+                )
+            )
         return places
 
     async def fetch_all(self, num_of_rows: int = 100) -> list[WellnessPlace]:

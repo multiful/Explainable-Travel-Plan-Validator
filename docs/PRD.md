@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-30 | hash: 08b17a67 | summary: Neo4j 제거, 실시간 혼잡도 MVP 포함, 기술 제약 갱신 -->
+<!-- updated: 2026-09-12 | hash: 0863df04 | summary: Neo4j 제거, 실시간 혼잡도 MVP 포함, 기술 제약 갱신 -->
 # PRD: Explainable Travel Plan Validator
 
 ## 목표
@@ -14,9 +14,9 @@
 
 ## 핵심 기능
 
-1. **일정 검증** (`POST /validate`): 여행 일정 입력 → Hard Fail/Warning 탐지 → 점수 + 설명 보고서
-2. **수정 제안** (`GET /repair/{plan_id}`): 검증 결과 기반 제약 수정(Repair) 제안 반환
-3. **REST API**: FastAPI `/validate`, `/repair/{plan_id}`, `/health` 엔드포인트
+1. **일정 검증** (`POST /api/validate`): 여행 일정 입력 → Hard Fail/Warning 탐지 → 점수 + 설명 보고서
+2. **수정 제안**: 검증 응답의 `repair_suggestions` 필드로 즉시 반환
+3. **REST API**: FastAPI `/api/validate`, `/api/places`, `/health` 엔드포인트
 
 ## 검증 프레임워크
 
@@ -118,7 +118,7 @@ Hard Fail 존재 시: Final Score = min(계산값, 59)
 ### Story 2 — 수정 제안 요청자
 > "검증 결과에서 비효율적인 동선이 있었다. 자동 수정 제안을 받고 싶다."
 
-- `GET /repair/{plan_id}` 로 Repair 제안 수신
+- `POST /api/validate` 응답의 `repair_suggestions`로 Repair 제안 수신
 - 우선순위: Hard Fail 제거 → 재방문 제거 → 일정 과밀 완화 → 효율 개선
 
 ### Story 3 — B2B 여행 플랫폼

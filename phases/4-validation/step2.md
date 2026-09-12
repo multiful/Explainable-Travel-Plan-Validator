@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: bbad0bda | summary: 5개 지표(Efficiency·Feasibility·PurposeFit·Flow·AreaIntensity) → Final Score 계산 -->
+<!-- updated: 2026-09-12 | hash: bbad0bda | summary: 5개 지표(Efficiency·Feasibility·PurposeFit·Flow·AreaIntensity) → Final Score 계산 -->
 # Step 2: scoring
 
 ## 읽어야 할 파일

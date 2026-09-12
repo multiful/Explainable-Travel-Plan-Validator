@@ -1,4 +1,5 @@
 """RepairEngine 유닛 테스트."""
+
 from __future__ import annotations
 
 from src.data.models import POI, DayPlan, HardFail, ItineraryPlan, PlaceInput
@@ -22,9 +23,14 @@ def _poi(
     open_end: str = "18:00",
 ) -> POI:
     return POI(
-        poi_id=name, name=name, lat=lat, lng=lng,
-        open_start=open_start, open_end=open_end,
-        duration_min=duration, category=category,
+        poi_id=name,
+        name=name,
+        lat=lat,
+        lng=lng,
+        open_start=open_start,
+        open_end=open_end,
+        duration_min=duration,
+        category=category,
     )
 
 
@@ -42,13 +48,16 @@ def _plan(names: list[str], party_type: str = "친구") -> ItineraryPlan:
 def _fail() -> HardFail:
     return HardFail(
         fail_type="SCHEDULE_INFEASIBLE",
-        message="test", evidence="test", confidence="High",
+        message="test",
+        evidence="test",
+        confidence="High",
     )
 
 
 # ---------------------------------------------------------------------------
 # 기본 동작
 # ---------------------------------------------------------------------------
+
 
 class TestRepairEngineNoop:
     def test_empty_when_no_hard_fails(self):
@@ -70,6 +79,7 @@ class TestRepairEngineNoop:
 # duration=20 (절대 최솟값): time_tune 단계 스킵
 # → deletion 단계 검증 가능
 # ---------------------------------------------------------------------------
+
 
 def _outlier_pois() -> list[POI]:
     """8개 POI — D(lat=38.5)가 A-C, E-H(lat=37.5) 사이의 지리적 이상치."""
@@ -137,6 +147,7 @@ class TestDeletionSuggestion:
 # Stay-time Tuning
 # ---------------------------------------------------------------------------
 
+
 class TestTimeTuneSuggestion:
     def test_no_tune_when_within_limit(self):
         """친구(720min) 기준, 총 120min → 조정 불필요."""
@@ -170,6 +181,7 @@ class TestTimeTuneSuggestion:
 # to_dict / is_empty
 # ---------------------------------------------------------------------------
 
+
 class TestResultModel:
     def test_to_dict_is_serializable(self):
         engine = RepairEngine()
@@ -196,26 +208,63 @@ class TestResultModel:
 # total_estimated_gain — 서로 다른 날짜의 제안은 합산, 같은 날짜의 대안은 최댓값만
 # ---------------------------------------------------------------------------
 
+
 class TestTotalEstimatedGain:
     def test_sums_across_different_days(self):
-        result = RepairResult(deletions=[
-            DeletionSuggestion(day_index=0, candidate_name="A", travel_saved_km=1.0, reason="", estimated_score_gain=10),
-            DeletionSuggestion(day_index=1, candidate_name="B", travel_saved_km=1.0, reason="", estimated_score_gain=5),
-        ])
+        result = RepairResult(
+            deletions=[
+                DeletionSuggestion(
+                    day_index=0,
+                    candidate_name="A",
+                    travel_saved_km=1.0,
+                    reason="",
+                    estimated_score_gain=10,
+                ),
+                DeletionSuggestion(
+                    day_index=1,
+                    candidate_name="B",
+                    travel_saved_km=1.0,
+                    reason="",
+                    estimated_score_gain=5,
+                ),
+            ]
+        )
         assert result.total_estimated_gain == 15
 
     def test_takes_max_of_alternatives_on_same_day(self):
-        result = RepairResult(deletions=[
-            DeletionSuggestion(day_index=0, candidate_name="A", travel_saved_km=1.0, reason="", estimated_score_gain=10),
-            DeletionSuggestion(day_index=0, candidate_name="B", travel_saved_km=1.0, reason="", estimated_score_gain=15),
-        ])
+        result = RepairResult(
+            deletions=[
+                DeletionSuggestion(
+                    day_index=0,
+                    candidate_name="A",
+                    travel_saved_km=1.0,
+                    reason="",
+                    estimated_score_gain=10,
+                ),
+                DeletionSuggestion(
+                    day_index=0,
+                    candidate_name="B",
+                    travel_saved_km=1.0,
+                    reason="",
+                    estimated_score_gain=15,
+                ),
+            ]
+        )
         assert result.total_estimated_gain == 15
 
     def test_zero_when_empty(self):
         assert RepairResult().total_estimated_gain == 0
 
     def test_included_in_to_dict(self):
-        result = RepairResult(deletions=[
-            DeletionSuggestion(day_index=0, candidate_name="A", travel_saved_km=1.0, reason="", estimated_score_gain=10),
-        ])
+        result = RepairResult(
+            deletions=[
+                DeletionSuggestion(
+                    day_index=0,
+                    candidate_name="A",
+                    travel_saved_km=1.0,
+                    reason="",
+                    estimated_score_gain=10,
+                ),
+            ]
+        )
         assert result.to_dict()["total_estimated_gain"] == 10

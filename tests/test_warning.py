@@ -1,15 +1,16 @@
 """Tests for WarningDetector (TDD)."""
+
 from __future__ import annotations
 
 import pytest
 
-from src.data.models import DayPlan, ItineraryPlan, PlaceInput, POI
+from src.data.models import POI, DayPlan, ItineraryPlan, PlaceInput
 from src.validation.warning import WarningDetector
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_poi(
     poi_id: str = "1",
@@ -20,9 +21,14 @@ def make_poi(
     duration_min: int = 60,
 ) -> POI:
     return POI(
-        poi_id=poi_id, name=name, lat=lat, lng=lng,
-        open_start="09:00", open_end="18:00",
-        duration_min=duration_min, category=category,
+        poi_id=poi_id,
+        name=name,
+        lat=lat,
+        lng=lng,
+        open_start="09:00",
+        open_end="18:00",
+        duration_min=duration_min,
+        category=category,
     )
 
 
@@ -55,6 +61,7 @@ def make_matrix(pairs: dict[tuple[int, int], float]) -> dict:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def detector() -> WarningDetector:
     return WarningDetector()
@@ -63,6 +70,7 @@ def detector() -> WarningDetector:
 # ---------------------------------------------------------------------------
 # DENSE_SCHEDULE
 # ---------------------------------------------------------------------------
+
 
 class TestDenseSchedule:
     def test_dense_trigger_baby(self, detector):
@@ -106,6 +114,7 @@ class TestDenseSchedule:
 # PHYSICAL_STRAIN
 # ---------------------------------------------------------------------------
 
+
 class TestPhysicalStrain:
     def test_strain_trigger(self, detector):
         # POIs ~13 km apart × 3 legs ≈ 39 km total > 30 km threshold
@@ -121,10 +130,7 @@ class TestPhysicalStrain:
         assert "PHYSICAL_STRAIN" in types
 
     def test_no_strain_short_distance(self, detector):
-        pois = [
-            make_poi(poi_id=str(i), name=f"P{i}", lat=37.5, lng=127.0)
-            for i in range(4)
-        ]
+        pois = [make_poi(poi_id=str(i), name=f"P{i}", lat=37.5, lng=127.0) for i in range(4)]
         plan = make_plan([f"P{i}" for i in range(4)])
         warns = detector.detect(plan, pois, {})
         types = [w.warning_type for w in warns]
@@ -135,13 +141,11 @@ class TestPhysicalStrain:
 # PURPOSE_MISMATCH
 # ---------------------------------------------------------------------------
 
+
 class TestPurposeMismatch:
     def test_mismatch_cultural_all_sports(self, detector):
         # travel_type=cultural, all POIs are 레포츠(15) → mismatch
-        pois = [
-            make_poi(poi_id=str(i), name=f"P{i}", category="15")
-            for i in range(4)
-        ]
+        pois = [make_poi(poi_id=str(i), name=f"P{i}", category="15") for i in range(4)]
         plan = make_plan([f"P{i}" for i in range(4)], travel_type="cultural")
         warns = detector.detect(plan, pois, {})
         types = [w.warning_type for w in warns]
@@ -149,10 +153,7 @@ class TestPurposeMismatch:
 
     def test_no_mismatch_cultural_all_cultural(self, detector):
         # travel_type=cultural, all POIs are 문화시설(14) → no mismatch
-        pois = [
-            make_poi(poi_id=str(i), name=f"P{i}", category="14")
-            for i in range(4)
-        ]
+        pois = [make_poi(poi_id=str(i), name=f"P{i}", category="14") for i in range(4)]
         plan = make_plan([f"P{i}" for i in range(4)], travel_type="cultural")
         warns = detector.detect(plan, pois, {})
         types = [w.warning_type for w in warns]
@@ -169,6 +170,7 @@ class TestPurposeMismatch:
 # ---------------------------------------------------------------------------
 # AREA_REVISIT
 # ---------------------------------------------------------------------------
+
 
 class TestAreaRevisit:
     def test_consecutive_same_category_triggers(self, detector):
@@ -227,12 +229,10 @@ class TestAreaRevisit:
 # Warning model fields
 # ---------------------------------------------------------------------------
 
+
 class TestWarningFields:
     def test_warning_has_confidence_from_types(self, detector):
-        pois = [
-            make_poi(poi_id=str(i), name=f"P{i}", category="15")
-            for i in range(4)
-        ]
+        pois = [make_poi(poi_id=str(i), name=f"P{i}", category="15") for i in range(4)]
         plan = make_plan([f"P{i}" for i in range(4)], travel_type="cultural")
         warns = detector.detect(plan, pois, {})
         mismatch = next((w for w in warns if w.warning_type == "PURPOSE_MISMATCH"), None)
@@ -251,6 +251,7 @@ class TestWarningFields:
 # ---------------------------------------------------------------------------
 # day_index / poi_names threading
 # ---------------------------------------------------------------------------
+
 
 class TestDayIndex:
     def test_day_index_defaults_to_none(self, detector):

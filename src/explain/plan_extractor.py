@@ -4,22 +4,24 @@
 복사한 텍스트 — 을 입력받아 day/place 구조(ParsedPlanResponse)로 정규화한다.
 텍스트는 쿼리 리라이팅으로, 이미지·PDF는 Claude Vision으로 동일한 JSON 스키마를 뽑아낸다.
 
-추출된 장소명은 이후 src.api.router._resolve_poi()가 지식그래프(GraphRetriever)·
-jeju_places.csv 등 기존 데이터 레이어를 그대로 통해 좌표·운영시간을 재조회하므로,
+추출된 장소명은 이후 src.api.router._resolve_poi()가 로컬 근거 리트리버·
+jeju_places.csv 등 기존 데이터 레이어를 통해 좌표·운영시간을 재조회하므로,
 이 모듈은 "이름·주소·카테고리 추출"에만 집중한다.
 """
+
 from __future__ import annotations
 
 import base64
 import json
-import os
 import re
 from typing import Any
 
 from src.api.schemas import ParsedDay, ParsedPlace, ParsedPlanResponse
+from src.data.models import Settings
 
 try:
     import anthropic
+
     _ANTHROPIC_AVAILABLE = True
 except ImportError:
     _ANTHROPIC_AVAILABLE = False
@@ -48,7 +50,9 @@ category 코드 (아래 중 하나만 사용):
 - 장소를 하나도 찾지 못하면 {"days": []} 를 반환하라.
 """
 
-_USER_PREFIX_TEXT = "다음은 여행 플래너에서 추천받은 일정을 복사한 텍스트다. 스키마에 맞게 파싱하라:\n\n"
+_USER_PREFIX_TEXT = (
+    "다음은 여행 플래너에서 추천받은 일정을 복사한 텍스트다. 스키마에 맞게 파싱하라:\n\n"
+)
 _USER_PREFIX_DOC = "첨부된 여행 일정 캡처(이미지 또는 PDF)를 스키마에 맞게 파싱하라."
 
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
@@ -114,7 +118,7 @@ class PlanExtractor:
         self._model = model
         self._timeout = timeout_sec
         self._max_tokens = max_tokens
-        self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self._api_key = Settings().anthropic_api_key if api_key is None else api_key
         self._client = client
         if self._client is None and _ANTHROPIC_AVAILABLE and self._api_key:
             self._client = anthropic.Anthropic(api_key=self._api_key)
@@ -161,11 +165,13 @@ class PlanExtractor:
                 model=self._model,
                 max_tokens=self._max_tokens,
                 timeout=self._timeout,
-                system=[{
-                    "type": "text",
-                    "text": _SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }],
+                system=[
+                    {
+                        "type": "text",
+                        "text": _SYSTEM_PROMPT,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
                 messages=[{"role": "user", "content": content}],
             )
         except Exception as e:
@@ -180,9 +186,13 @@ def _demo() -> None:
     )
     assert resp.days[0].places[0].name == "성산일출봉"
 
-    fb = _fallback_text_parse("Day 1\n1 다려도 여행지\n2 바람벽에흰당나귀 카페\n\nDay 2\n월정리해변")
+    fb = _fallback_text_parse(
+        "Day 1\n1 다려도 여행지\n2 바람벽에흰당나귀 카페\n\nDay 2\n월정리해변"
+    )
     assert [p.name for d in fb.days for p in d.places] == [
-        "다려도", "바람벽에흰당나귀", "월정리해변",
+        "다려도",
+        "바람벽에흰당나귀",
+        "월정리해변",
     ]
     assert len(fb.days) == 2
     print("plan_extractor self-check OK")

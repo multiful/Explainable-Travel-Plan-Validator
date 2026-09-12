@@ -1,13 +1,11 @@
 """Tests for src/data/dwell_db.py — 5단계 폴백 검증."""
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 from src.data.dwell_db import (
     BY_LCLS1,
     BY_LCLS3,
     DEFAULT_DWELL,
-    MANUAL_OVERRIDES,
     DwellRecommendation,
     get_recommended_dwell,
 )
@@ -65,5 +63,5 @@ class TestDefaultFallback:
 class TestIsTooShort:
     def test_below_50pct_is_too_short(self):
         rec = DwellRecommendation(min_minutes=90, max_minutes=150, source="manual")
-        assert rec.is_too_short(30) is True   # 30 < 90*0.5=45
+        assert rec.is_too_short(30) is True  # 30 < 90*0.5=45
         assert rec.is_too_short(60) is False  # 60 >= 45

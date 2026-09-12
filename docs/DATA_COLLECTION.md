@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-30 | hash: d0cb7ba4 | summary: 서울 도시데이터 API 섹션 추가, SEOUL_DATA_API_KEY 환경변수 반영 -->
+<!-- updated: 2026-09-12 | hash: d0cb7ba4 | summary: 서울 도시데이터 API 섹션 추가, SEOUL_DATA_API_KEY 환경변수 반영 -->
 # 데이터 파이프라인 가이드
 
 본 시스템은 두 개의 외부 API를 데이터 소스로 사용한다:

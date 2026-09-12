@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-21 | hash: f9f6aa14 | summary: Pairwise 이동시간·거리 행렬 빌더 구현 (Kakao Mobility + 직선거리 폴백) -->
+<!-- updated: 2026-09-12 | hash: f9f6aa14 | summary: Pairwise 이동시간·거리 행렬 빌더 구현 (Kakao Mobility + 직선거리 폴백) -->
 # Step 0: travel-matrix
 
 ## 읽어야 할 파일

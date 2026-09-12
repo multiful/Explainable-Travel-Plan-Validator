@@ -1,4 +1,5 @@
 """Tests for src/data/theme_taxonomy.py — 2축 테마 + 매핑."""
+
 from __future__ import annotations
 
 import pytest

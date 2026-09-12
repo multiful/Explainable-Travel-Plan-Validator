@@ -1,4 +1,4 @@
-<!-- updated: 2026-04-30 | hash: a5141bb2 | summary: Neo4j 제거, M1-M4 cluster_dispersion, 서울 도시데이터 API, 혼잡도 하이브리드 구조 반영 -->
+<!-- updated: 2026-09-12 | hash: 22d55ea2 | summary: Neo4j 제거, M1-M4 cluster_dispersion, 서울 도시데이터 API, 혼잡도 하이브리드 구조 반영 -->
 # 아키텍처
 
 ## 시스템 흐름
@@ -49,7 +49,7 @@ src/
 │   └── orchestrator.py          # 전체 파이프라인 오케스트레이터
 └── api/
     ├── main.py                  # FastAPI app + lifespan
-    ├── routes.py                # /validate, /repair/{plan_id}, /health
+    ├── router.py                # /api/validate, /api/places, /health
     └── schemas.py               # ValidateRequest, ValidateResponse Pydantic 스키마
 tests/
 ├── test_cluster_dispersion.py   # M1-M4 밀집도 7개 테스트

@@ -4,14 +4,39 @@ NOTE: from __future__ import annotations makes all annotations strings so
 Pydantic v2 can resolve forward references (e.g. ExplanationItem,
 DayRouteComparison) that are defined later in this file.
 """
+
 from __future__ import annotations
 
 import hashlib
 import re
+from datetime import date as date_type
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _validate_hhmm(value: str, field_name: str = "time") -> str:
+    if not re.fullmatch(r"\d{2}:\d{2}", value):
+        raise ValueError(f"{field_name} must be HH:MM format, got: {value!r}")
+    hour, minute = int(value[:2]), int(value[3:])
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        raise ValueError(f"Invalid {field_name} value: {value!r}")
+    return value
+
+
+def _validate_iso_date(value: str) -> str:
+    try:
+        parsed = date_type.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError("date must be an ISO date in YYYY-MM-DD format") from exc
+    if parsed.isoformat() != value:
+        raise ValueError("date must be an ISO date in YYYY-MM-DD format")
+    return value
+
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +111,7 @@ class Scores(BaseModel):
     area_intensity: float
 
     @model_validator(mode="after")
-    def validate_ranges(self) -> "Scores":
+    def validate_ranges(self) -> Scores:
         for fname in ("efficiency", "feasibility", "purpose_fit", "flow", "area_intensity"):
             v = getattr(self, fname)
             if not 0.0 <= v <= 1.0:
@@ -108,7 +133,7 @@ class POI(BaseModel):
     lat: float
     lng: float
     open_start: str  # HH:MM
-    open_end: str    # HH:MM
+    open_end: str  # HH:MM
     duration_min: int
     category: str = ""
     # 영업시간이 실측/검증값이 아니라 카테고리 추정값이면 True.
@@ -157,8 +182,8 @@ class POI(BaseModel):
 
 class PlaceInput(BaseModel):
     name: str
-    visit_order: int | None = None      # None → DayPlan에서 해당 일자 내 리스트 순서 자동 할당
-    is_accommodation: bool = False      # True → 숙소(Depot). M3/M4 백트래킹 계산 시 기준점 역할
+    visit_order: int | None = None  # None → DayPlan에서 해당 일자 내 리스트 순서 자동 할당
+    is_accommodation: bool = False  # True → 숙소(Depot). M3/M4 백트래킹 계산 시 기준점 역할
 
     @field_validator("visit_order")
     @classmethod
@@ -172,6 +197,7 @@ class PlaceInput(BaseModel):
 
 class DayPlan(BaseModel):
     """하루 일정 — 장소 이름과 방문 순서 입력."""
+
     places: list[PlaceInput]
 
     @field_validator("places")
@@ -184,7 +210,7 @@ class DayPlan(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def auto_fill_visit_order(self) -> "DayPlan":
+    def auto_fill_visit_order(self) -> DayPlan:
         """visit_order 미입력 시 해당 일자 내 리스트 위치(1-based)로 자동 할당."""
         for i, place in enumerate(self.places):
             if place.visit_order is None:
@@ -193,11 +219,22 @@ class DayPlan(BaseModel):
 
 
 class ItineraryPlan(BaseModel):
-    days: list[DayPlan]   # 일자별 장소 목록 (len = travel_days)
-    party_size: Literal[1, 2, 3, 4, 5]   # 여행 인원 (5 = 5인 이상)
+    days: list[DayPlan]  # 일자별 장소 목록 (len = travel_days)
+    party_size: Literal[1, 2, 3, 4, 5]  # 여행 인원 (5 = 5인 이상)
     party_type: Literal["혼자", "친구", "연인", "가족", "아기동반", "어르신동반"]
     travel_type: Literal["cultural", "nature", "shopping", "food", "adventure"] | None = None
     date: str  # 여행 시작일 (YYYY-MM-DD)
+    start_time: str = "09:00"
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, v: str) -> str:
+        return _validate_iso_date(v)
+
+    @field_validator("start_time")
+    @classmethod
+    def validate_start_time(cls, v: str) -> str:
+        return _validate_hhmm(v, "start_time")
 
     @field_validator("days")
     @classmethod
@@ -247,26 +284,30 @@ class ValidationResult(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def hard_fail_score_cap(self) -> "ValidationResult":
+    def hard_fail_score_cap(self) -> ValidationResult:
         if self.hard_fails and self.final_score >= 60:
             raise ValueError("final_score must be <= 59 when hard_fails are present")
         return self
 
 
 class Settings(BaseSettings):
+    environment: str = "development"
+    api_auth_token: str = ""
+    cors_allowed_origins: str = "http://localhost:8000,http://127.0.0.1:8000"
     anthropic_api_key: str = ""
     claude_model: str = "claude-haiku-4-5"
     tour_api_key: str = ""
     kakao_rest_api_key: str = ""
     kakao_mobility_key: str = ""
     seoul_data_api_key: str = ""
+    naver_api_key: str = ""
     wellness_api_key: str = ""
     barrier_free_api_key: str = ""
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    model_config = SettingsConfigDict(env_file=_PROJECT_ROOT / ".env", extra="ignore")
 
     @model_validator(mode="after")
-    def fill_gov_api_keys(self) -> "Settings":
+    def fill_gov_api_keys(self) -> Settings:
         """wellness_api_key / barrier_free_api_key 미설정 시 tour_api_key로 대체."""
         if not self.wellness_api_key:
             self.wellness_api_key = self.tour_api_key
@@ -284,7 +325,7 @@ class VRPTWPlace(BaseModel):
     name: str
     lng: float
     lat: float
-    open: str   # HH:MM
+    open: str  # HH:MM
     close: str  # HH:MM
     stay_duration: int  # minutes; 0 allowed for depot
     is_depot: bool = False
@@ -292,12 +333,7 @@ class VRPTWPlace(BaseModel):
     @field_validator("open", "close")
     @classmethod
     def validate_hhmm(cls, v: str) -> str:
-        if not re.fullmatch(r"\d{2}:\d{2}", v):
-            raise ValueError(f"Time must be HH:MM format, got: {v!r}")
-        h, m = int(v[:2]), int(v[3:])
-        if not (0 <= h <= 23 and 0 <= m <= 59):
-            raise ValueError(f"Invalid time value: {v!r}")
-        return v
+        return _validate_hhmm(v)
 
     @field_validator("lat")
     @classmethod
@@ -344,6 +380,12 @@ class VRPTWDay(BaseModel):
 
 class VRPTWRequest(BaseModel):
     days: list[VRPTWDay]
+    start_time: str = "09:00"
+
+    @field_validator("start_time")
+    @classmethod
+    def validate_start_time(cls, v: str) -> str:
+        return _validate_hhmm(v, "start_time")
 
     @field_validator("days")
     @classmethod
@@ -362,6 +404,7 @@ class DeepDiveItem(BaseModel):
 
 class ExplanationItem(BaseModel):
     """ExplainEngine이 생성하는 4단계 설명 항목."""
+
     item_type: Literal["hard_fail", "warning", "penalty", "bonus", "overall"]
     item_key: str
     fact: str
@@ -373,18 +416,18 @@ class ExplanationItem(BaseModel):
 
 class DayRouteComparison(BaseModel):
     day_index: int
-    user_order: list[str]        # place names in user order
+    user_order: list[str]  # place names in user order
     optimal_order: list[str] | None  # None when ortools unavailable
     user_travel_seconds: int
     optimal_travel_seconds: int | None
 
 
 class VRPTWResult(BaseModel):
-    risk_score: int                          # 0–100
-    passed: bool                             # risk_score >= 60
+    risk_score: int  # 0–100
+    passed: bool  # risk_score >= 60
     user_total_travel_seconds: int
     optimal_total_travel_seconds: int | None
-    efficiency_gap: float | None             # (user - optimal) / optimal
+    efficiency_gap: float | None  # (user - optimal) / optimal
     optimal_route: list[DayRouteComparison] | None
     deep_dive: list[DeepDiveItem]
     summary: str

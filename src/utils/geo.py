@@ -1,4 +1,5 @@
 """공유 지리 계산 유틸리티 — Haversine, NN 휴리스틱, 이동시간 조회."""
+
 from __future__ import annotations
 
 import math
@@ -27,9 +28,7 @@ def build_dist_cache(pois: list) -> dict[tuple[int, int], float]:
     for i in range(n):
         for j in range(n):
             if i != j:
-                cache[(i, j)] = haversine_km(
-                    pois[i].lat, pois[i].lng, pois[j].lat, pois[j].lng
-                )
+                cache[(i, j)] = haversine_km(pois[i].lat, pois[i].lng, pois[j].lat, pois[j].lng)
     return cache
 
 
@@ -55,8 +54,10 @@ def nn_heuristic_km(
                     dist_cache[(current, j)]
                     if dist_cache is not None
                     else haversine_km(
-                        pois[current].lat, pois[current].lng,
-                        pois[j].lat, pois[j].lng,
+                        pois[current].lat,
+                        pois[current].lng,
+                        pois[j].lat,
+                        pois[j].lng,
                     )
                 )
                 if d < best_d:
@@ -81,6 +82,9 @@ def get_travel_min(
 
     dist_cache 를 넘기면 폴백 시 재계산 없이 조회한다.
     """
+    if matrix is not None and hasattr(matrix, "get_travel_min"):
+        return float(matrix.get_travel_min(origin, dest))
+
     entry = (matrix.get(i) or {}).get(j)
     if entry and "travel_min" in entry:
         return float(entry["travel_min"])
