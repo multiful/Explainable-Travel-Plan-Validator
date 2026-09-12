@@ -57,7 +57,7 @@ class KakaoPlace(BaseModel):
 
 
 class PlaceEvidence(BaseModel):
-    """지식그래프(Neo4j)에서 검색된 장소 근거 1건 (Region 컨텍스트 포함)."""
+    """로컬 장소 근거 검색 결과 1건 (Region 컨텍스트 포함)."""
 
     place_id: str
     name: str

@@ -10,8 +10,10 @@ def test_production_requires_bearer_token(monkeypatch):
     monkeypatch.setenv("API_AUTH_TOKEN", "test-secret")
     client = TestClient(app)
 
-    assert client.get("/api/places").status_code == 401
+    assert client.post("/api/validate", json={}).status_code == 401
     assert (
-        client.get("/api/places", headers={"Authorization": "Bearer test-secret"}).status_code
-        == 200
+        client.post(
+            "/api/validate", json={}, headers={"Authorization": "Bearer test-secret"}
+        ).status_code
+        == 422
     )
