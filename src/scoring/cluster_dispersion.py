@@ -102,14 +102,44 @@ def count_geo_cluster_backtracks(
     경주·제주·강원 지방 목적지에서 효과적.
     sklearn 미설치 시 0 반환 (graceful fallback).
     """
-    if not _SKLEARN_AVAILABLE or len(places) < 2:
+    if len(places) < 2:
         return 0
+    if not _SKLEARN_AVAILABLE:
+        labels = _fallback_cluster_labels(places, eps_km)
+        return _count_label_backtracks(labels)
     coords = np.radians([[p.lat, p.lng] for p in places])
     eps_rad = eps_km / _EARTH_R_KM
     labels: list[int] = (
         _DBSCAN(eps=eps_rad, min_samples=1, metric="haversine").fit_predict(coords).tolist()
     )
     return _count_label_backtracks(labels)
+
+
+def _fallback_cluster_labels(places: list[VRPTWPlace], eps_km: float) -> list[int]:
+    """sklearn 없이도 min_samples=1 DBSCAN과 같은 연결성 클러스터를 계산한다."""
+    labels = [-1] * len(places)
+    cluster_id = 0
+    for start in range(len(places)):
+        if labels[start] != -1:
+            continue
+        labels[start] = cluster_id
+        queue = [start]
+        while queue:
+            current = queue.pop()
+            for neighbor in range(len(places)):
+                if labels[neighbor] != -1:
+                    continue
+                distance = _haversine_km(
+                    places[current].lat,
+                    places[current].lng,
+                    places[neighbor].lat,
+                    places[neighbor].lng,
+                )
+                if distance <= eps_km:
+                    labels[neighbor] = cluster_id
+                    queue.append(neighbor)
+        cluster_id += 1
+    return labels
 
 
 @dataclass(frozen=True)
