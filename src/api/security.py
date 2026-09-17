@@ -46,13 +46,17 @@ async def security_middleware(request: Request, call_next):
     if path.startswith("/api/") and request.method != "OPTIONS":
         settings = Settings()
         protected = path in _PROTECTED_PATHS
-        token_required = settings.environment.lower() == "production" or bool(
-            settings.api_auth_token.strip()
-        )
+        token = settings.api_auth_token.strip()
+        if settings.environment.lower() == "production" and not token:
+            return JSONResponse(
+                {"detail": "API_AUTH_TOKEN must be configured in production"},
+                status_code=503,
+            )
+        token_required = settings.environment.lower() == "production" and bool(token)
         if protected and token_required:
             authorization = request.headers.get("Authorization", "")
             supplied = authorization.removeprefix("Bearer ").strip()
-            expected = settings.api_auth_token.strip()
+            expected = token
             if not expected or not secrets.compare_digest(supplied, expected):
                 return JSONResponse({"detail": "인증이 필요합니다."}, status_code=401)
 

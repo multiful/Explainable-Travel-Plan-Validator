@@ -1,4 +1,4 @@
-<!-- updated: 2026-09-12 | hash: d99f30a1 | summary: gun/ 폴더 — 새로 추가하거나 수정한 문서들의 인덱스 -->
+<!-- updated: 2026-09-16 | hash: dfc6f177 | summary: gun/ 폴더의 신규·수정 문서 인덱스 -->
 # `gun/` 폴더 — 신규·수정 문서 인덱스
 
 > 본 폴더는 프로젝트의 **신규 추가** 또는 **기존 문서 수정** 산출물을 모은다.
@@ -10,7 +10,7 @@
 | 파일 | 목적 | 영향 받는 원본 문서 |
 |---|---|---|
 | `README.md` | 본 인덱스 | — |
-| `DESIGN_RECONCILIATION.md` | PRD ↔ ENHANCEMENT_PLAN ↔ 실제 코드 간 3대 충돌(점수체계 교체 / 누락 Warning 2건 / Neo4j 연기) 명문화 | `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/ENHANCEMENT_PLAN.md`, `docs/ADR.md` |
+| `DESIGN_RECONCILIATION.md` | PRD ↔ ENHANCEMENT_PLAN ↔ 실제 코드 간 3대 충돌과 Neo4j 제거 결정을 기록 | `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/ENHANCEMENT_PLAN.md`, `docs/ADR.md` |
 
 ## 사용 규칙
 
@@ -24,7 +24,7 @@
 
 ```
 1. docs/PRD.md            (제품 비전 + MVP 정의)
-2. docs/ARCHITECTURE.md   (시스템 흐름 + Neo4j 설계)
+2. docs/ARCHITECTURE.md   (시스템 흐름 + 현재 로컬 근거 구조)
 3. docs/ENHANCEMENT_PLAN.md   (6대 패널티 — VRPTW + 3 scoring 모듈)
 4. gun/docs/DESIGN_RECONCILIATION.md   ⭐ (위 3개의 충돌 해소 + 미반영 항목 결정)
 ```

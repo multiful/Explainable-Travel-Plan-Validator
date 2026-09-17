@@ -1,4 +1,4 @@
-<!-- updated: 2026-09-12 | hash: 9930dac1 | summary: PRD↔PLAN↔코드 3대 충돌 해소 — 점수체계 교체 명문화·누락 Warning 2건 결정·Neo4j 연기 -->
+<!-- updated: 2026-09-16 | hash: 49262617 | summary: PRD↔PLAN↔코드 3대 충돌 해소 점수체계 교체 명문화·누락 Warning 2건 결정·Neo4j 제거 기록 -->
 # Design Reconciliation — PRD ↔ ENHANCEMENT_PLAN ↔ 실제 코드
 
 > ENHANCEMENT_PLAN(2026-04-26) 검토 중 발견된 **3대 정합성 이슈**를 해소하기 위한 결정 기록. 이 문서가 원본 문서들의 **상위 권위**를 가진다 (이후 충돌 시 본 문서 기준).
@@ -127,11 +127,11 @@ def evaluate_category_revisit(days: list[VRPTWDay], lcls_codes_per_day) -> Repor
 
 ---
 
-## 3. 결정 ③ — Neo4j MVP에서 제외 (Phase 7+ 연기)
+## 3. 과거 결정 — Neo4j MVP 제외
 
 ### 결정
 - **MVP 범위에서 Neo4j 제외**.
-- ARCHITECTURE.md의 Neo4j 의존성과 ADR-005를 **연기 결정으로 갱신**.
+- 이 문서는 당시의 범위 결정 기록이다. 현재 ADR-005에서는 Neo4j를 제품 런타임과 의존성에서 제거하고, 로컬 근거 카탈로그로 대체했다.
 - VRPTW 검증 로직은 in-memory Pydantic 객체로 충분히 작동 (이미 검증됨).
 
 ### 이유
@@ -213,7 +213,7 @@ ENHANCEMENT_PLAN §9의 P0~P4를 본 문서 결정사항을 반영하여 재정�
 
 - [x] PRD ↔ PLAN 점수 공식 충돌 명시
 - [x] 누락된 Warning 2건의 처리 결정 (PHYSICAL_STRAIN → cluster_dispersion 메트릭 3, AREA_REVISIT → 신규 모듈)
-- [x] Neo4j 연기 결정 명시 + Phase 7 재검토 조건 정의
+- [x] Neo4j 제거 결정과 로컬 근거 카탈로그 대체를 현재 ADR에 반영
 - [x] ENHANCEMENT_PLAN 자체 보완 사항 7건 정리
 - [x] 갱신된 P0~P4 통합 순서 제시
 - [ ] (다음 단계) 본 문서 결정사항을 코드에 반영 — P1 작업들

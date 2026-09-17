@@ -26,6 +26,8 @@ from src.data.evidence_retriever import LocalEvidenceRetriever
 from src.data.hours_db import resolve_hours
 from src.data.kakao_local import KakaoLocalClient
 from src.data.models import POI, DayPlan, ItineraryPlan, PlaceInput
+from src.data.place_resolver import ExternalPlaceResolver
+from src.data.tour_api import TourAPIClient
 from src.explain.pipeline import ValidatorPipeline
 from src.explain.plan_extractor import PlanExtractionError, PlanExtractor
 from src.matrix.route_matrix import RouteMatrixService
@@ -36,6 +38,8 @@ router = APIRouter()
 # 카카오 로컬 키워드 검색 (식당 등 pois.csv 미수록 장소의 좌표 보강).
 # 키가 없으면 enabled=False 로 동작해 기존 폴백을 유지한다.
 _KAKAO_LOCAL = KakaoLocalClient.from_env()
+_TOUR_API = TourAPIClient.from_settings()
+_PLACE_RESOLVER = ExternalPlaceResolver(_KAKAO_LOCAL, _TOUR_API)
 
 # 로컬 장소 근거 — 지역/근접 대안 조회.
 _GRAPH = LocalEvidenceRetriever.from_settings()
@@ -1281,7 +1285,12 @@ def _lookup_place(name: str) -> dict | None:
     return None
 
 
-def _resolve_poi(name: str, idx: int, address: str = "") -> tuple[POI, POIInfo]:
+def _resolve_poi(
+    name: str,
+    idx: int,
+    address: str = "",
+    allow_tour_api: bool = False,
+) -> tuple[POI, POIInfo]:
     place = _lookup_place(name)
     has_coords = place is not None and place.get("has_coords", False)
     norm = _normalize(name)
@@ -1291,6 +1300,7 @@ def _resolve_poi(name: str, idx: int, address: str = "") -> tuple[POI, POIInfo]:
     #   Medium — pois.csv / naver_metadata 매칭 (TourAPI 수집 좌표)
     #   Low    — 서울 시청 폴백 (좌표 신뢰 불가)
     hint: str | None = None
+    tour_hours: tuple[str, str] | None = None
     contentid = ""
     if norm in _COORD_CATALOG_NORM:
         confidence: str = "High"
@@ -1305,36 +1315,32 @@ def _resolve_poi(name: str, idx: int, address: str = "") -> tuple[POI, POIInfo]:
         category = place["cat"]
         contentid = str(place.get("contentid") or "")
     else:
-        # pois.csv·카탈로그 미매칭 → 카카오 로컬 키워드 검색으로 좌표 보강
-        # (식당·카페 등). 실패 시에만 서울시청 폴백으로 떨어진다.
-        kp = _KAKAO_LOCAL.search_keyword(name)
-        if kp is not None:
+        # 검증 경로에서는 TourAPI를 먼저 조회하고, 이후 Kakao를 보강 소스로 사용한다.
+        external = _PLACE_RESOLVER.resolve(name, address, allow_tour_api=allow_tour_api)
+        if external is not None:
             confidence = "Medium"
-            source = "kakao"
-            lat, lng = kp.lat, kp.lng
-            category = "12"
-            hint = _kakao_hint(kp.category_name)
+            source = external.source
+            lat, lng = external.lat, external.lng
+            category = external.category
+            hint = _kakao_hint(external.category_name)
+            if external.open_start and external.open_end:
+                tour_hours = (external.open_start, external.open_end)
+            contentid = external.poi_id
         else:
-            # 카카오 키워드 검색도 실패 — 파싱된 주소가 있으면 지오코딩으로 최후 보강
-            # (4·3길 등 사업장이 아닌 장소는 키워드 검색에 잡히지 않는다).
-            geo = _KAKAO_LOCAL.geocode_address(address) if address else None
-            if geo is not None:
-                confidence = "Medium"
-                source = "geocode"
-                lat, lng = geo
-                category = "12"
-            else:
-                confidence = "Low"
-                source = "fallback"
-                lat, lng = _DEFAULT_CENTER
-                category = "12"
+            confidence = "Low"
+            source = "fallback"
+            lat, lng = _DEFAULT_CENTER
+            category = "12"
 
     # 운영시간: TourAPI 실측(jeju_hours.json) → jeju_places.csv 실측 영업시간 →
     # 카테고리·키워드 추정(hours_db) 순으로 폴백.
     real_hours = _JEJU_HOURS.get(contentid) if contentid else None
     if not real_hours and place and place.get("open_start"):
         real_hours = {"open": place["open_start"], "close": place["open_end"]}
-    if real_hours:
+    if tour_hours:
+        open_start, open_end = tour_hours
+        hours_estimated = open_start == "00:00" and open_end == "23:59"
+    elif real_hours:
         open_start, open_end = real_hours["open"], real_hours["close"]
         hours_estimated = False
     else:
@@ -1436,7 +1442,7 @@ async def list_places(
     # 로컬 DB(pois.csv)에 결과가 적으면 카카오 키워드 검색으로 보강(식당 등 미수록 장소).
     if q and not q_is_jamo and len(filtered) < 8 and _KAKAO_LOCAL.enabled:
         existing = {_normalize(p["name"]) for p in filtered}
-        for kp in _KAKAO_LOCAL.search_keyword_list(q, size=15):
+        for kp in _PLACE_RESOLVER.search_keyword_list(q, size=15):
             nm = _normalize(kp.name)
             if not nm or nm in existing:
                 continue
@@ -1547,6 +1553,13 @@ async def resolve_coords(req: DayPlanWeb) -> list[POI]:
             for idx, place in enumerate(req.places)
         )
     )
+    unresolved = [info.name for _poi, info in resolved if not info.found]
+    if unresolved:
+        raise HTTPException(
+            status_code=422,
+            detail=f"좌표를 확인할 수 없는 장소: {', '.join(unresolved)}",
+        )
+
     return [poi for poi, _info in resolved]
 
 
@@ -1555,7 +1568,7 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
     if not req.days:
         raise HTTPException(status_code=422, detail="days must not be empty")
 
-    # _resolve_poi는 Kakao/Neo4j 블로킹 I/O를 포함한다 — 장소별로 순차 실행하면
+    # _resolve_poi는 외부 데이터 클라이언트의 블로킹 I/O를 포함한다. 장소별로
     # 지연이 선형으로 누적되고 이벤트 루프까지 막힌다. to_thread로 동시 실행한다.
     flat_places = [
         (day_idx, place.name, place.address)
@@ -1564,7 +1577,7 @@ async def validate_plan(req: ValidateRequest) -> ValidateResponse:
     ]
     resolved = await asyncio.gather(
         *(
-            asyncio.to_thread(_resolve_poi, name, idx, address)
+            asyncio.to_thread(_resolve_poi, name, idx, address, True)
             for idx, (_, name, address) in enumerate(flat_places)
         )
     )

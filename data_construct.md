@@ -1,6 +1,8 @@
-<!-- updated: 2026-09-12 | hash: 528a7ecf | summary: NEAR_BY 캡을 반경 300m+Top-20으로 재확정(실측 밀집도 검증) -->
+<!-- updated: 2026-09-16 | hash: 36027d5d | summary: 과거 그래프 DB 장소 스키마와 현재 로컬 리트리버 전환을 구분한 설계 기록 -->
 
-# 제주 Place 지식그래프 스키마 (Head - Relation - Tail)
+# 제주 Place 지식그래프 스키마 (과거 설계 기록)
+
+> 이 문서는 외부 그래프 DB를 사용하던 과거 데이터 모델의 설계 기록이다. 현재 런타임은 `src/data/evidence_retriever.py`의 `LocalEvidenceRetriever`가 동일한 장소 CSV를 로컬에서 조회하며, 아래 그래프 DB 스키마를 직접 로드하지 않는다.
 
 ## 0. 개요
 

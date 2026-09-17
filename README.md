@@ -1,4 +1,4 @@
-<!-- updated: 2026-09-12 | hash: d14dcb5d | summary: POI 34,441건 반영·카카오 키워드 검색 폴백·추정 영업시간 강등·구현 현황 ⑰~⑲ 추가 -->
+<!-- updated: 2026-09-17 | hash: 3320278f | summary: 웹 배포 환경변수와 컨테이너 readiness 프로브를 반영한 프로젝트 안내 -->
 
 # 관광 일정 QA 엔진 — Explainable Travel Plan Validator
 
@@ -19,6 +19,18 @@
 cp .env.example .env          # 실제 API 키 입력
 docker compose up --build
 ```
+
+### 웹 배포
+
+컨테이너를 지원하는 호스팅 서비스에서는 이 저장소의 `Dockerfile`을 그대로 사용한다. 운영 환경변수는 반드시 다음처럼 설정한다.
+
+```text
+ENVIRONMENT=production
+API_AUTH_TOKEN=<강한 랜덤 토큰>
+CORS_ALLOWED_ORIGINS=https://<실제-웹-도메인>
+```
+
+`API_AUTH_TOKEN`이 production에서 빠지면 API는 503으로 fail-closed하고, `CORS_ALLOWED_ORIGINS`에는 `*`를 사용하지 않는다. 컨테이너 프로브는 `/health`를 사용하며 필수 데이터가 없으면 503을 반환한다.
 
 ### 방법 B — 로컬 (Python 3.11+ 필요)
 
@@ -42,6 +54,8 @@ make run                      # 개발 서버
 
 > `/health` 는 시크릿 노출 없이 어떤 외부 API가 연동됐는지(bool)와
 > POI·혼잡도 데이터 적재 건수를 반환한다 — 연동 검증용.
+
+> 운영 프로브는 로컬 필수 데이터 준비 상태를 검사하며, 외부 API의 실제 연결성까지 보장하는 probe는 아니다.
 
 ### 활용 공공데이터
 
@@ -402,7 +416,7 @@ ValidatorPipeline.run() — src/explain/pipeline.py
 
 ## 향후 발전 방향
 
-1. **경량화** — 1회 호출 200ms 이하, Redis 캐싱 전략 적용으로 여행 앱 임베딩 가능 형태로 최적화
+1. **경량화** — Kakao Mobility 결과를 로컬 JSON 캐시로 재사용해 여행 앱 임베딩 가능 형태로 최적화
 2. **B2B 배포** — AI 생성 일정 자동 QA 게이트 + 검증 점수 배지 표시
 3. **대중교통 통합** — 자차 단일 가정에서 지하철·버스 환승 시간 복합 이동 모델 확장
 4. **체류시간 자동 보정** — EXIF 위치 메타데이터로 실제 체류 패턴 학습, 장소별 자동 보정

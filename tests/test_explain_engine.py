@@ -611,8 +611,7 @@ class TestExplainEngineMockLLM:
 
 
 class TestExplainEngineGraphDefault:
-    def test_default_graph_uses_local_catalog_without_env(self, monkeypatch):
-        monkeypatch.delenv("NEO4J_URI", raising=False)
+    def test_default_graph_uses_local_catalog_without_neo4j(self):
         engine = ExplainEngine(api_key="", client=None)
         assert engine._graph.enabled is True
 

@@ -1,4 +1,4 @@
-<!-- updated: 2026-09-12 | hash: fcda23fc | summary: Hard Fail 탐지기 구현 (운영시간 충돌·이동 불가·시간 수행 불가) -->
+<!-- updated: 2026-09-16 | hash: 8e2738ae | summary: Hard Fail 탐지기 구현 (운영시간 충돌·이동 불가·시간 수행 불가) -->
 # Step 0: hard-fail
 
 ## 읽어야 할 파일
@@ -124,6 +124,6 @@ python -m pytest tests/test_hard_fail.py -v
 
 ## 금지사항
 
-- 외부 I/O(Neo4j, API)를 이 모듈에서 직접 호출하지 마라. 순수 Python 계산만.
+- 외부 I/O(외부 API)를 이 모듈에서 직접 호출하지 마라. 순수 Python 계산만.
 - HardFail.confidence는 ARCHITECTURE.md Confidence Level 표를 따른다 ("High" for 이동불가, "Medium" for 운영시간).
 - 운영시간을 "00:00"~"23:59"로 파싱한 경우 (폴백), OPERATING_HOURS_CONFLICT를 생성하지 마라 (운영시간 미확인으로 처리).
