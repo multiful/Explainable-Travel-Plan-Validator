@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from src.data.models import POI, Settings, VRPTWPlace
@@ -31,7 +32,11 @@ class RouteMatrixService:
             return cls(HaversineMatrix())
 
         if cache_path is None:
-            cache_path = Path(__file__).resolve().parents[2] / "data" / "route_cache.json"
+            cache_path = (
+                Path("/tmp/qtrip/route_cache.json")
+                if os.getenv("VERCEL") == "1"
+                else Path(__file__).resolve().parents[2] / "data" / "route_cache.json"
+            )
         return cls(KakaoMobilityMatrix(api_key=api_key, cache_path=cache_path))
 
     @property

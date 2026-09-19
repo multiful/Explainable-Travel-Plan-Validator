@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/api/main.py": {
+      "maxDuration": 300,
+      "includeFiles": "{src/**,data/**}",
+      "excludeFiles": "{tests/**,scripts/**,gun/**,graphify-out/**,phases/**,.venv/**}"
+    }
+  }
+}
