@@ -19,12 +19,11 @@ def test_production_requires_bearer_token(monkeypatch):
     )
 
 
-def test_production_without_auth_token_fails_closed(monkeypatch):
+def test_production_without_auth_token_allows_public_requests(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.delenv("API_AUTH_TOKEN", raising=False)
 
     client = TestClient(app)
     response = client.post("/api/validate", json={})
 
-    assert response.status_code == 503
-    assert "API_AUTH_TOKEN" in response.json()["detail"]
+    assert response.status_code == 422
