@@ -47,11 +47,6 @@ async def security_middleware(request: Request, call_next):
         settings = Settings()
         protected = path in _PROTECTED_PATHS
         token = settings.api_auth_token.strip()
-        if settings.environment.lower() == "production" and not token:
-            return JSONResponse(
-                {"detail": "API_AUTH_TOKEN must be configured in production"},
-                status_code=503,
-            )
         token_required = settings.environment.lower() == "production" and bool(token)
         if protected and token_required:
             authorization = request.headers.get("Authorization", "")
