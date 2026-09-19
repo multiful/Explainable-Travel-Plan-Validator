@@ -1,4 +1,4 @@
-const CACHE = 'qtrip-v1';
+const CACHE = 'qtrip-v2-map-landing';
 const SHELL = ['/'];
 
 self.addEventListener('install', function(e) {

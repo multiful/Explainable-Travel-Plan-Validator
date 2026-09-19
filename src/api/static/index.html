@@ -1271,6 +1271,7 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
 }
 
 </style>
+<link rel="stylesheet" href="/static/landing.css?v=20260919"/>
 </head>
 <body>
 
@@ -1335,13 +1336,13 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
         <div class="hero-step"><div class="hero-step-n">02</div><div class="hero-step-t">방문 장소 구성</div></div>
         <div class="hero-step"><div class="hero-step-n">03</div><div class="hero-step-t">검증 결과 확인</div></div>
       </div>
-      <div class="hero-scroll-cue" onclick="document.querySelector('.s1-body').scrollIntoView({behavior:'smooth'})" aria-hidden="true">
+    <button type="button" class="hero-scroll-cue" onclick="document.querySelector('.s1-body').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})" aria-label="일정 입력 시작하기">
         <span>시작하기</span>
-        <div class="hero-scroll-chevron">
+    <span class="hero-scroll-chevron">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </div>
-    </div>
+    </span>
+    </button>
+  </div>
   </div>
   <div class="s1-body">
     <div class="s1-tab-bar" role="tablist" aria-label="일정 입력 방식">
