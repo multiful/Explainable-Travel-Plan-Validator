@@ -8,6 +8,7 @@ DayRouteComparison) that are defined later in this file.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from datetime import date as date_type
 from pathlib import Path
@@ -304,7 +305,9 @@ class ValidationResult(BaseModel):
 
 
 class Settings(BaseSettings):
-    environment: str = "development"
+    environment: str = Field(
+        default_factory=lambda: "production" if os.getenv("VERCEL") == "1" else "development"
+    )
     api_auth_token: str = ""
     cors_allowed_origins: str = "http://localhost:8000,http://127.0.0.1:8000"
     anthropic_api_key: str = ""

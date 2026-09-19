@@ -1,4 +1,4 @@
-const CACHE = 'qtrip-v2-map-landing';
+const CACHE = 'qtrip-v3-vercel';
 const SHELL = ['/'];
 
 self.addEventListener('install', function(e) {

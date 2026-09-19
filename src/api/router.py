@@ -48,7 +48,7 @@ _CONGESTION_ENGINE = CongestionEngine.from_settings()
 
 # 일정표 업로드(PDF·이미지·복사 텍스트) 파싱 — Claude Vision + 쿼리 리라이팅.
 _EXTRACTOR = PlanExtractor.from_env()
-_MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15MB
+_MAX_UPLOAD_BYTES = 4 * 1024 * 1024  # Leave room for multipart overhead on Vercel.
 _ALLOWED_DOC_TYPES = {
     "application/pdf": "application/pdf",
     "image/png": "image/png",
@@ -1532,11 +1532,11 @@ async def parse_document(file: UploadFile) -> ParsedPlanResponse:
     media_type = _ALLOWED_DOC_TYPES.get((file.content_type or "").lower())
     if media_type is None:
         raise HTTPException(status_code=415, detail="PDF, PNG, JPG 파일만 지원합니다.")
-    data = await file.read()
+    data = await file.read(_MAX_UPLOAD_BYTES + 1)
     if not data:
         raise HTTPException(status_code=422, detail="빈 파일입니다.")
     if len(data) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="파일이 너무 큽니다 (최대 15MB).")
+        raise HTTPException(status_code=413, detail="파일이 너무 큽니다 (최대 4MB).")
     try:
         return await asyncio.to_thread(_EXTRACTOR.extract_from_document, data, media_type)
     except PlanExtractionError as e:

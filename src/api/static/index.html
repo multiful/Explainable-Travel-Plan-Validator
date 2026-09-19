@@ -1694,6 +1694,7 @@ header.scrolled{box-shadow:0 4px 24px rgba(0,0,0,.13)!important}
   </div>
 </div>
 
+<script src="/static/api-client.js?v=20260919"></script>
 <script>
 /* ─── State ─────────────────────────────────────────────────────────── */
 var cfg = { region:"제주", date:"2026-06-01", startTime:"09:00", partyType:"친구", partySize:2, travelType:"", petFriendly:false };
@@ -1826,6 +1827,11 @@ function onUploadFileChange(e) {
 }
 
 function setUploadFile(f) {
+  if (f.size > 4 * 1024 * 1024) {
+    document.getElementById("upload-status").textContent = "파일은 최대 4MB까지 업로드할 수 있습니다. 파일을 줄이거나 일정 텍스트를 붙여넣어 주세요.";
+    document.getElementById("upload-file-inp").value = "";
+    return;
+  }
   _uploadFile = f;
   document.getElementById("upload-drop-label").textContent = f.name+" 선택됨 (다른 파일을 올리려면 다시 클릭)";
   document.getElementById("upload-text-inp").value = "";
