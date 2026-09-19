@@ -1,8 +1,9 @@
-<!-- updated: 2026-09-19 | hash: 5b6bb7a9 | summary: Vercel 배포 설정과 검증 범위 및 운영 제약 -->
+<!-- updated: 2026-09-19 | hash: f9c33432 | summary: Vercel 배포 설정과 검증 범위 및 운영 제약 -->
 # Vercel 배포
 
-프로젝트 루트를 배포한다. Python ASGI 진입점은 `app.py`이며 실제 앱은
-`src.api.main:app`이다. 프레임워크는 FastAPI로 선택하고 Docker나 프론트엔드용
+프로젝트 루트를 배포한다. `pyproject.toml`의 `[tool.vercel]`에 ASGI 진입점
+`src.api.main:app`을 명시한다. `vercel.json`의 함수 설정도 `src/api/main.py`에 적용한다.
+프레임워크는 FastAPI로 선택하고 Docker나 프론트엔드용
 빌드 명령, Output Directory를 별도로 지정하지 않는다. `.python-version`은
 Python 3.12를 지정한다. `package.json`의 pptxgenjs는 발표자료용이며 웹 빌드가 아니다.
 
