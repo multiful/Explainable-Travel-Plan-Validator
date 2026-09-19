@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.data.models import VRPTWDay, VRPTWPlace
 from src.scoring.cluster_dispersion import (
-    _SKLEARN_AVAILABLE,
     COMBINED_PENALTY_CAP,
     PENALTY_SWITCH_WARN,
     count_geo_cluster_backtracks,
@@ -78,7 +75,6 @@ def test_per_day_independence():
     assert report.total_penalty == 0
 
 
-@pytest.mark.skipif(not _SKLEARN_AVAILABLE, reason="sklearn not installed")
 def test_geo_cluster_backtrack_gyeongju():
     """M4: 경주 — 동일 시군구지만 지리적으로 분산 왕복 → M3=0인데 M4≥1."""
     day = VRPTWDay(
@@ -101,7 +97,6 @@ def test_geo_cluster_backtrack_gyeongju():
     assert "geo_cluster_backtrack" in bt_rules
 
 
-@pytest.mark.skipif(not _SKLEARN_AVAILABLE, reason="sklearn not installed")
 def test_geo_cluster_no_false_positive_sequential():
     """M4 false positive: 강남→홍대 순방향 방문은 패널티 없어야."""
     day = VRPTWDay(
@@ -116,7 +111,6 @@ def test_geo_cluster_no_false_positive_sequential():
     assert bt == 0, "순방향 방문은 지리 클러스터 백트래킹 0"
 
 
-@pytest.mark.skipif(not _SKLEARN_AVAILABLE, reason="sklearn not installed")
 def test_geo_cluster_no_double_penalty_when_m3_fires():
     """M3가 이미 탐지한 이벤트에 M4가 중복 패널티를 추가하지 않는다.
 

@@ -27,7 +27,7 @@ chroma_db/
 *.db
 *.sqlite3
 
-# 지식그래프 빌드 산출물 (scripts/build_knowledge_graph.py로 재생성 가능)
+# 사용하지 않는 과거 지식그래프 빌드 산출물
 data/graph/
 
 # IDE
@@ -61,3 +61,7 @@ gun/data/_checkpoint.json
 gun/data/_qa/
 gun/data/~$*
 gun/data/*.tmp
+
+# graphify 로컬 분석 캐시 — 재생성 가능하며 소스 그래프 JSON만 추적
+graphify-out/.graphify_analysis.json
+graphify-out/cache/ast/

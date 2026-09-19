@@ -1,0 +1,67 @@
+/* Reference-led landing: illustrated travel map, centered introduction,
+   and a single white input surface. Builder and result styles stay scoped. */
+body:has(#s1.active) { background: #60d9d2; }
+body:has(#s1.active) header { background: #f7fafb; backdrop-filter: none; padding-inline: 36px; border: 0; }
+body:has(#s1.active) .brand-mark { width: 39px; height: 38px; background: #e84830; border-radius: 12px; }
+body:has(#s1.active) .brand-name { font-size: 21px; }
+body:has(#s1.active) .brand-sub { font-size: 11px; }
+body:has(#s1.active) .stepbar { display: none; }
+#s1 {
+  min-height: max(100svh, 1500px);
+  padding-bottom: 180px;
+  background-color: #62dbd2;
+  background-image: linear-gradient(180deg, rgba(8,47,72,.32), rgba(8,47,72,0) 650px), url('/static/qtrip-map.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+#s1 .s1-hero { background: none; padding: 62px 24px 46px; overflow: visible; }
+#s1 .s1-hero::before, #s1 .s1-hero::after { content: none; }
+#s1 .s1-hero-inner { max-width: 1000px; margin-inline: auto; }
+#s1 .s1-eyebrow { font-size: 13px; letter-spacing: .22em; opacity: 1; margin-bottom: 20px; color: #fff; }
+#s1 .s1-hero h2 { font-size: clamp(30px, 3.3vw, 46px); font-weight: 800; line-height: 1.2; letter-spacing: -.035em; margin-bottom: 14px; color: #fff; text-wrap: balance; }
+#s1 .s1-hero p { max-width: 620px; font-size: 16px; line-height: 1.65; opacity: 1; color: #fff; text-shadow: 0 1px 8px rgba(0,45,66,.4); }
+#s1 .hero-how { display: flex; justify-content: center; gap: 10px; }
+#s1 .hero-step { min-width: 96px; padding: 9px 12px; border: 1px solid rgba(255,255,255,.42); border-radius: 10px; background: rgba(215,250,255,.18); color: #fff; }
+#s1 .hero-step-n { font-size: 13px; color: #fff; margin-bottom: 3px; }
+#s1 .hero-step-t { font-size: 13px; color: #fff; }
+#s1 .hero-scroll-cue { display: flex; flex-direction: column; align-items: center; gap: 7px; margin: 28px auto 0; padding: 7px 16px; min-height: 44px; border: 0; background: transparent; color: #fff; font: inherit; font-size: 12px; cursor: pointer; opacity: 1; }
+#s1 .hero-scroll-chevron { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #fff; border-radius: 50%; }
+#s1 .s1-body { width: calc(100% - 48px); max-width: 840px; margin: 0 auto; padding: 20px 20px 24px; background: rgba(255,255,255,.98); border-radius: 24px; box-shadow: none; scroll-margin-top: 80px; }
+#s1 .s1-tab-bar { padding: 4px; margin: 0 0 12px; background: #f3f4f6; border-radius: 16px; }
+#s1 .s1-tab-bar button { min-height: 48px; font-size: 15px; color: #616b7d; border-radius: 12px; }
+#s1 .s1-tab-bar button.active { background: #fff; color: #cf351e; box-shadow: none; }
+#s1 .scard { background: transparent; padding: 24px; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+#s1 .scard-label { font-size: 16px; font-weight: 800; letter-spacing: 0; color: #202b3a; margin-bottom: 16px; }
+#s1 .upload-drop { min-height: 120px; padding: 24px 16px; border: 1.5px solid #c7cfdb; border-radius: 12px; background: #fff; color: #59677a; }
+#s1 .upload-drop:hover, #s1 .upload-drop.drag { border-color: #e84830; background: #fff7f3; }
+#s1 .upload-drop span { font-size: 13px; font-weight: 400; }
+#s1 .upload-divider { margin: 18px 0; color: #626d7c; }
+#s1 .upload-textarea { min-height: 122px; padding: 17px; background: #f9fafc; border: 1px solid #d6dce5; border-radius: 12px; font-size: 14px; }
+#s1 .upload-textarea::placeholder { color: #626d7c; }
+#s1 .cta { min-height: 56px; background: #e7472f; border-radius: 12px; box-shadow: none; font-size: 17px; }
+#s1 .cta:hover:not(:disabled) { background: #c93622; transform: none; box-shadow: none; }
+#s1 .cta:disabled { background: #e7472f; opacity: .65; }
+#s1 #s1-tab-manual .scard + .scard { border-top: 1px solid #eef0f3; }
+#s1 #s1-tab-manual > .cta { width: calc(100% - 48px); margin: 12px 24px; }
+#s1 .s1-body > p { color: #435366 !important; padding-inline: 16px; }
+#s1 button:focus-visible, #s1 textarea:focus-visible, #s1 .upload-drop:focus-within { outline: 3px solid #173e67; outline-offset: 4px; }
+@media (max-width: 700px) {
+  body:has(#s1.active) header { padding-inline: 18px; }
+  #s1 { min-height: 100svh; padding-bottom: 72px; background-position: 58% top; }
+  #s1 .s1-hero { padding: 44px 18px 30px; }
+  #s1 .s1-eyebrow { font-size: 11px; letter-spacing: .13em; }
+  #s1 .s1-hero h2 { font-size: clamp(28px, 5.5vw, 38px); }
+  #s1 .s1-hero p { font-size: 14px; }
+  #s1 .hero-step { min-width: 0; padding: 9px 10px; }
+  #s1 .hero-step-t { font-size: 11px; }
+  #s1 .s1-body { width: calc(100% - 28px); padding: 12px; border-radius: 20px; }
+  #s1 .scard { padding: 20px 8px 10px; }
+  #s1 .scard-label { font-size: 15px; }
+  #s1 .s1-tab-bar button { font-size: 14px; }
+  #s1 #s1-tab-manual > .cta { width: calc(100% - 16px); margin: 12px 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  #s1, #s1 *, #s1 *::before, #s1 *::after { animation: none !important; transition: none !important; }
+}

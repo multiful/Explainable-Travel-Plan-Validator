@@ -56,6 +56,19 @@ class KakaoPlace(BaseModel):
     place_url: str = ""
 
 
+class ExternalPlaceResolution(BaseModel):
+    """외부 장소 클라이언트가 반환하는 정규화된 장소 후보."""
+
+    lat: float
+    lng: float
+    category: str = "12"
+    source: Literal["tour_api", "kakao", "geocode"]
+    poi_id: str = ""
+    category_name: str = ""
+    open_start: str | None = None
+    open_end: str | None = None
+
+
 class PlaceEvidence(BaseModel):
     """로컬 장소 근거 검색 결과 1건 (Region 컨텍스트 포함)."""
 

@@ -3,7 +3,7 @@
     { "dir": "0-setup",      "status": "completed" },
     { "dir": "1-data",       "status": "completed" },
     { "dir": "2-matrix",     "status": "in_progress" },
-    { "dir": "3-graph",      "status": "removed", "note": "Neo4j 제거 확정 — Python M3/M4로 100% 대체 (scripts/neo4j_coverage_analysis.py)" },
+  { "dir": "3-graph",      "status": "removed", "note": "Neo4j 제거 확정 — Python M3/M4와 로컬 근거 카탈로그로 대체" },
     { "dir": "4-validation", "status": "in_progress" },
     { "dir": "5-explain",    "status": "pending" },
     { "dir": "6-api",        "status": "pending" }

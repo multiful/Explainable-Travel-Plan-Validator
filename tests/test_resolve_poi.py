@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from src.api import router
 from src.api.main import app
+from src.data.models import POI, ExternalPlaceResolution
 
 _XLSX_HEADER = [
     "상호명",
@@ -165,3 +166,74 @@ def test_resolve_coords_endpoint_returns_poi_per_place():
     assert len(pois) == 1
     assert pois[0]["name"] == "존재하지않는장소12345"
     assert (pois[0]["lat"], pois[0]["lng"]) == (33.5, 126.9)
+
+
+def test_resolve_poi_can_use_tour_api_before_kakao(monkeypatch):
+    expected = POI(
+        poi_id="tour-1",
+        name="실시간 관광지",
+        lat=35.1,
+        lng=129.0,
+        open_start="10:00",
+        open_end="19:00",
+        duration_min=60,
+        category="14",
+    )
+
+    class FakeTourAPI:
+        def search_poi_sync(self, keyword, num_of_rows=10):
+            assert keyword == "실시간 관광지"
+            assert num_of_rows == 5
+            return [expected]
+
+    monkeypatch.setattr(router._PLACE_RESOLVER, "_tour_api", FakeTourAPI())
+    monkeypatch.setattr(router._KAKAO_LOCAL, "search_keyword", lambda _: None)
+
+    poi, info = router._resolve_poi("실시간 관광지", 0, allow_tour_api=True)
+
+    assert info.source == "tour_api"
+    assert info.confidence == "Medium"
+    assert (poi.lat, poi.lng) == (35.1, 129.0)
+    assert (poi.open_start, poi.open_end) == ("10:00", "19:00")
+
+
+def test_resolve_coords_rejects_unresolved_place():
+    client = TestClient(app)
+    with (
+        patch.object(router._KAKAO_LOCAL, "search_keyword", return_value=None),
+        patch.object(router._KAKAO_LOCAL, "geocode_address", return_value=None),
+    ):
+        res = client.post(
+            "/api/resolve-coords",
+            json={"places": [{"name": "존재하지 않는 장소"}]},
+        )
+
+    assert res.status_code == 422
+    assert "좌표" in res.json()["detail"]
+
+
+def test_validate_uses_external_place_resolver(monkeypatch):
+    candidate = ExternalPlaceResolution(
+        lat=35.1,
+        lng=129.0,
+        category="14",
+        source="tour_api",
+        poi_id="tour-validate-1",
+        open_start="10:00",
+        open_end="19:00",
+    )
+    calls = []
+
+    def fake_resolve(name, address="", allow_tour_api=False):
+        calls.append((name, address, allow_tour_api))
+        return candidate
+
+    monkeypatch.setattr(router._PLACE_RESOLVER, "resolve", fake_resolve)
+    res = TestClient(app).post(
+        "/api/validate",
+        json={"days": [{"places": [{"name": "실시간 검증 장소"}]}]},
+    )
+
+    assert res.status_code == 200
+    assert calls == [("실시간 검증 장소", "", True)]
+    assert res.json()["poi_info"][0]["source"] == "tour_api"

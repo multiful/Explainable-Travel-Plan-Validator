@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from src.api.router import router
@@ -69,7 +69,7 @@ async def service_worker() -> Response:
 
 
 @app.get("/health", include_in_schema=False)
-async def health() -> dict:
+async def health() -> JSONResponse:
     """라이브니스 + 구성 진단.
 
     시크릿 값은 절대 노출하지 않고, 키 설정 여부(bool)와
@@ -99,10 +99,13 @@ async def health() -> dict:
         data_loaded = {}
 
     ready = data_loaded.get("places", 0) > 0 and data_loaded.get("congestion_places", 0) > 0
-    return {
-        "status": "ok" if ready else "degraded",
-        "ready": ready,
-        "version": app.version,
-        "apis_configured": apis_configured,
-        "data_loaded": data_loaded,
-    }
+    return JSONResponse(
+        content={
+            "status": "ok" if ready else "degraded",
+            "ready": ready,
+            "version": app.version,
+            "apis_configured": apis_configured,
+            "data_loaded": data_loaded,
+        },
+        status_code=200 if ready else 503,
+    )

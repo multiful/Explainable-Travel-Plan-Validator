@@ -2,8 +2,8 @@
   "project": "Explainable Travel Plan Validator",
   "phase": "3-graph",
   "steps": [
-    { "step": 0, "name": "neo4j-schema",  "status": "pending" },
-    { "step": 1, "name": "graph-builder", "status": "pending" },
-    { "step": 2, "name": "graph-queries", "status": "pending" }
+    { "step": 0, "name": "removed",        "status": "removed" },
+    { "step": 1, "name": "removed", "status": "removed" },
+    { "step": 2, "name": "removed", "status": "removed" }
   ]
 }

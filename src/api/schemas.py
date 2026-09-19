@@ -29,7 +29,16 @@ class DayPlanWeb(BaseModel):
 class POIInfo(BaseModel):
     name: str
     found: bool
-    source: str  # "catalog" | "pois" | "fallback"
+    source: Literal[
+        "catalog",
+        "pois",
+        "fallback",
+        "kakao",
+        "geocode",
+        "tour_api",
+        "jeju_csv",
+        "seoul_realtime",
+    ]
     confidence: Literal["High", "Medium", "Low"] = "Medium"
     lat: float
     lng: float

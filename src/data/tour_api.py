@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any
 
@@ -58,6 +59,7 @@ class TourAPIClient:
         self._timeout = timeout_sec
         self._mobile_app = mobile_app
         self._hours_cache: dict[str, tuple[str, str]] = {}
+        self._search_cache: dict[str, list[POI]] = {}
 
     @classmethod
     def from_settings(cls, settings: Settings | None = None) -> TourAPIClient | None:
@@ -75,6 +77,9 @@ class TourAPIClient:
         num_of_rows: int = 10,
     ) -> list[POI]:
         """키워드로 POI 검색. 실패 시 빈 리스트 반환."""
+        cache_key = f"{keyword.strip()}:{content_type_id}:{num_of_rows}"
+        if cache_key in self._search_cache:
+            return self._search_cache[cache_key]
         params: dict[str, Any] = {
             "serviceKey": self._key,
             "numOfRows": num_of_rows,
@@ -95,6 +100,7 @@ class TourAPIClient:
                 return []
             items = _extract_items(r.json())
         except Exception:
+            self._search_cache[cache_key] = []
             return []
 
         pois: list[POI] = []
@@ -121,7 +127,17 @@ class TourAPIClient:
                 )
             except Exception:
                 continue
+        self._search_cache[cache_key] = pois
         return pois
+
+    def search_poi_sync(
+        self,
+        keyword: str,
+        content_type_id: int | None = None,
+        num_of_rows: int = 10,
+    ) -> list[POI]:
+        """동기 호출 지점(스레드)에서 async 검색을 안전하게 실행한다."""
+        return asyncio.run(self.search_poi(keyword, content_type_id, num_of_rows))
 
     async def get_operating_hours(
         self,
@@ -159,3 +175,4 @@ class TourAPIClient:
 
     def clear_cache(self) -> None:
         self._hours_cache.clear()
+        self._search_cache.clear()
